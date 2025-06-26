@@ -140,13 +140,16 @@ export default function CompetitiveLeaderboard() {
   const secondPlace = leaderboard[1];
   const leadGap = topPerformer && secondPlace ? topPerformer.total - secondPlace.total : 0;
 
+  // Use a stable callback for popper dismissal
+  const handlePopperDone = React.useCallback(() => setPopper(null), []);
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 relative overflow-hidden">
       <SalePopper
         ogaName={popper?.ogaName || ''}
         amount={popper?.amount || 0}
         show={!!popper}
-        onDone={() => setPopper(null)}
+        onDone={handlePopperDone}
       />
 
       {/* Animated Background Elements */}

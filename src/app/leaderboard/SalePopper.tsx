@@ -6,9 +6,9 @@ export default function SalePopper({ ogaName, amount, show, onDone }: { ogaName:
   // Show the popper for just the animation duration (e.g., 1s)
   useEffect(() => {
     if (!show) return;
-    const timer = setTimeout(onDone, 1500); // 1.5 seconds for full-screen effect
+    const timer = setTimeout(onDone, 8000); // 5 seconds for full-screen effect
     return () => clearTimeout(timer);
-  }, [show, onDone]);
+  }, [show]); // Remove onDone from dependency list for timer stability
 
   // Get window size for Confetti
   const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
