@@ -1,34 +1,29 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { MongoClient } from 'mongodb';
 
-const salesFile = path.join(process.cwd(), 'sales.json');
+const uri = process.env.MONGODB_URI;
+let client;
+let clientPromise;
+
+if (!clientPromise) {
+  client = new MongoClient(uri);
+  clientPromise = client.connect();
+}
 
 export async function POST(request) {
   const data = await request.json();
-  let sales = [];
-  try {
-    if (fs.existsSync(salesFile)) {
-      const fileData = fs.readFileSync(salesFile, 'utf-8');
-      sales = JSON.parse(fileData);
-    }
-  } catch (e) {
-    sales = [];
-  }
-  sales.push({ ...data, createdAt: new Date().toISOString() });
-  fs.writeFileSync(salesFile, JSON.stringify(sales, null, 2));
+  const client = await clientPromise;
+  const db = client.db();
+  const sales = db.collection('sales');
+  data.createdAt = new Date();
+  await sales.insertOne(data);
   return NextResponse.json({ success: true });
 }
 
 export async function GET() {
-  let sales = [];
-  try {
-    if (fs.existsSync(salesFile)) {
-      const fileData = fs.readFileSync(salesFile, 'utf-8');
-      sales = JSON.parse(fileData);
-    }
-  } catch (e) {
-    sales = [];
-  }
-  return NextResponse.json(sales);
+  const client = await clientPromise;
+  const db = client.db();
+  const sales = db.collection('sales');
+  const allSales = await sales.find({}).toArray();
+  return NextResponse.json(allSales);
 }
