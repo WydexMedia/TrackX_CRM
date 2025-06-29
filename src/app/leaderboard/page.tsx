@@ -103,6 +103,23 @@ function groupLeaderboardByTotal(leaderboard: OGAStat[]) {
   return groups;
 }
 
+function filterSalesByDate(sales: Sale[], date: Date) {
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const d = date.getDate();
+  return sales.filter(sale => {
+    if (!sale.createdAt) return false;
+    const saleDate = new Date(sale.createdAt);
+    return saleDate.getFullYear() === y && saleDate.getMonth() === m && saleDate.getDate() === d;
+  });
+}
+
+function getYesterday(date: Date) {
+  const yest = new Date(date);
+  yest.setDate(date.getDate() - 1);
+  return yest;
+}
+
 export default function CompetitiveLeaderboard() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -146,8 +163,18 @@ export default function CompetitiveLeaderboard() {
     return () => clearInterval(timeInterval);
   }, []);
 
-  const leaderboard = getLeaderboard(sales);
-  const groupedLeaderboard = groupLeaderboardByTotal(leaderboard);
+  const today = new Date();
+  const todaySales = filterSalesByDate(sales, today);
+  let displaySales = todaySales;
+  let showingYesterday = false;
+  if (todaySales.length === 0) {
+    const yesterday = getYesterday(today);
+    const yesterdaySales = filterSalesByDate(sales, yesterday);
+    displaySales = yesterdaySales;
+    showingYesterday = true;
+  }
+  const leaderboard = getLeaderboard(displaySales);
+  const groupedLeaderboard = groupLeaderboardByTotal(showingYesterday ? leaderboard.slice(0, 3) : leaderboard);
   const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0);
   const topPerformer = leaderboard[0];
   const secondPlace = leaderboard[1];
@@ -217,6 +244,11 @@ export default function CompetitiveLeaderboard() {
       {/* Leaderboard */}
       <div className="relative z-10 px-8 pb-8">
         <div className="max-w-7xl mx-auto">
+          {showingYesterday && (
+            <div className="text-center text-yellow-300 text-lg font-semibold mb-4">
+              Showing yesterday's top 3 (no sales yet today)
+            </div>
+          )}
           <div className="grid gap-4">
             <AnimatePresence>
               {groupedLeaderboard.slice(0, 8).map((group, groupIndex) => {
