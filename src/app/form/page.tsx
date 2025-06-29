@@ -20,22 +20,18 @@ const OGA_NAMES = [
 const schema = yup.object().shape({
   ogaName: yup.string().required('OGA Name is required'),
   customerName: yup.string().required('Customer Name is required'),
-  address: yup.string().required('Address is required'),
-  phone: yup.string().required('Phone Number is required'),
-  email: yup.string().email('Invalid email').required('Email is required'),
   amount: yup
     .number()
     .typeError('Amount must be a number')
     .required('Amount is required'),
+  newAdmission: yup.string().required('Please select if this is a new admission'),
 });
 
 type FormData = {
   ogaName: string;
   customerName: string;
-  address: string;
-  phone: string;
-  email: string;
   amount: number;
+  newAdmission: string; // 'yes' or 'no'
 };
 
 export default function FormPage() {
@@ -77,21 +73,20 @@ export default function FormPage() {
         <input {...register('customerName')} placeholder="Customer Name" className="input" />
         <p className="text-red-500 text-xs">{errors.customerName?.message}</p>
 
-        <label className="text-gray-700 font-medium">Address</label>
-        <input {...register('address')} placeholder="Address" className="input" />
-        <p className="text-red-500 text-xs">{errors.address?.message}</p>
-
-        <label className="text-gray-700 font-medium">Phone Number</label>
-        <input {...register('phone')} placeholder="Phone Number" className="input" />
-        <p className="text-red-500 text-xs">{errors.phone?.message}</p>
-
-        <label className="text-gray-700 font-medium">Email</label>
-        <input {...register('email')} placeholder="Email Address" className="input" />
-        <p className="text-red-500 text-xs">{errors.email?.message}</p>
-
         <label className="text-gray-700 font-medium">Amount</label>
         <input {...register('amount')} placeholder="Amount" className="input" />
         <p className="text-red-500 text-xs">{errors.amount?.message}</p>
+
+        <label className="text-gray-700 font-medium">New Admission?</label>
+        <div className="flex gap-4">
+          <label className="flex text-black items-center gap-2">
+            <input type="radio" value="yes" {...register('newAdmission')} /> Yes
+          </label>
+          <label className="flex text-black items-center gap-2">
+            <input type="radio" value="no" {...register('newAdmission')} /> No
+          </label>
+        </div>
+        <p className="text-red-500 text-xs">{errors.newAdmission?.message}</p>
 
         <button
           type="submit"

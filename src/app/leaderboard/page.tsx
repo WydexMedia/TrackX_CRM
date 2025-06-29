@@ -34,11 +34,8 @@ const RANK_ICONS = {
 type Sale = {
   ogaName: string;
   customerName: string;
-  phone: string;
-  email: string;
-  confirmEmail: string;
-  address: string;
   amount: number;
+  newAdmission: string; // 'yes' or 'no'
   createdAt?: string;
 };
 
@@ -54,21 +51,22 @@ function getLeaderboard(sales: Sale[]): OGAStat[] {
   const leaderboard: Record<string, OGAStat> = {};
   for (const sale of sales) {
     if (!leaderboard[sale.ogaName]) {
-      leaderboard[sale.ogaName] = { 
-        name: sale.ogaName, 
-        total: 0, 
-        count: 0, 
+      leaderboard[sale.ogaName] = {
+        name: sale.ogaName,
+        total: 0,
+        count: 0,
         avgSale: 0,
-        lastSale: sale.createdAt 
+        lastSale: sale.createdAt
       };
     }
     leaderboard[sale.ogaName].total += Number(sale.amount);
-    leaderboard[sale.ogaName].count += 1;
+    if (sale.newAdmission === 'yes') {
+      leaderboard[sale.ogaName].count += 1;
+    }
     if (sale.createdAt && (!leaderboard[sale.ogaName].lastSale || sale.createdAt > leaderboard[sale.ogaName].lastSale!)) {
       leaderboard[sale.ogaName].lastSale = sale.createdAt;
     }
   }
-  
   return Object.values(leaderboard)
     .map(oga => ({
       ...oga,
@@ -89,6 +87,20 @@ function getRankIcon(rank: number) {
   if (rank === 2) return RANK_ICONS[2];
   if (rank === 3) return RANK_ICONS[3];
   return RANK_ICONS.default;
+}
+
+// Group OGAs with the same total sales into a single row, showing all names and stats side by side, and sharing the same rank.
+function groupLeaderboardByTotal(leaderboard: OGAStat[]) {
+  const groups: { total: number; ogas: OGAStat[] }[] = [];
+  leaderboard.forEach(oga => {
+    const group = groups.find(g => g.total === oga.total);
+    if (group) {
+      group.ogas.push(oga);
+    } else {
+      groups.push({ total: oga.total, ogas: [oga] });
+    }
+  });
+  return groups;
 }
 
 export default function CompetitiveLeaderboard() {
@@ -135,6 +147,7 @@ export default function CompetitiveLeaderboard() {
   }, []);
 
   const leaderboard = getLeaderboard(sales);
+  const groupedLeaderboard = groupLeaderboardByTotal(leaderboard);
   const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0);
   const topPerformer = leaderboard[0];
   const secondPlace = leaderboard[1];
@@ -175,7 +188,10 @@ export default function CompetitiveLeaderboard() {
               <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
               <span>LIVE</span>
             </div>
-            <div>Total Sales: ₹{totalSales.toLocaleString()}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-4xl font-extrabold text-green-400">₹{totalSales.toLocaleString()}</span>
+              <span className="text-xl font-bold text-white/80">Total Sales</span>
+            </div>
             <div>{currentTime.toLocaleTimeString()}</div>
           </div>
         </motion.div>
@@ -203,20 +219,18 @@ export default function CompetitiveLeaderboard() {
         <div className="max-w-7xl mx-auto">
           <div className="grid gap-4">
             <AnimatePresence>
-              {leaderboard.slice(0, 8).map((oga, index) => {
-                const rank = index + 1;
+              {groupedLeaderboard.slice(0, 8).map((group, groupIndex) => {
+                const rank = groupIndex + 1;
                 const isTop3 = rank <= 3;
-                const percentage = topPerformer ? (oga.total / topPerformer.total) * 100 : 0;
-                
                 return (
                   <motion.div
-                    key={oga.name}
+                    key={group.total + '-' + group.ogas.map(o => o.name).join(',')}
                     initial={{ x: -200, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 200, opacity: 0 }}
                     transition={{ 
                       duration: 0.8, 
-                      delay: index * 0.1,
+                      delay: groupIndex * 0.1,
                       type: "spring",
                       stiffness: 100
                     }}
@@ -233,20 +247,8 @@ export default function CompetitiveLeaderboard() {
                         : 'linear-gradient(135deg, rgba(100,116,139,0.3) 0%, rgba(71,85,105,0.2) 100%)'
                     }}
                   >
-                    {/* Progress Bar Background */}
-                    <div className="absolute inset-0 opacity-20">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${percentage}%` }}
-                        transition={{ duration: 2, delay: index * 0.1 }}
-                        className={`h-full bg-gradient-to-r ${COMPETITIVE_GRADIENTS[rank % COMPETITIVE_GRADIENTS.length]}`}
-                      />
-                    </div>
-
-                    {/* Content */}
                     <div className="relative z-10 flex items-center p-6 backdrop-blur-sm border border-white/10">
-                      {/* Rank Section */}
-                      <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex items-center gap-4 min-w-0 flex-1">
                         <motion.div
                           animate={pulseEffect && rank === 1 ? { scale: [1, 1.2, 1] } : {}}
                           transition={{ duration: 0.5 }}
@@ -255,37 +257,29 @@ export default function CompetitiveLeaderboard() {
                           <span>{rank}</span>
                           <span className="text-4xl">{getRankIcon(rank)}</span>
                         </motion.div>
-
-                        {/* Name and Performance */}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-3xl font-black text-white drop-shadow-lg mb-1 truncate">
-                            {oga.name}
-                          </div>
-                          <div className="flex flex-wrap gap-6 text-white/90">
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium text-white/60">Total Sales</span>
-                              <span className="text-2xl font-bold text-green-400">₹{oga.total.toLocaleString()}</span>
+                        {/* Show all OGAs in this group side by side */}
+                        <div className="flex-1 min-w-0 flex flex-wrap items-center gap-12">
+                          {group.ogas.map((oga, idx) => (
+                            <div key={oga.name} className="flex items-center gap-8 border-r border-white/20 pr-8 last:border-r-0 last:pr-0">
+                              <div className="text-3xl font-black text-white drop-shadow-lg truncate">
+                                {oga.name}
+                              </div>
+                              <div className="flex gap-10 ml-4">
+                                <div className="flex flex-col items-start">
+                                  <span className="text-base font-medium text-white/60">Sales Count</span>
+                                  <span className="text-4xl font-bold text-blue-400">{oga.count}</span>
+                                </div>
+                                {/* Removed Avg Sale */}
+                              </div>
                             </div>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium text-white/60">Sales Count</span>
-                              <span className="text-xl font-semibold text-blue-400">{oga.count}</span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium text-white/60">Avg Sale</span>
-                              <span className="text-xl font-semibold text-purple-400">₹{Math.round(oga.avgSale).toLocaleString()}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Performance Indicator */}
-                        <div className="text-right">
-                          <div className="text-2xl font-black text-white/80 mb-1">
-                            {percentage.toFixed(0)}%
-                          </div>
-                          <div className="text-sm text-white/60">of leader</div>
+                          ))}
                         </div>
                       </div>
-
+                      {/* Total Sales - rightmost */}
+                      <div className="flex flex-col items-end justify-center ml-8 min-w-[160px]">
+                        <span className="text-lg font-medium text-white/60">Total Sales</span>
+                        <span className="text-4xl font-extrabold text-green-400">₹{group.total.toLocaleString()}</span>
+                      </div>
                       {/* Special Effects for Top 3 */}
                       {rank === 1 && (
                         <motion.div
@@ -299,7 +293,7 @@ export default function CompetitiveLeaderboard() {
                           }}
                           className="absolute -top-4 -right-4 text-6xl z-20"
                         >
-                          👑
+                          
                         </motion.div>
                       )}
 
@@ -312,7 +306,7 @@ export default function CompetitiveLeaderboard() {
                           transition={{ duration: 1.5, repeat: Infinity }}
                           className="absolute -top-2 -right-2 text-4xl z-20"
                         >
-                          🔥
+                      
                         </motion.div>
                       )}
 
@@ -325,7 +319,7 @@ export default function CompetitiveLeaderboard() {
                           transition={{ duration: 2, repeat: Infinity }}
                           className="absolute -top-2 -right-2 text-4xl z-20"
                         >
-                          ⭐
+                  
                         </motion.div>
                       )}
                     </div>
