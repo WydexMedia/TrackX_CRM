@@ -176,6 +176,7 @@ export default function CompetitiveLeaderboard() {
   const leaderboard = getLeaderboard(displaySales);
   const groupedLeaderboard = groupLeaderboardByTotal(showingYesterday ? leaderboard.slice(0, 3) : leaderboard);
   const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0);
+  const totalSalesToday = todaySales.reduce((sum, sale) => sum + sale.amount, 0);
   const topPerformer = leaderboard[0];
   const secondPlace = leaderboard[1];
   const leadGap = topPerformer && secondPlace ? topPerformer.total - secondPlace.total : 0;
@@ -216,7 +217,7 @@ export default function CompetitiveLeaderboard() {
               <span>LIVE</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-4xl font-extrabold text-green-400">₹{totalSales.toLocaleString()}</span>
+              <span className="text-4xl font-extrabold text-green-400">₹{totalSalesToday.toLocaleString()}</span>
               <span className="text-xl font-bold text-white/80">Total Sales</span>
             </div>
             <div>{currentTime.toLocaleTimeString()}</div>
