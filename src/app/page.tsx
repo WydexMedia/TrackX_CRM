@@ -20,6 +20,11 @@ export default function HomePage() {
             ➕ Add Sale
           </button>
         </Link>
+        <Link href="/login">
+          <button className="px-10 py-6 rounded-2xl bg-gradient-to-r from-green-400 to-blue-500 text-white text-3xl font-bold shadow-lg hover:scale-105 transition-transform">
+            📊 Dashboard
+          </button>
+        </Link>
       </div>
     </div>
   );

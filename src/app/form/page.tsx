@@ -1,24 +1,12 @@
 "use client";
-
-import React, { useState } from 'react';
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import toast, { Toaster } from 'react-hot-toast';
 
-const OGA_NAMES = [
-  'LULU FATHIMA P A',
-  'AYSHA SHAHANA P',
-  'SALOOJA KK',
-  'SANILA SHERIN',
-  'FALIHA P P',
-  'HASBANA P',
-  'NIHALA THASLI P',
-  'FATHIMA SAHANA TK',
-];
-
 const schema = yup.object().shape({
-  ogaName: yup.string().required('OGA Name is required'),
   customerName: yup.string().required('Customer Name is required'),
   amount: yup
     .number()
@@ -28,13 +16,24 @@ const schema = yup.object().shape({
 });
 
 type FormData = {
-  ogaName: string;
   customerName: string;
   amount: number;
   newAdmission: string; // 'yes' or 'no'
 };
 
+function getUser() {
+  if (typeof window === 'undefined') return null;
+  const user = localStorage.getItem('user');
+  return user ? JSON.parse(user) : null;
+}
+
 export default function FormPage() {
+  const user = getUser();
+  const router = useRouter();
+  useEffect(() => {
+    if (!user) router.replace('/login');
+  }, [user, router]);
+
   const {
     register,
     handleSubmit,
@@ -43,40 +42,44 @@ export default function FormPage() {
   } = useForm<FormData>({ resolver: yupResolver(schema) });
 
   const onSubmit = async (data: FormData) => {
+    if (!user) {
+      toast.error('You must be logged in!');
+      return;
+    }
     await fetch('/api/sales', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, ogaName: user.name }),
     });
     reset();
     toast.success('Sale submitted!');
   };
 
+  if (!user) return null;
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
       <Toaster position="top-center" />
+      <div className="w-full max-w-md flex justify-end mb-4">
+        <button
+          onClick={() => router.push('/login')}
+          className="px-6 py-2 bg-gray-700 text-white rounded-lg font-semibold shadow hover:from-blue-700 hover:to-purple-700 transition-colors"
+        >
+          Go to Dashboard
+        </button>
+      </div>
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="w-full max-w-md bg-white rounded-xl shadow-lg p-6 flex flex-col gap-4 border border-gray-200"
       >
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-2">Sales Entry Form</h1>
-        <label className="text-gray-700 font-medium">OGA Name</label>
-        <select {...register('ogaName')} className="input">
-          <option value="">Select OGA Name</option>
-          {OGA_NAMES.map((name) => (
-            <option key={name} value={name}>{name}</option>
-          ))}
-        </select>
-        <p className="text-red-500 text-xs">{errors.ogaName?.message}</p>
-
+        <h2 className="text-xl font-bold text-center text-gray-800 mb-2">Sales Entry Form</h2>
+        <div className="text-gray-700 font-medium mb-2">Logged in as: <span className="font-bold">{user.name}</span></div>
         <label className="text-gray-700 font-medium">Customer Name</label>
         <input {...register('customerName')} placeholder="Customer Name" className="input" />
         <p className="text-red-500 text-xs">{errors.customerName?.message}</p>
-
         <label className="text-gray-700 font-medium">Amount</label>
         <input {...register('amount')} placeholder="Amount" className="input" />
         <p className="text-red-500 text-xs">{errors.amount?.message}</p>
-
         <label className="text-gray-700 font-medium">New Admission?</label>
         <div className="flex gap-4">
           <label className="flex text-black items-center gap-2">
@@ -87,7 +90,6 @@ export default function FormPage() {
           </label>
         </div>
         <p className="text-red-500 text-xs">{errors.newAdmission?.message}</p>
-
         <button
           type="submit"
           className="mt-2 py-3 rounded-lg bg-gray-800 text-white font-bold text-lg shadow hover:bg-gray-700 transition-colors"
@@ -114,15 +116,6 @@ export default function FormPage() {
         .input::placeholder {
           color: #888;
           opacity: 1;
-        }
-        @media (max-width: 600px) {
-          form {
-            padding: 1rem;
-          }
-          .input {
-            font-size: 0.95rem;
-            padding: 0.6rem 0.8rem;
-          }
         }
       `}</style>
     </div>
