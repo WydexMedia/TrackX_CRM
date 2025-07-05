@@ -18,7 +18,7 @@ function filterSalesByDate(sales: any[], date: Date) {
 function filterSalesByWeek(sales: any[], date: Date) {
   const start = new Date(date);
   start.setDate(date.getDate() - start.getDay());
-  start.setHours(0,0,0,0);
+  start.setHours(0, 0, 0, 0);
   const end = new Date(start);
   end.setDate(start.getDate() + 7);
   return sales.filter(sale => {
@@ -46,6 +46,7 @@ export default function LoginAndDashboard() {
   const [sales, setSales] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{ customerName: string; amount: number; newAdmission: string } | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   // Login handler
@@ -85,7 +86,7 @@ export default function LoginAndDashboard() {
     return (
       <div className="login-bg">
         <div className="pattern-overlay"></div>
-        
+
         <form
           onSubmit={handleLogin}
           className="relative w-full max-w-md bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-white/20"
@@ -110,17 +111,37 @@ export default function LoginAndDashboard() {
                 className="modern-input"
               />
             </div>
-            
-            <div>
-              <label className="block text-white/90 font-medium mb-2">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                className="modern-input"
-              />
-            </div>
+
+         <div>
+  <label className="block text-white/90 font-medium mb-2">Password</label>
+  <div className="relative">
+    <input
+      type={showPassword ? "text" : "password"}
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      placeholder="Enter your password"
+      className="modern-input pr-10"
+    />
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute inset-y-0 right-0 flex items-center pr-3"
+    >
+      {showPassword ? (
+        /* Eye Slash (Hide Password) */
+        <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L12 12m-3.122-3.122L3 3m6.878 6.878L12 12m0 0l3.878 3.878M12 12L9.878 9.878m8.242 8.242L21 21m-2.878-2.878A9.97 9.97 0 0112 19c-4.478 0-8.268-2.943-9.543-7a10.025 10.025 0 012.132-5.207m0 0A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-2.132 5.207" />
+        </svg>
+      ) : (
+        /* Eye (Show Password) */
+        <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      )}
+    </button>
+  </div>
+</div>
 
             {error && (
               <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl text-sm">
@@ -190,8 +211,26 @@ export default function LoginAndDashboard() {
   // Show dashboard only
   const today = new Date();
   const daily = filterSalesByDate(sales, today);
-  const weekly = filterSalesByWeek(sales, today);
   const monthly = filterSalesByMonth(sales, today);
+  const target = 300000;
+
+  // Calculate days pending in the current month
+const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+const daysPending = lastDayOfMonth.getDate() - today.getDate();
+
+
+  const achievedTarget = monthly.reduce((sum, s) => sum + s.amount, 0);
+  const pendingTarget = target - achievedTarget;
+  const todayCollection = daily.reduce((sum, s) => sum + s.amount, 0);
+
+  // Calculate previous month
+  const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const lastMonthSales = filterSalesByMonth(sales, prevMonthDate);
+  const lastMonthAchieved = lastMonthSales.reduce((sum, s) => sum + s.amount, 0);
+
+  // Show last month collection only if it's not the first month (optional)
+  const showLastMonth = today.getMonth() > 0 || today.getFullYear() > sales[0]?.createdAt?.getFullYear();
 
   // Edit/delete handlers
   const handleDelete = async (id: string) => {
@@ -231,7 +270,7 @@ export default function LoginAndDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-6">
       <Toaster position="top-center" />
-      
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 mb-8 border border-white/50">
@@ -255,8 +294,8 @@ export default function LoginAndDashboard() {
                 </span>
               </div>
             </div>
-            <button 
-              onClick={handleLogout} 
+            <button
+              onClick={handleLogout}
               className="px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl font-semibold hover:from-red-600 hover:to-pink-600 transform hover:scale-105 transition-all duration-200 shadow-lg"
             >
               Sign Out
@@ -266,48 +305,95 @@ export default function LoginAndDashboard() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Target Card - Emerald to Teal */}
           <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
               <div className="bg-white/20 rounded-xl p-3">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <span className="text-emerald-100 text-sm font-medium">{daily.length} sales</span>
             </div>
-            <h3 className="text-emerald-100 text-lg font-medium mb-1">Today's Collection</h3>
-            <p className="text-3xl font-bold">₹{daily.reduce((sum, s) => sum + s.amount, 0).toLocaleString()}</p>
+            <h3 className="text-emerald-100 text-lg font-medium mb-1">Target</h3>
+            <p className="text-3xl font-bold">₹{300000 .toLocaleString()}</p>
           </div>
 
+          {/* Achieved Target Card - Purple to Pink */}
+          <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-white/20 rounded-xl p-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-purple-100 text-lg font-medium mb-1">Achieved Target</h3>
+            <p className="text-3xl font-bold">₹{achievedTarget > 0 ? achievedTarget.toLocaleString() : "0"}</p>
+          </div>
+
+          {/* Pending Target Card - Blue to Indigo */}
           <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
               <div className="bg-white/20 rounded-xl p-3">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <span className="text-blue-100 text-sm font-medium">{weekly.length} sales</span>
             </div>
-            <h3 className="text-blue-100 text-lg font-medium mb-1">This Week</h3>
-            <p className="text-3xl font-bold">₹{weekly.reduce((sum, s) => sum + s.amount, 0).toLocaleString()}</p>
+            <h3 className="text-blue-100 text-lg font-medium mb-1">Pending Target</h3>
+            <p className="text-3xl font-bold">₹{pendingTarget > 0 ? pendingTarget.toLocaleString() : "0"}</p>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
+          {/* Today's Collection Card - Orange to Red */}
+          <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-white/20 rounded-xl p-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <span className="text-orange-100 text-sm font-medium">{daily.length} sales</span>
+            </div>
+            <h3 className="text-orange-100 text-lg font-medium mb-1">Today's Collection</h3>
+            <p className="text-3xl font-bold">₹{todayCollection > 0 ? todayCollection.toLocaleString() : "0"}</p>
+          </div>
+
+          {/* Last Month Collection Card - Cyan to Blue */}
+          {showLastMonth && (
+            <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
+              <div className="flex items-center justify-between mb-4">
+                <div className="bg-white/20 rounded-xl p-3">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-cyan-100 text-lg font-medium mb-1">Last Month Collection</h3>
+              <p className="text-3xl font-bold">
+                ₹{today.getDate() === 1 ? lastMonthAchieved.toLocaleString() : "0"}
+              </p>
+            </div>
+          )}
+
+          {/* Additional Card - Amber to Yellow */}
+          <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
             <div className="flex items-center justify-between mb-4">
               <div className="bg-white/20 rounded-xl p-3">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <span className="text-purple-100 text-sm font-medium">{monthly.length} sales</span>
             </div>
-            <h3 className="text-purple-100 text-lg font-medium mb-1">This Month</h3>
-            <p className="text-3xl font-bold">₹{monthly.reduce((sum, s) => sum + s.amount, 0).toLocaleString()}</p>
+            <h3 className="text-violet-100 text-lg font-medium mb-1">Days Pending</h3>
+            <p className="text-3xl font-bold">{daysPending >= 0 ? daysPending : 0} Days</p>
           </div>
+
         </div>
 
+
+
         {/* Add Sale Button */}
-        <div className="flex justify-end mb-6">
+        <div className="flex justify-end mt-3">
           <Link href="/form">
             <button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -319,16 +405,16 @@ export default function LoginAndDashboard() {
         </div>
 
         {/* Sales Table */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl mt-5 shadow-xl border border-white/50 overflow-hidden">
           <div className="p-6 border-b border-slate-200">
             <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
               <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
               All Sales Records
             </h2>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50">
@@ -377,11 +463,10 @@ export default function LoginAndDashboard() {
                           <option value="no">No</option>
                         </select>
                       ) : (
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          sale.newAdmission === 'yes' 
-                            ? 'bg-emerald-100 text-emerald-800' 
-                            : 'bg-slate-100 text-slate-800'
-                        }`}>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${sale.newAdmission === 'yes'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-slate-100 text-slate-800'
+                          }`}>
                           {sale.newAdmission === 'yes' ? 'Yes' : 'No'}
                         </span>
                       )}
@@ -399,8 +484,8 @@ export default function LoginAndDashboard() {
                       <div className="flex gap-2">
                         {editingId === sale._id ? (
                           <>
-                            <button 
-                              onClick={handleEditSubmit} 
+                            <button
+                              onClick={handleEditSubmit}
                               className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                               title="Save"
                             >
@@ -420,8 +505,8 @@ export default function LoginAndDashboard() {
                             </button>
                           </>
                         ) : (
-                          <button 
-                            onClick={() => handleEdit(sale)} 
+                          <button
+                            onClick={() => handleEdit(sale)}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Edit"
                           >
@@ -430,8 +515,8 @@ export default function LoginAndDashboard() {
                             </svg>
                           </button>
                         )}
-                        <button 
-                          onClick={() => handleDelete(sale._id)} 
+                        <button
+                          onClick={() => handleDelete(sale._id)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete"
                         >
