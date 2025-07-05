@@ -25,6 +25,11 @@ export default function HomePage() {
             📊 Dashboard
           </button>
         </Link>
+        <Link href="/login">
+          <button className="px-10 py-6 rounded-2xl bg-gradient-to-r from-red-400 to-orange-500 text-white text-3xl font-bold shadow-lg hover:scale-105 transition-transform">
+            👥 Team Leader
+          </button>
+        </Link>
       </div>
     </div>
   );

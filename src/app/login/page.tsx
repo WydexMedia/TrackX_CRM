@@ -65,13 +65,30 @@ export default function LoginAndDashboard() {
     const user = await res.json();
     localStorage.setItem("user", JSON.stringify(user));
     setUser(user);
+    
+    // Redirect based on role
+    if (user.role === 'teamleader') {
+      router.push('/team-leader');
+    } else {
+      router.push('/dashboard');
+    }
   };
 
   // Load user from localStorage
   useEffect(() => {
     const u = typeof window !== 'undefined' ? localStorage.getItem("user") : null;
-    if (u) setUser(JSON.parse(u));
-  }, []);
+    if (u) {
+      const userData = JSON.parse(u);
+      setUser(userData);
+      
+      // Redirect based on role if user is already logged in
+      if (userData.role === 'teamleader') {
+        router.push('/team-leader');
+      } else {
+        router.push('/dashboard');
+      }
+    }
+  }, [router]);
 
   // Fetch sales for user
   useEffect(() => {

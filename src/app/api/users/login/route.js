@@ -17,5 +17,9 @@ export async function POST(request) {
   }
   // Do not send password back
   const { password: _, ...userData } = user;
+  // Add role if not present (for backward compatibility)
+  if (!userData.role) {
+    userData.role = 'sales';
+  }
   return new Response(JSON.stringify(userData), { status: 200 });
 }
