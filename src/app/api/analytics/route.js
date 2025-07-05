@@ -62,14 +62,10 @@ export async function GET() {
     const thisMonthCollection = thisMonthSales.reduce((sum, sale) => sum + sale.amount, 0);
     const lastMonthCollection = lastMonthSales.reduce((sum, sale) => sum + sale.amount, 0);
     
-    // Calculate days pending (days since last sale)
-    let daysPending = 0;
-    if (userSales.length > 0) {
-      const lastSale = userSales.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-      const lastSaleDate = new Date(lastSale.createdAt);
-      const daysDiff = Math.floor((today - lastSaleDate) / (1000 * 60 * 60 * 24));
-      daysPending = daysDiff;
-    }
+    // Calculate days remaining in the current month (same logic as sales dashboard)
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const daysRemaining = lastDayOfMonth.getDate() - today.getDate();
     
     // Calculate target achievement
     const target = user.target || 0;
@@ -86,7 +82,7 @@ export async function GET() {
       pendingTarget: pendingTarget,
       todayCollection: todayCollection,
       lastMonthCollection: lastMonthCollection,
-      daysPending: daysPending,
+      daysPending: daysRemaining, // Keeping field name for compatibility, but now represents days remaining
       totalSales: userSales.length,
       todaySales: todaySales.length,
       thisMonthSales: thisMonthSales.length

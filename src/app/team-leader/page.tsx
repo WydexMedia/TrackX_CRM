@@ -196,6 +196,9 @@ export default function TeamLeaderPage() {
       return 0;
     });
 
+  // Sort analytics by achieved target for top performers
+  const topPerformers = [...analytics].sort((a, b) => b.achievedTarget - a.achievedTarget);
+  
   const totalTarget = analytics.reduce((sum, user) => sum + user.target, 0);
   const totalAchieved = analytics.reduce((sum, user) => sum + user.achievedTarget, 0);
   const totalPending = analytics.reduce((sum, user) => sum + user.pendingTarget, 0);
@@ -204,8 +207,79 @@ export default function TeamLeaderPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-xl text-gray-600">Loading team data...</div>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header Skeleton */}
+        <div className="bg-white shadow-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-6">
+              <div>
+                <div className="h-8 bg-gray-200 rounded-lg w-64 mb-2 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="h-12 bg-gray-200 rounded-lg w-40 animate-pulse"></div>
+                <div className="h-12 bg-gray-200 rounded-lg w-20 animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Summary Stats Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-gray-200 rounded-lg animate-pulse"></div>
+                  </div>
+                  <div className="ml-4 flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-20 mb-2 animate-pulse"></div>
+                    <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Search Bar Skeleton */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+              <div className="flex-1 max-w-md">
+                <div className="h-10 bg-gray-200 rounded-md animate-pulse"></div>
+              </div>
+              <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+            </div>
+          </div>
+
+          {/* Table Skeleton */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {[...Array(8)].map((_, i) => (
+                      <th key={i} className="px-6 py-3 text-left">
+                        <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {[...Array(8)].map((_, rowIndex) => (
+                    <tr key={rowIndex}>
+                      {[...Array(8)].map((_, colIndex) => (
+                        <td key={colIndex} className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -246,6 +320,84 @@ export default function TeamLeaderPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Top Performers Stage */}
+        <div className="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 rounded-2xl shadow-2xl mb-8 overflow-hidden relative">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 left-10 w-32 h-32 bg-yellow-400 rounded-full"></div>
+            <div className="absolute top-32 right-20 w-24 h-24 bg-purple-400 rounded-full"></div>
+            <div className="absolute bottom-20 left-1/4 w-40 h-40 bg-blue-400 rounded-full"></div>
+          </div>
+          
+          <div className="relative z-10 p-8">
+            <div className="text-center mb-8">
+              <h2 className="text-4xl font-bold text-white mb-2">🏆 Top Performers</h2>
+              <p className="text-purple-200 text-lg">This Month's Champions</p>
+            </div>
+            
+            <div className="flex justify-center items-end space-x-4 md:space-x-8 lg:space-x-12">
+              {/* 2nd Place */}
+              {topPerformers.length > 1 && (
+                <div className="flex flex-col items-center transform translate-y-4">
+                  <div className="relative">
+                    <div className="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center shadow-lg border-4 border-gray-200">
+                      <span className="text-2xl md:text-3xl font-bold text-gray-700">🥈</span>
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">2</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <div className="text-white font-semibold text-sm md:text-base">{topPerformers[1].name}</div>
+                    <div className="text-purple-200 text-xs md:text-sm">₹{topPerformers[1].achievedTarget.toLocaleString()}</div>
+                  </div>
+                </div>
+              )}
+              
+              {/* 1st Place */}
+              {topPerformers.length > 0 && (
+                <div className="flex flex-col items-center">
+                  <div className="relative">
+                    <div className="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-yellow-200 animate-pulse">
+                      <span className="text-3xl md:text-4xl">👑</span>
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-lg">1</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <div className="text-white font-bold text-lg md:text-xl">{topPerformers[0].name}</div>
+                    <div className="text-yellow-200 text-sm md:text-base font-semibold">₹{topPerformers[0].achievedTarget.toLocaleString()}</div>
+                  </div>
+                </div>
+              )}
+              
+              {/* 3rd Place */}
+              {topPerformers.length > 2 && (
+                <div className="flex flex-col items-center transform translate-y-8">
+                  <div className="relative">
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-orange-300 to-orange-500 rounded-full flex items-center justify-center shadow-lg border-4 border-orange-200">
+                      <span className="text-xl md:text-2xl font-bold text-orange-700">🥉</span>
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-orange-400 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">3</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <div className="text-white font-semibold text-sm md:text-base">{topPerformers[2].name}</div>
+                    <div className="text-orange-200 text-xs md:text-sm">₹{topPerformers[2].achievedTarget.toLocaleString()}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Stage Platform */}
+            <div className="mt-8 flex justify-center">
+              <div className="w-80 h-4 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 rounded-full shadow-lg"></div>
+            </div>
+          </div>
+        </div>
+
         {/* Summary Stats */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
@@ -443,7 +595,7 @@ export default function TeamLeaderPage() {
                     onClick={() => handleSort("daysPending")}
                   >
                     <div className="flex items-center gap-2">
-                      Days Pending
+                      Days Remaining
                       {sortBy === "daysPending" && (
                         <svg className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
@@ -472,7 +624,8 @@ export default function TeamLeaderPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredAndSortedAnalytics.map((user, index) => {
                   const achievementPercentage = user.target > 0 ? (user.achievedTarget / user.target) * 100 : 0;
-                  const isOverdue = user.daysPending > 7;
+                  const daysRemaining = user.daysPending;
+                  const isUrgent = daysRemaining <= 7 && daysRemaining > 0;
                   
                   return (
                     <tr key={user._id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
@@ -516,11 +669,14 @@ export default function TeamLeaderPage() {
                         <div className="text-sm font-semibold text-gray-900">₹{user.lastMonthCollection.toLocaleString()}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`text-sm font-semibold ${isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
-                          {user.daysPending} days
+                        <div className={`text-sm font-semibold ${isUrgent ? 'text-orange-600' : 'text-gray-900'}`}>
+                          {daysRemaining} days
                         </div>
-                        {isOverdue && (
-                          <div className="text-xs text-red-500">Overdue</div>
+                        {isUrgent && (
+                          <div className="text-xs text-orange-500">Urgent</div>
+                        )}
+                        {daysRemaining === 0 && (
+                          <div className="text-xs text-red-500">Month ends today</div>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
