@@ -175,9 +175,9 @@ export default function TeamLeaderPage() {
 
   const filteredAndSortedAnalytics = analytics
     .filter(user => 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      (user.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (user.code?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (user.email?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
       const aValue = a[sortBy];
@@ -634,7 +634,7 @@ export default function TeamLeaderPage() {
                           <div className="flex-shrink-0 h-10 w-10">
                             <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
                               <span className="text-sm font-medium text-white">
-                                {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                {(user.name || '').split(' ').map(n => n[0]).join('').toUpperCase()}
                               </span>
                             </div>
                           </div>
