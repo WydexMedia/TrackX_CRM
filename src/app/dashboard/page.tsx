@@ -394,7 +394,7 @@ export default function DashboardPage() {
                     required
                     value={editData.customerName}
                     onChange={(e) => setEditData({...editData, customerName: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 dark:bg-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
@@ -404,7 +404,7 @@ export default function DashboardPage() {
                     required
                     value={editData.amount}
                     onChange={(e) => setEditData({...editData, amount: parseInt(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 dark:bg-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
@@ -412,7 +412,7 @@ export default function DashboardPage() {
                   <select
                     value={editData.newAdmission}
                     onChange={(e) => setEditData({...editData, newAdmission: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 dark:bg-gray-900 dark:text-white"
                   >
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>

@@ -21,18 +21,18 @@ type FormData = {
   newAdmission: string; // 'yes' or 'no'
 };
 
-function getUser() {
-  if (typeof window === 'undefined') return null;
-  const user = localStorage.getItem('user');
-  return user ? JSON.parse(user) : null;
-}
-
 export default function FormPage() {
-  const user = getUser();
+  const [user, setUser] = React.useState<any>(null);
   const router = useRouter();
-  useEffect(() => {
-    if (!user) router.replace('/login');
-  }, [user, router]);
+
+  React.useEffect(() => {
+    const u = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    if (u) {
+      setUser(JSON.parse(u));
+    } else {
+      router.replace('/login');
+    }
+  }, [router]);
 
   const {
     register,
