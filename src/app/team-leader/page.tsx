@@ -93,8 +93,8 @@ export default function TeamLeaderPage() {
         fetch("/api/users"),
         fetch("/api/users/credentials")
       ]);
-      
-      if (analyticsRes.ok && usersRes.ok) {
+
+      if (analyticsRes.ok && usersRes.ok && credentialsRes.ok) {
         const analyticsData = await analyticsRes.json();
         const usersData = await usersRes.json();
         const credentialsData = await credentialsRes.json();
