@@ -59,6 +59,17 @@ export default function TeamLeaderPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<keyof Analytics>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
+  const [showKPIModal, setShowKPIModal] = useState(false);
+  const [selectedSalesPerson, setSelectedSalesPerson] = useState<any>(null);
+  const [kpiData, setKpiData] = useState<any[]>([]);
+  const [loadingKPI, setLoadingKPI] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
   const router = useRouter();
 
   useEffect(() => {
@@ -77,7 +88,7 @@ export default function TeamLeaderPage() {
         fetch("/api/analytics"),
         fetch("/api/users")
       ]);
-      
+
       if (analyticsRes.ok && usersRes.ok) {
         const analyticsData = await analyticsRes.json();
         const usersData = await usersRes.json();
@@ -99,13 +110,14 @@ export default function TeamLeaderPage() {
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsAddingUser(true);
     try {
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newUser),
       });
-      
+
       if (res.ok) {
         toast.success("User created successfully");
         setShowAddUser(false);
@@ -117,20 +129,23 @@ export default function TeamLeaderPage() {
       }
     } catch (error) {
       toast.error("Failed to create user");
+    } finally {
+      setIsAddingUser(false);
     }
   };
 
   const handleUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
-    
+
+    setIsUpdatingUser(true);
     try {
       const res = await fetch("/api/users", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editingUser),
       });
-      
+
       if (res.ok) {
         toast.success("User updated successfully");
         setEditingUser(null);
@@ -141,17 +156,20 @@ export default function TeamLeaderPage() {
       }
     } catch (error) {
       toast.error("Failed to update user");
+    } finally {
+      setIsUpdatingUser(false);
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
     if (!confirm("Are you sure you want to delete this user?")) return;
-    
+
+    setIsDeletingUser(userId);
     try {
       const res = await fetch(`/api/users?id=${userId}`, {
         method: "DELETE",
       });
-      
+
       if (res.ok) {
         toast.success("User deleted successfully");
         fetchData();
@@ -161,6 +179,8 @@ export default function TeamLeaderPage() {
       }
     } catch (error) {
       toast.error("Failed to delete user");
+    } finally {
+      setIsDeletingUser(null);
     }
   };
 
@@ -173,8 +193,53 @@ export default function TeamLeaderPage() {
     }
   };
 
+  const handleSalesPersonClick = async (salesPerson: any) => {
+    setSelectedSalesPerson(salesPerson);
+    setShowKPIModal(true);
+    setLoadingKPI(true);
+    
+    try {
+      const response = await fetch('/api/daily-reports');
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      // Filter data for the selected sales person
+      const filteredData = data.reports.filter((report: any) => 
+        report.salespersons.some((sp: any) => 
+          sp.name.toLowerCase() === salesPerson.name.toLowerCase()
+        )
+      );
+      
+      setKpiData(filteredData);
+    } catch (error) {
+      console.error('Error fetching KPI data:', error);
+      toast.error('Failed to load KPI data');
+    } finally {
+      setLoadingKPI(false);
+    }
+  };
+
+  const filterDataByDateRange = () => {
+    if (!dateRange.startDate || !dateRange.endDate) {
+      return kpiData;
+    }
+    
+    const startDate = new Date(dateRange.startDate);
+    const endDate = new Date(dateRange.endDate);
+    
+    return kpiData.filter((report) => {
+      const reportDate = new Date(report.date);
+      return reportDate >= startDate && reportDate <= endDate;
+    });
+  };
+
+  const filteredKpiData = filterDataByDateRange();
+
   const filteredAndSortedAnalytics = analytics
-    .filter(user => 
+    .filter(user =>
       (user.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (user.code?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (user.email?.toLowerCase() || "").includes(searchTerm.toLowerCase())
@@ -182,23 +247,23 @@ export default function TeamLeaderPage() {
     .sort((a, b) => {
       const aValue = a[sortBy];
       const bValue = b[sortBy];
-      
+
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortOrder === 'asc' 
+        return sortOrder === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
-      
+
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
       }
-      
+
       return 0;
     });
 
   // Sort analytics by achieved target for top performers
   const topPerformers = [...analytics].sort((a, b) => b.achievedTarget - a.achievedTarget);
-  
+
   const totalTarget = analytics.reduce((sum, user) => sum + user.target, 0);
   const totalAchieved = analytics.reduce((sum, user) => sum + user.achievedTarget, 0);
   const totalPending = analytics.reduce((sum, user) => sum + user.pendingTarget, 0);
@@ -289,7 +354,7 @@ export default function TeamLeaderPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Toaster position="top-right" />
-      
+
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -328,13 +393,13 @@ export default function TeamLeaderPage() {
             <div className="absolute top-32 right-20 w-24 h-24 bg-purple-400 rounded-full"></div>
             <div className="absolute bottom-20 left-1/4 w-40 h-40 bg-blue-400 rounded-full"></div>
           </div>
-          
+
           <div className="relative z-10 p-8">
             <div className="text-center mb-8">
               <h2 className="text-4xl font-bold text-white mb-2">🏆 Top Performers</h2>
               <p className="text-purple-200 text-lg">This Month's Champions</p>
             </div>
-            
+
             <div className="flex justify-center items-end space-x-4 md:space-x-8 lg:space-x-12">
               {/* 2nd Place */}
               {topPerformers.length > 1 && (
@@ -353,7 +418,7 @@ export default function TeamLeaderPage() {
                   </div>
                 </div>
               )}
-              
+
               {/* 1st Place */}
               {topPerformers.length > 0 && (
                 <div className="flex flex-col items-center">
@@ -371,7 +436,7 @@ export default function TeamLeaderPage() {
                   </div>
                 </div>
               )}
-              
+
               {/* 3rd Place */}
               {topPerformers.length > 2 && (
                 <div className="flex flex-col items-center transform translate-y-8">
@@ -390,7 +455,7 @@ export default function TeamLeaderPage() {
                 </div>
               )}
             </div>
-            
+
             {/* Stage Platform */}
             <div className="mt-8 flex justify-center">
               <div className="w-80 h-4 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 rounded-full shadow-lg"></div>
@@ -512,7 +577,7 @@ export default function TeamLeaderPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("name")}
                   >
@@ -525,7 +590,7 @@ export default function TeamLeaderPage() {
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("target")}
                   >
@@ -538,7 +603,7 @@ export default function TeamLeaderPage() {
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("achievedTarget")}
                   >
@@ -551,7 +616,7 @@ export default function TeamLeaderPage() {
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("pendingTarget")}
                   >
@@ -564,7 +629,7 @@ export default function TeamLeaderPage() {
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("todayCollection")}
                   >
@@ -577,7 +642,7 @@ export default function TeamLeaderPage() {
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("lastMonthCollection")}
                   >
@@ -590,7 +655,7 @@ export default function TeamLeaderPage() {
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("daysPending")}
                   >
@@ -603,7 +668,7 @@ export default function TeamLeaderPage() {
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("totalSales")}
                   >
@@ -626,7 +691,7 @@ export default function TeamLeaderPage() {
                   const achievementPercentage = user.target > 0 ? (user.achievedTarget / user.target) * 100 : 0;
                   const daysRemaining = user.daysPending;
                   const isUrgent = daysRemaining <= 7 && daysRemaining > 0;
-                  
+
                   return (
                     <tr key={user._id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -639,7 +704,12 @@ export default function TeamLeaderPage() {
                             </div>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                            <div 
+                              className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                              onClick={() => handleSalesPersonClick(user)}
+                            >
+                              {user.name}
+                            </div>
                             <div className="text-sm text-gray-500">{user.code}</div>
                             <div className="text-xs text-gray-400">{user.email}</div>
                           </div>
@@ -652,8 +722,8 @@ export default function TeamLeaderPage() {
                         <div className="text-sm font-semibold text-green-600">₹{user.achievedTarget.toLocaleString()}</div>
                         <div className="text-xs text-gray-500">{achievementPercentage.toFixed(1)}% achieved</div>
                         <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                          <div 
-                            className="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                          <div
+                            className="bg-green-600 h-2 rounded-full transition-all duration-300"
                             style={{ width: `${Math.min(achievementPercentage, 100)}%` }}
                           ></div>
                         </div>
@@ -705,9 +775,23 @@ export default function TeamLeaderPage() {
                           </button>
                           <button
                             onClick={() => handleDeleteUser(user._id)}
-                            className="text-red-600 hover:text-red-900 font-medium"
+                            disabled={isDeletingUser === user._id}
+                            className={`font-medium ${isDeletingUser === user._id
+                                ? 'text-gray-400 cursor-not-allowed'
+                                : 'text-red-600 hover:text-red-900'
+                              }`}
                           >
-                            Delete
+                            {isDeletingUser === user._id ? (
+                              <div className="flex items-center space-x-1">
+                                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Deleting...</span>
+                              </div>
+                            ) : (
+                              'Delete'
+                            )}
                           </button>
                         </div>
                       </td>
@@ -734,7 +818,7 @@ export default function TeamLeaderPage() {
       {showAddUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Add New Sales Person</h2>
+            <h2 className="text-xl text-black font-bold mb-4">Add New Sales Person</h2>
             <form onSubmit={handleAddUser} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
@@ -742,8 +826,8 @@ export default function TeamLeaderPage() {
                   type="text"
                   required
                   value={newUser.name}
-                  onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -752,8 +836,8 @@ export default function TeamLeaderPage() {
                   type="text"
                   required
                   value={newUser.code}
-                  onChange={(e) => setNewUser({...newUser, code: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setNewUser({ ...newUser, code: e.target.value })}
+                  className="w-full text-black  px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -762,8 +846,8 @@ export default function TeamLeaderPage() {
                   type="email"
                   required
                   value={newUser.email}
-                  onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  className="w-full text-black  px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -772,8 +856,8 @@ export default function TeamLeaderPage() {
                   type="password"
                   required
                   value={newUser.password}
-                  onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  className="w-full text-black  px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -782,21 +866,42 @@ export default function TeamLeaderPage() {
                   type="number"
                   required
                   value={newUser.target}
-                  onChange={(e) => setNewUser({...newUser, target: parseInt(e.target.value) || 0})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, target: parseInt(e.target.value) || 0 })
+                  }
+                  className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none no-spinner"
                 />
               </div>
+
               <div className="flex space-x-3">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+                  disabled={isAddingUser}
+                  className={`flex-1 py-2 px-4 rounded-md font-medium ${isAddingUser
+                      ? 'bg-blue-400 text-white cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
                 >
-                  Add User
+                  {isAddingUser ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Adding...</span>
+                    </div>
+                  ) : (
+                    'Add User'
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddUser(false)}
-                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400"
+                  disabled={isAddingUser}
+                  className={`flex-1 py-2 px-4 rounded-md font-medium ${isAddingUser
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                    }`}
                 >
                   Cancel
                 </button>
@@ -818,7 +923,7 @@ export default function TeamLeaderPage() {
                   type="text"
                   required
                   value={editingUser.name}
-                  onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
+                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -828,7 +933,7 @@ export default function TeamLeaderPage() {
                   type="text"
                   required
                   value={editingUser.code}
-                  onChange={(e) => setEditingUser({...editingUser, code: e.target.value})}
+                  onChange={(e) => setEditingUser({ ...editingUser, code: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -838,7 +943,7 @@ export default function TeamLeaderPage() {
                   type="email"
                   required
                   value={editingUser.email}
-                  onChange={(e) => setEditingUser({...editingUser, email: e.target.value})}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -848,21 +953,39 @@ export default function TeamLeaderPage() {
                   type="number"
                   required
                   value={editingUser.target}
-                  onChange={(e) => setEditingUser({...editingUser, target: parseInt(e.target.value) || 0})}
+                  onChange={(e) => setEditingUser({ ...editingUser, target: parseInt(e.target.value) || 0 })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="flex space-x-3">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+                  disabled={isUpdatingUser}
+                  className={`flex-1 py-2 px-4 rounded-md font-medium ${isUpdatingUser
+                      ? 'bg-blue-400 text-white cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
                 >
-                  Update User
+                  {isUpdatingUser ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Updating...</span>
+                    </div>
+                  ) : (
+                    'Update User'
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400"
+                  disabled={isUpdatingUser}
+                  className={`flex-1 py-2 px-4 rounded-md font-medium ${isUpdatingUser
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                    }`}
                 >
                   Cancel
                 </button>
@@ -871,6 +994,250 @@ export default function TeamLeaderPage() {
           </div>
         </div>
       )}
+
+      {/* KPI Modal */}
+      {showKPIModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                KPI Dashboard - {selectedSalesPerson?.name}
+              </h2>
+              <button
+                onClick={() => setShowKPIModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {loadingKPI ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center space-x-2">
+                  <svg className="animate-spin h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="text-lg text-gray-600">Loading KPI data...</span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Date Range Filter */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex flex-col sm:flex-row gap-4 items-center">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Date Range Filter</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          value={dateRange.startDate}
+                          onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
+                          className="flex-1 text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="Start Date"
+                        />
+                        <span className="flex items-center text-gray-500">to</span>
+                        <input
+                          type="date"
+                          value={dateRange.endDate}
+                          onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
+                          className="flex-1 text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="End Date"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setDateRange({startDate: '', endDate: ''})}
+                      className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                    >
+                      Clear Filter
+                    </button>
+                  </div>
+                  {dateRange.startDate && dateRange.endDate && (
+                    <div className="mt-2 text-sm text-gray-600">
+                      Showing data from {new Date(dateRange.startDate).toLocaleDateString()} to {new Date(dateRange.endDate).toLocaleDateString()}
+                      <span className="ml-2 text-blue-600 font-medium">
+                        ({filteredKpiData.length} records)
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-blue-100 text-sm">Total Leads</p>
+                        <p className="text-2xl font-bold">
+                          {filteredKpiData.reduce((sum, report) => 
+                            sum + report.salespersons.find((sp: any) => 
+                              sp.name.toLowerCase() === selectedSalesPerson?.name.toLowerCase()
+                            )?.prospects || 0, 0
+                          )}
+                        </p>
+                      </div>
+                      <svg className="w-8 h-8 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-green-100 text-sm">Sales Converted</p>
+                        <p className="text-2xl font-bold">
+                          {selectedSalesPerson?.todaySales || 0}
+                        </p>
+                      </div>
+                      <svg className="w-8 h-8 text-green-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-purple-100 text-sm">Amount Collected</p>
+                        <p className="text-2xl font-bold">
+                          ₹{selectedSalesPerson?.achievedTarget?.toLocaleString() || 0}
+                        </p>
+                      </div>
+                      <svg className="w-8 h-8 text-purple-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-4 text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-orange-100 text-sm">Conversion %</p>
+                        <p className="text-2xl font-bold">
+                                                     {selectedSalesPerson?.todaySales && selectedSalesPerson?.todaySales > 0 
+                             ? ((selectedSalesPerson.todaySales / filteredKpiData.reduce((sum, report) => 
+                                 sum + report.salespersons.find((sp: any) => 
+                                   sp.name.toLowerCase() === selectedSalesPerson?.name.toLowerCase()
+                                 )?.prospects || 0, 0
+                               )) * 100).toFixed(1)
+                             : 0}%
+                        </p>
+                      </div>
+                      <svg className="w-8 h-8 text-orange-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detailed KPI Table */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900">Daily Performance Breakdown</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Leads Assigned
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Sales Converted
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Amount Collected
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Conversion %
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ad Spend
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ad Spend %
+                          </th>
+                        </tr>
+                      </thead>
+                                             <tbody className="bg-white divide-y divide-gray-200">
+                         {filteredKpiData.length > 0 ? (
+                           filteredKpiData.map((report, index) => {
+                            const salesPersonData = report.salespersons.find((sp: any) => 
+                              sp.name.toLowerCase() === selectedSalesPerson?.name.toLowerCase()
+                            );
+                            const leadsAssigned = salesPersonData?.prospects || 0;
+                            const salesConverted = selectedSalesPerson?.todaySales || 0;
+                            const amountCollected = selectedSalesPerson?.achievedTarget || 0;
+                            const conversionRate = leadsAssigned > 0 ? ((salesConverted / leadsAssigned) * 100).toFixed(1) : 0;
+                            const adSpend = leadsAssigned * 50;
+                            const adSpendPercentage = amountCollected > 0 ? ((adSpend / amountCollected) * 100).toFixed(1) : 0;
+
+                            return (
+                              <tr key={report._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {new Date(report.date).toLocaleDateString('en-IN', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {leadsAssigned}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">
+                                  {salesConverted}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-semibold">
+                                  ₹{amountCollected.toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-600 font-semibold">
+                                  {conversionRate}%
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600 font-semibold">
+                                  ₹{adSpend.toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">
+                                  {adSpendPercentage}%
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                                                           <div className="flex flex-col items-center">
+                               <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                               </svg>
+                               <p className="text-lg font-medium">
+                                 {dateRange.startDate && dateRange.endDate ? 'No data found for selected date range' : 'No KPI data available'}
+                               </p>
+                               <p className="text-sm">
+                                 {dateRange.startDate && dateRange.endDate 
+                                   ? 'Try adjusting your date range or clear the filter.'
+                                   : 'No performance data found for this sales person.'
+                                 }
+                               </p>
+                             </div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
-} 
+}
