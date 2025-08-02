@@ -11,6 +11,7 @@ interface User {
   email: string;
   role: string;
   target: number;
+  password?: string;
 }
 
 interface Analytics {
@@ -45,9 +46,12 @@ function getTeamLeader() {
 export default function TeamLeaderPage() {
   const [analytics, setAnalytics] = useState<Analytics[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [credentials, setCredentials] = useState<User[]>([]);
   const [teamLeader, setTeamLeader] = useState<TeamLeader | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showCredentials, setShowCredentials] = useState(false);
+  const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUser, setNewUser] = useState({
     name: "",
@@ -84,16 +88,19 @@ export default function TeamLeaderPage() {
 
   const fetchData = async () => {
     try {
-      const [analyticsRes, usersRes] = await Promise.all([
+      const [analyticsRes, usersRes, credentialsRes] = await Promise.all([
         fetch("/api/analytics"),
-        fetch("/api/users")
+        fetch("/api/users"),
+        fetch("/api/users/credentials")
       ]);
-
+      
       if (analyticsRes.ok && usersRes.ok) {
         const analyticsData = await analyticsRes.json();
         const usersData = await usersRes.json();
+        const credentialsData = await credentialsRes.json();
         setAnalytics(analyticsData);
         setUsers(usersData.filter((user: User) => user.role !== 'teamleader'));
+        setCredentials(credentialsData);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -251,6 +258,24 @@ export default function TeamLeaderPage() {
 
   const filteredSales = calculateFilteredSales();
 
+  const togglePasswordVisibility = (userId: string) => {
+    const newVisiblePasswords = new Set(visiblePasswords);
+    if (newVisiblePasswords.has(userId)) {
+      newVisiblePasswords.delete(userId);
+    } else {
+      newVisiblePasswords.add(userId);
+    }
+    setVisiblePasswords(newVisiblePasswords);
+  };
+
+  const toggleAllPasswords = () => {
+    if (visiblePasswords.size === credentials.length) {
+      setVisiblePasswords(new Set());
+    } else {
+      setVisiblePasswords(new Set(credentials.map(user => user._id)));
+    }
+  };
+
   const filteredAndSortedAnalytics = analytics
     .filter(user =>
       (user.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
@@ -377,6 +402,15 @@ export default function TeamLeaderPage() {
               <p className="text-gray-600 mt-1">Welcome back, {teamLeader.name}</p>
             </div>
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setShowCredentials(true)}
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-medium flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                View Credentials
+              </button>
               <button
                 onClick={() => setShowAddUser(true)}
                 className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2"
@@ -826,6 +860,115 @@ export default function TeamLeaderPage() {
           </div>
         )}
       </div>
+
+      {/* Credentials Modal */}
+      {showCredentials && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Team Credentials</h2>
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={toggleAllPasswords}
+                  className="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  {visiblePasswords.size === credentials.length ? 'Hide All' : 'Show All'}
+                </button>
+                <button
+                  onClick={() => setShowCredentials(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto">
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <p className="text-sm text-gray-600">
+                  <strong>Note:</strong> These are the login credentials for all team members. 
+                  Passwords are hidden by default for security. Click the eye icon to reveal passwords.
+                </p>
+              </div>
+              
+              <div className="grid gap-4">
+                {credentials.map((user) => (
+                  <div key={user._id} className="bg-white border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex-shrink-0 h-12 w-12">
+                            <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                              <span className="text-lg font-medium text-white">
+                                {(user.name || '').split(' ').map(n => n[0]).join('').toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900">{user.name}</h3>
+                            <p className="text-sm text-gray-500">{user.code}</p>
+                            <p className="text-sm text-gray-500">{user.email}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                          <div className="text-sm font-medium text-gray-900">Login ID</div>
+                          <div className="text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded">
+                            {user.code}
+                          </div>
+                        </div>
+                        
+                        <div className="text-right">
+                          <div className="text-sm font-medium text-gray-900">Password</div>
+                          <div className="flex items-center space-x-2">
+                            <div className="text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded min-w-[120px]">
+                              {visiblePasswords.has(user._id) ? (user.password || 'No password set') : '••••••'}
+                            </div>
+                            <button
+                              onClick={() => togglePasswordVisibility(user._id)}
+                              className="p-1 hover:bg-gray-100 rounded"
+                              title={visiblePasswords.has(user._id) ? 'Hide password' : 'Show password'}
+                            >
+                              {visiblePasswords.has(user._id) ? (
+                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {credentials.length === 0 && (
+                <div className="text-center py-8">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No team members found</h3>
+                  <p className="mt-1 text-sm text-gray-500">Add team members to view their credentials.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add User Modal */}
       {showAddUser && (
