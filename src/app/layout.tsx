@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Proskill leaderboard",
-  description: "Proskill leaderboard to display sales performance",
+  description: "Proskill leaderboard to display sales performance.",
 };
 
 export default function RootLayout({
