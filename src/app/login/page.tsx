@@ -233,8 +233,14 @@ export default function LoginAndDashboard() {
             background: rgba(255, 255, 255, 0.15);
           }
           .modern-input::placeholder {
-            color: rgba(255, 255, 255, 0.5);
+            color: #a3a3a3 !important; /* or any default gray you prefer */
+            opacity: 1 !important;
           }
+          /* iOS/Safari specific */
+          .modern-input::-webkit-input-placeholder { color: #a3a3a3 !important; opacity: 1 !important; }
+          .modern-input::-moz-placeholder { color: #a3a3a3 !important; opacity: 1 !important; }
+          .modern-input:-ms-input-placeholder { color: #a3a3a3 !important; opacity: 1 !important; }
+          .modern-input::-ms-input-placeholder { color: #a3a3a3 !important; opacity: 1 !important; }
         `}</style>
       </div>
     );
