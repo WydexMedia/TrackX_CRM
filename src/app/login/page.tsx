@@ -133,7 +133,7 @@ export default function LoginAndDashboard() {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="Enter your employee code"
-                className="modern-input"
+                className="modern-input text-black"
               />
             </div>
 
@@ -145,7 +145,7 @@ export default function LoginAndDashboard() {
       value={password}
       onChange={(e) => setPassword(e.target.value)}
       placeholder="Enter your password"
-      className="modern-input pr-10"
+      className="modern-input pr-10 text-black"
     />
     <button
       type="button"
