@@ -44,34 +44,57 @@ export async function GET() {
   const db = client.db();
   const users = db.collection('users');
   const sales = db.collection('sales');
-  
+  const dailyReports = db.collection('daily_reports');
+
   // Get all users (excluding team leaders)
   const allUsers = await users.find({ role: { $ne: 'teamleader' } }).toArray();
   const allSales = await sales.find({}).toArray();
-  
+
+  // Get all daily reports for the current month
+  const now = new Date();
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const allReports = await dailyReports.find({
+    date: {
+      $gte: firstDayOfMonth.toISOString(),
+      $lte: lastDayOfMonth.toISOString(),
+    },
+  }).toArray();
+
   const today = new Date();
   const lastMonth = getLastMonthDate();
-  
+
   const analytics = allUsers.map(user => {
     const userSales = allSales.filter(sale => sale.ogaName === user.name);
     const todaySales = filterSalesByDate(userSales, today);
     const thisMonthSales = filterSalesByMonth(userSales, today);
     const lastMonthSales = filterSalesByMonth(userSales, lastMonth);
-    
+
     const todayCollection = todaySales.reduce((sum, sale) => sum + sale.amount, 0);
     const thisMonthCollection = thisMonthSales.reduce((sum, sale) => sum + sale.amount, 0);
     const lastMonthCollection = lastMonthSales.reduce((sum, sale) => sum + sale.amount, 0);
-    
+
     // Calculate days remaining in the current month (same logic as sales dashboard)
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     const daysRemaining = lastDayOfMonth.getDate() - today.getDate();
-    
+
     // Calculate target achievement
     const target = user.target || 0;
     const achievedTarget = thisMonthCollection;
     const pendingTarget = Math.max(0, target - achievedTarget);
-    
+
+    // Calculate total leads assigned this month from daily reports
+    let totalLeads = 0;
+    for (const report of allReports) {
+      if (Array.isArray(report.salespersons)) {
+        const sp = report.salespersons.find(sp => sp.name && sp.name.toLowerCase() === user.name.toLowerCase());
+        if (sp && sp.prospects) {
+          totalLeads += parseInt(sp.prospects) || 0;
+        }
+      }
+    }
+
     return {
       _id: user._id,
       name: user.name,
@@ -85,9 +108,10 @@ export async function GET() {
       daysPending: daysRemaining, // Keeping field name for compatibility, but now represents days remaining
       totalSales: userSales.length,
       todaySales: todaySales.length,
-      thisMonthSales: thisMonthSales.length
+      thisMonthSales: thisMonthSales.length,
+      totalLeads: totalLeads,
     };
   });
-  
+
   return NextResponse.json(analytics);
 } 

@@ -206,21 +206,88 @@ export default function TeamLeaderPage() {
     setLoadingKPI(true);
     
     try {
-      const response = await fetch('/api/daily-reports');
-      const data = await response.json();
+      // Fetch both daily reports and sales data
+      const [dailyReportsResponse, salesResponse] = await Promise.all([
+        fetch('/api/daily-reports'),
+        fetch('/api/sales')
+      ]);
       
-      if (data.error) {
-        throw new Error(data.error);
+      const dailyReportsData = await dailyReportsResponse.json();
+      const salesData = await salesResponse.json();
+      
+      if (dailyReportsData.error) {
+        throw new Error(dailyReportsData.error);
       }
       
-      // Filter data for the selected sales person
-      const filteredData = data.reports.filter((report: any) => 
-        report.salespersons.some((sp: any) => 
-          sp.name.toLowerCase() === salesPerson.name.toLowerCase()
-        )
+      // Filter sales data for the selected sales person
+      const salesPersonSales = salesData.filter((sale: any) => 
+        sale.ogaName?.toLowerCase() === salesPerson.name.toLowerCase()
       );
       
-      setKpiData(filteredData);
+      // Create a map of daily sales amounts
+      const dailySalesMap = new Map();
+      const dailySalesCountMap = new Map();
+      
+      salesPersonSales.forEach((sale: any) => {
+        if (sale.createdAt) {
+          const saleDate = new Date(sale.createdAt).toISOString().split('T')[0];
+          const existingAmount = dailySalesMap.get(saleDate) || 0;
+          const existingCount = dailySalesCountMap.get(saleDate) || 0;
+          dailySalesMap.set(saleDate, existingAmount + (sale.amount || 0));
+          dailySalesCountMap.set(saleDate, existingCount + 1);
+        }
+      });
+      
+      // Get all unique dates from both daily reports and sales data
+      const allDates = new Set();
+      
+      // Add dates from daily reports
+      dailyReportsData.reports.forEach((report: any) => {
+        if (report.salespersons.some((sp: any) => 
+          sp.name.toLowerCase() === salesPerson.name.toLowerCase()
+        )) {
+          allDates.add(new Date(report.date).toISOString().split('T')[0]);
+        }
+      });
+      
+      // Add dates from sales data
+      salesPersonSales.forEach((sale: any) => {
+        if (sale.createdAt) {
+          allDates.add(new Date(sale.createdAt).toISOString().split('T')[0]);
+        }
+      });
+      
+                    // Create comprehensive daily data
+       const comprehensiveData = Array.from(allDates).map((dateStr) => {
+         const date = new Date(dateStr as string);
+         const dailyAmount = dailySalesMap.get(dateStr as string) || 0;
+        const salesCount = dailySalesCountMap.get(dateStr) || 0;
+        
+        // Find corresponding daily report data
+        const dailyReport = dailyReportsData.reports.find((report: any) => {
+          const reportDate = new Date(report.date).toISOString().split('T')[0];
+          return reportDate === dateStr && report.salespersons.some((sp: any) => 
+            sp.name.toLowerCase() === salesPerson.name.toLowerCase()
+          );
+        });
+        
+        const salesPersonData = dailyReport?.salespersons.find((sp: any) => 
+          sp.name.toLowerCase() === salesPerson.name.toLowerCase()
+        );
+        
+        return {
+          _id: dailyReport?._id || `sales_${dateStr}`,
+          date: date.toISOString(),
+          dailyAmount: dailyAmount,
+          salesCount: salesCount,
+          leadsAssigned: salesPersonData?.prospects || 0,
+          salesConverted: salesCount,
+          // Use sales data for more accurate conversion calculation
+          conversionRate: salesPersonData?.prospects > 0 ? ((salesCount / salesPersonData.prospects) * 100).toFixed(1) : 0
+        };
+      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by date descending
+      
+      setKpiData(comprehensiveData);
     } catch (error) {
       console.error('Error fetching KPI data:', error);
       toast.error('Failed to load KPI data');
@@ -251,9 +318,8 @@ export default function TeamLeaderPage() {
       return selectedSalesPerson?.todaySales || 0;
     }
     
-    // For now, we'll use the number of days as a proxy for sales
-    // In a real scenario, you'd want to get actual sales data for each date
-    return filteredKpiData.length;
+    // Count days with actual sales activity (dailyAmount > 0)
+    return filteredKpiData.filter(report => (report.dailyAmount || 0) > 0).length;
   };
 
   const filteredSales = calculateFilteredSales();
@@ -509,9 +575,120 @@ export default function TeamLeaderPage() {
             </div>
           </div>
         </div>
+        
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+
+
+                  {/* Top Conversion Performers */}
+          <div className="bg-gradient-to-br from-emerald-900 via-teal-900 to-cyan-900 rounded-2xl shadow-2xl mb-8 overflow-hidden relative">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-10 left-10 w-32 h-32 bg-emerald-400 rounded-full"></div>
+              <div className="absolute top-32 right-20 w-24 h-24 bg-teal-400 rounded-full"></div>
+              <div className="absolute bottom-20 left-1/4 w-40 h-40 bg-cyan-400 rounded-full"></div>
+            </div>
+
+            <div className="relative z-10 p-8">
+              <div className="text-center mb-8">
+                <h2 className="text-4xl font-bold text-white mb-2">🎯 Top Converters</h2>
+                <p className="text-emerald-200 text-lg">Best Lead to Sale Conversion Rates</p>
+              </div>
+
+              <div className="flex justify-center items-end space-x-4 md:space-x-8 lg:space-x-12">
+                {/* 2nd Place */}
+                {(() => {
+                  const topConverters = [...analytics]
+                    .filter(user => user.totalSales > 0) // Only include users with sales
+                    .map(user => ({
+                      ...user,
+                      conversionRate: user.totalSales > 0 ? ((user.achievedTarget / user.target) * 100) : 0
+                    }))
+                    .sort((a, b) => b.conversionRate - a.conversionRate);
+                  
+                  return topConverters.length > 1 ? (
+                    <div className="flex flex-col items-center transform translate-y-4">
+                      <div className="relative">
+                        <div className="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center shadow-lg border-4 border-gray-200">
+                          <span className="text-2xl md:text-3xl font-bold text-gray-700">🥈</span>
+                        </div>
+                        <div className="absolute -top-2 -right-2 w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">2</span>
+                        </div>
+                      </div>
+                      <div className="mt-4 text-center">
+                        <div className="text-white font-semibold text-sm md:text-base">{topConverters[1].name}</div>
+                        <div className="text-emerald-200 text-xs md:text-sm">{topConverters[1].conversionRate.toFixed(1)}%</div>
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+
+                {/* 1st Place */}
+                {(() => {
+                  const topConverters = [...analytics]
+                    .filter(user => user.totalSales > 0)
+                    .map(user => ({
+                      ...user,
+                      conversionRate: user.totalSales > 0 ? ((user.achievedTarget / user.target) * 100) : 0
+                    }))
+                    .sort((a, b) => b.conversionRate - a.conversionRate);
+                  
+                  return topConverters.length > 0 ? (
+                    <div className="flex flex-col items-center">
+                      <div className="relative">
+                        <div className="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-emerald-300 to-emerald-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-emerald-200 animate-pulse">
+                          <span className="text-3xl md:text-4xl">🎯</span>
+                        </div>
+                        <div className="absolute -top-2 -right-2 w-10 h-10 bg-emerald-400 rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">1</span>
+                        </div>
+                      </div>
+                      <div className="mt-4 text-center">
+                        <div className="text-white font-bold text-lg md:text-xl">{topConverters[0].name}</div>
+                        <div className="text-emerald-200 text-sm md:text-base font-semibold">{topConverters[0].conversionRate.toFixed(1)}%</div>
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+
+                {/* 3rd Place */}
+                {(() => {
+                  const topConverters = [...analytics]
+                    .filter(user => user.totalSales > 0)
+                    .map(user => ({
+                      ...user,
+                      conversionRate: user.totalSales > 0 ? ((user.achievedTarget / user.target) * 100) : 0
+                    }))
+                    .sort((a, b) => b.conversionRate - a.conversionRate);
+                  
+                  return topConverters.length > 2 ? (
+                    <div className="flex flex-col items-center transform translate-y-8">
+                      <div className="relative">
+                        <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-amber-300 to-amber-500 rounded-full flex items-center justify-center shadow-lg border-4 border-amber-200">
+                          <span className="text-xl md:text-2xl font-bold text-amber-700">🥉</span>
+                        </div>
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold text-xs">3</span>
+                        </div>
+                      </div>
+                      <div className="mt-4 text-center">
+                        <div className="text-white font-semibold text-sm md:text-base">{topConverters[2].name}</div>
+                        <div className="text-amber-200 text-xs md:text-sm">{topConverters[2].conversionRate.toFixed(1)}%</div>
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+
+              {/* Stage Platform */}
+              <div className="mt-8 flex justify-center">
+                <div className="w-80 h-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-full shadow-lg"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -1229,9 +1406,7 @@ export default function TeamLeaderPage() {
                         <p className="text-blue-100 text-sm">Total Leads</p>
                         <p className="text-2xl font-bold">
                           {filteredKpiData.reduce((sum, report) => 
-                            sum + report.salespersons.find((sp: any) => 
-                              sp.name.toLowerCase() === selectedSalesPerson?.name.toLowerCase()
-                            )?.prospects || 0, 0
+                            sum + (parseInt(report.leadsAssigned) || 0), 0
                           )}
                         </p>
                       </div>
@@ -1246,7 +1421,9 @@ export default function TeamLeaderPage() {
                       <div>
                         <p className="text-green-100 text-sm">Sales Converted</p>
                         <p className="text-2xl font-bold">
-                          {filteredSales}
+                          {filteredKpiData.reduce((sum, report) => 
+                            sum + (parseInt(report.salesConverted) || 0), 0
+                          )}
                         </p>
                       </div>
                       <svg className="w-8 h-8 text-green-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1260,7 +1437,7 @@ export default function TeamLeaderPage() {
                       <div>
                         <p className="text-purple-100 text-sm">Amount Collected</p>
                         <p className="text-2xl font-bold">
-                          ₹{selectedSalesPerson?.achievedTarget?.toLocaleString() || 0}
+                          ₹{filteredKpiData.reduce((sum, report) => sum + (report.dailyAmount || 0), 0).toLocaleString()}
                         </p>
                       </div>
                       <svg className="w-8 h-8 text-purple-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1274,13 +1451,15 @@ export default function TeamLeaderPage() {
                       <div>
                         <p className="text-orange-100 text-sm">Conversion %</p>
                         <p className="text-2xl font-bold">
-                                                     {filteredSales > 0 
-                             ? ((filteredSales / filteredKpiData.reduce((sum, report) => 
-                                 sum + report.salespersons.find((sp: any) => 
-                                   sp.name.toLowerCase() === selectedSalesPerson?.name.toLowerCase()
-                                 )?.prospects || 0, 0
-                               )) * 100).toFixed(1)
-                             : 0}%
+                          {(() => {
+                            const totalLeads = filteredKpiData.reduce((sum, report) => 
+                              sum + (parseInt(report.leadsAssigned) || 0), 0
+                            );
+                            const totalSales = filteredKpiData.reduce((sum, report) => 
+                              sum + (parseInt(report.salesConverted) || 0), 0
+                            );
+                            return totalLeads > 0 ? ((totalSales / totalLeads) * 100).toFixed(1) : 0;
+                          })()}%
                         </p>
                       </div>
                       <svg className="w-8 h-8 text-orange-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1323,48 +1502,45 @@ export default function TeamLeaderPage() {
                         </tr>
                       </thead>
                                              <tbody className="bg-white divide-y divide-gray-200">
-                         {filteredKpiData.length > 0 ? (
-                           filteredKpiData.map((report, index) => {
-                            const salesPersonData = report.salespersons.find((sp: any) => 
-                              sp.name.toLowerCase() === selectedSalesPerson?.name.toLowerCase()
-                            );
-                            const leadsAssigned = salesPersonData?.prospects || 0;
-                            const salesConverted = 1; // Each day with data represents activity
-                            const amountCollected = selectedSalesPerson?.achievedTarget || 0;
-                            const conversionRate = leadsAssigned > 0 ? ((salesConverted / leadsAssigned) * 100).toFixed(1) : 0;
-                            const adSpend = leadsAssigned * 50;
-                            const adSpendPercentage = amountCollected > 0 ? ((adSpend / amountCollected) * 100).toFixed(1) : 0;
+                                                 {filteredKpiData.length > 0 ? (
+                          filteredKpiData.map((report, index) => {
+                           const leadsAssigned = parseInt(report.leadsAssigned) || 0;
+                           const salesConverted = parseInt(report.salesConverted) || 0;
+                           const amountCollected = parseFloat(report.dailyAmount) || 0;
+                           const conversionRate = parseFloat(report.conversionRate) || 0;
+                           const adSpend = leadsAssigned * 50;
+                           const adSpendPercentage = amountCollected > 0 ? ((adSpend / amountCollected) * 100).toFixed(1) : 0;
 
-                            return (
-                              <tr key={report._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                  {new Date(report.date).toLocaleDateString('en-IN', {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric'
-                                  })}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {leadsAssigned}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">
-                                  {salesConverted}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-semibold">
-                                  ₹{amountCollected.toLocaleString()}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-600 font-semibold">
-                                  {conversionRate}%
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600 font-semibold">
-                                  ₹{adSpend.toLocaleString()}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">
-                                  {adSpendPercentage}%
-                                </td>
-                              </tr>
-                            );
-                          })
+                           return (
+                             <tr key={report._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                 {new Date(report.date).toLocaleDateString('en-IN', {
+                                   year: 'numeric',
+                                   month: 'short',
+                                   day: 'numeric'
+                                 })}
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                 {leadsAssigned}
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">
+                                 {salesConverted}
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-semibold">
+                                 ₹{amountCollected.toLocaleString()}
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-600 font-semibold">
+                                 {conversionRate}%
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600 font-semibold">
+                                 ₹{adSpend.toLocaleString()}
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">
+                                 {adSpendPercentage}%
+                               </td>
+                             </tr>
+                           );
+                         })
                         ) : (
                           <tr>
                             <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
