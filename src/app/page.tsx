@@ -14,7 +14,19 @@ export default function HomePage() {
         <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
           <Link href="/leaderboard" className="w-full sm:w-auto">
             <button className="w-full sm:w-auto px-4 sm:px-6 md:px-10 py-4 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-yellow-400 to-pink-500 text-white text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold shadow-lg hover:scale-105 transition-transform duration-200 active:scale-95">
-              🏆 View Leaderboard
+              🏆 Sales Leaderboard
+            </button>
+          </Link>
+          
+          <Link href="/call-leaderboard" className="w-full sm:w-auto">
+            <button className="w-full sm:w-auto px-4 sm:px-6 md:px-10 py-4 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-indigo-400 to-purple-500 text-white text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold shadow-lg hover:scale-105 transition-transform duration-200 active:scale-95">
+              📞 Call Leaderboard
+            </button>
+          </Link>
+          
+          <Link href="/combined-leaderboard" className="w-full sm:w-auto">
+            <button className="w-full sm:w-auto px-4 sm:px-6 md:px-10 py-4 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-teal-400 to-cyan-500 text-white text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold shadow-lg hover:scale-105 transition-transform duration-200 active:scale-95">
+              🔄 Combined Leaderboard
             </button>
           </Link>
           
@@ -39,7 +51,7 @@ export default function HomePage() {
         
         {/* Mobile-friendly description */}
         <p className="mt-6 sm:mt-8 text-sm sm:text-base text-gray-600 max-w-2xl mx-auto px-4">
-          Access your sales dashboard, manage team performance, and track your targets all in one place.
+          Access your sales dashboard, manage team performance, track calls, and view leaderboards all in one place.
         </p>
       </div>
     </div>
