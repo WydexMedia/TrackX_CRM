@@ -16,7 +16,7 @@ const schema = yup.object().shape({
 type FormData = {
   callCompleted: string; // 'yes' or 'no'
   callType: string; // 'new' or 'followup'
-  callStatus: string; // 'QUALIFIED', 'DNP', 'POSITIVE', 'NATC'
+  callStatus: string; // 'QUALIFIED', 'CONNECTED_TO_WHATSAPP', 'DNP', 'POSITIVE', 'NATC'
   notes: string;
 };
 
@@ -117,6 +117,7 @@ export default function CallFormPage() {
         <select {...register('callStatus')} className="input">
           <option value="">Select status</option>
           <option value="QUALIFIED">QUALIFIED</option>
+          <option value="CONNECTED_TO_WHATSAPP">CONNECTED TO WHATSAPP</option>
           <option value="DNP">DNP</option>
           <option value="POSITIVE">POSITIVE</option>
           <option value="NATC">NATC</option>

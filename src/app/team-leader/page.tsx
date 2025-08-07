@@ -149,8 +149,8 @@ export default function TeamLeaderPage() {
           
           existing.totalCalls += 1;
           
-          // Count QUALIFIED and POSITIVE as completed calls
-          if (call.callStatus === 'QUALIFIED' || call.callStatus === 'POSITIVE') {
+          // Count QUALIFIED, CONNECTED_TO_WHATSAPP, and POSITIVE as completed calls
+          if (call.callStatus === 'QUALIFIED' || call.callStatus === 'CONNECTED_TO_WHATSAPP' || call.callStatus === 'POSITIVE') {
             existing.completedCalls += 1;
           }
           
@@ -1821,11 +1821,11 @@ export default function TeamLeaderPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              call.callStatus === 'QUALIFIED' || call.callStatus === 'POSITIVE'
+                              call.callStatus === 'QUALIFIED' || call.callStatus === 'CONNECTED_TO_WHATSAPP' || call.callStatus === 'POSITIVE'
                                 ? 'bg-green-100 text-green-800' 
                                 : 'bg-red-100 text-red-800'
                             }`}>
-                              {call.callStatus === 'QUALIFIED' || call.callStatus === 'POSITIVE' ? 'Completed' : 'Not Completed'}
+                              {call.callStatus === 'QUALIFIED' || call.callStatus === 'CONNECTED_TO_WHATSAPP' || call.callStatus === 'POSITIVE' ? 'Completed' : 'Not Completed'}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -1840,6 +1840,8 @@ export default function TeamLeaderPage() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                               call.callStatus === 'QUALIFIED' 
+                                ? 'bg-green-100 text-green-800'
+                                : call.callStatus === 'CONNECTED_TO_WHATSAPP'
                                 ? 'bg-green-100 text-green-800'
                                 : call.callStatus === 'POSITIVE'
                                 ? 'bg-blue-100 text-blue-800'

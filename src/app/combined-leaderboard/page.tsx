@@ -135,8 +135,8 @@ function getCallLeaderboard(calls: Call[]): CallStat[] {
       stat.followupCalls += 1;
     }
     
-    // Count completed calls (QUALIFIED and POSITIVE)
-    if (call.callStatus === 'QUALIFIED' || call.callStatus === 'POSITIVE') {
+    // Count completed calls (QUALIFIED, CONNECTED_TO_WHATSAPP, and POSITIVE)
+    if (call.callStatus === 'QUALIFIED' || call.callStatus === 'CONNECTED_TO_WHATSAPP' || call.callStatus === 'POSITIVE') {
       stat.completedCalls += 1;
     }
     
