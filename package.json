@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
+    "@neondatabase/serverless": "^1.0.1",
     "dotenv": "^17.0.0",
+    "drizzle-orm": "^0.44.4",
     "framer-motion": "^12.19.1",
     "lucide-react": "^0.536.0",
     "mongodb": "^6.17.0",
@@ -20,6 +22,7 @@
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.62.0",
     "react-hot-toast": "^2.5.2",
+    "xlsx": "^0.18.5",
     "yup": "^1.6.1"
   },
   "devDependencies": {
@@ -27,6 +30,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.4",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

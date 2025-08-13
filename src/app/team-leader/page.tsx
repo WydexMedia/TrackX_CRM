@@ -570,6 +570,14 @@ export default function TeamLeaderPage() {
                   Combined Leaderboard
                 </button>
               </Link>
+              <Link href="/team-leader/lead-management">
+                <button className="bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 font-medium flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm6 0a10 10 0 11-20 0 10 10 0 0120 0z" />
+                  </svg>
+                  Lead Management
+                </button>
+              </Link>
               <button
                 onClick={() => setShowCredentials(true)}
                 className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-medium flex items-center gap-2"

@@ -1,0 +1,671 @@
+Team Leader Dashboard – Product Requirements Document (Pre‑Sales CRM)
+
+Purpose: A focused dashboard for Team Leaders (TLs) to monitor queues, coach reps, enforce SLAs, manage lead distribution, and configure integrations (lead sources + telephony/WhatsApp). The spec includes IA, UI/UX, theming, component choices, data contracts, and acceptance criteria so you can implement cleanly with Next.js (App Router) + TypeScript + Tailwind + shadcn/ui + lucide-react + React Query + Zustand + Zod.
+
+1) TL Persona, Goals & KPIs
+
+Primary User: Team Leader (manages 3–15 agents).
+
+Top Jobs-To-Be-Done
+
+See at a glance: incoming lead volume, FRT breaches, unworked queues, rep productivity, and conversion from “Attempted → Connected → Qualified”.
+
+Take action quickly: reassign, mass-create tasks, trigger sequences, send nudges, enforce SLAs.
+
+Configure sources & automations: connect integrations, map fields, set routing by source, define per-source SLAs.
+
+Success Metrics
+
+FRT median ≤ 5 min for hot sources
+
+SLA compliance ≥ 90%
+
+Lead leakage (unassigned/unworked >24h) < 1%
+
+Contact rate ↑ 20% QoQ
+
+2) Information Architecture (IA)
+
+Top‑level route namespace: /tl (Team Leader scope)
+
+Primary Sections (Sidebar)
+
+Overview /tl/dashboard – snapshot metrics & alerts
+
+Queue /tl/queue – unassigned, aging, hot leads
+
+Leads /tl/leads – data table with advanced filters
+
+Agents /tl/agents – productivity, leaderboard, coaching
+
+Tasks /tl/tasks – SLA timers, reassignment, bulk ops
+
+Automations /tl/automations – rules, triggers, schedules
+
+Analytics /tl/analytics – funnels, cohorts, UTMs
+
+Reports /tl/reports – export packs, scheduled mails
+
+Integrations /tl/integrations – new section (detailed below)
+
+Settings /tl/settings – territories, stages, fields, consent
+
+Audit /tl/audit – changes, merges, exports
+
+Optional: Field App monitor /tl/field – geo check‑ins, routes (Phase 2)
+
+3) Sidebar Spec (UI + Icons)
+
+Library: lucide-react icons + Tailwind + shadcn/ui primitives.
+
+Design
+
+Width: 280px (desktop), collapsible to 80px mini
+
+BG: bg-white (Light) / bg-slate-950 (Dark)
+
+Border: border-r border-slate-200 (Light) / border-slate-800 (Dark)
+
+Item: 40px height, icon 18px, label text-sm
+
+Active item pill: rounded-xl bg-slate-100 / bg-slate-900
+
+Tooltip on collapsed
+
+Sidebar Items & Icons
+
+Overview – LayoutDashboard
+
+Queue – ListChecks
+
+Leads – UserSquare2
+
+Agents – Users
+
+Tasks – AlarmClock
+
+Automations – Workflow
+
+Analytics – BarChart3
+
+Reports – PieChart
+
+Integrations – Plug
+
+Settings – Settings
+
+Audit – ShieldCheck
+
+Utility Footer
+
+Theme switch – Moon/Sun
+
+Notifications – Bell
+
+Help & Docs – LifeBuoy
+
+4) Visual Style & Theme (Tailwind + shadcn/ui)
+
+Typography
+
+Headings: font-semibold, sizes: text-2xl (page), text-lg (section)
+
+Body: text-sm default; text-xs for metadata
+
+Color tokens (Light/Dark)
+
+Primary: cyan (Tailwind cyan-600 / cyan-400)
+
+Surface: white / slate-950
+
+Muted: slate-500 / slate-400
+
+Borders: slate-200 / slate-800
+
+Success: emerald-600, Warning: amber-600, Danger: rose-600
+
+Radii & Elevation
+
+Radius: rounded-2xl for cards, rounded-xl for pills/buttons
+
+Shadows: soft (shadow-sm cards; shadow-md popovers)
+
+Motion (Framer Motion)
+
+Subtle fade/slide on panels; duration 180–220ms; respect prefers-reduced-motion
+
+Density
+
+Comfortable: p-5 cards, gap-4 grids
+
+5) Core Screens
+
+5.1 Overview (/tl/dashboard)
+
+Widgets
+
+SLA at Risk (badge): count of leads breaching in next 15m; CTA: “View now” → Queue
+
+Lead Volume by Source (Today/7d) mini bar chart
+
+Funnel Snapshot: Attempted → Connected → Qualified
+
+Agent Leaderboard: connects, touches, qual rate
+
+Hot Source FRT: median by source, colored thresholds
+
+Alerts Feed: escalations, integration failures
+
+Actions: assign, bulk task create, open agent coaching modal.
+
+Empty States: copy with helpful links to Integrations or Automations when zero data.
+
+5.2 Queue (/tl/queue)
+
+Tabs: Unassigned, Aging, Hot (score/source), No Touch 24h
+
+Table columns: Lead, Source/UTM, Stage, Owner, Score, Last Activity, Age, SLA
+
+Bulk ops: Assign to…, Create Tasks, Add to List, Stage change
+
+Right drawer: lead preview (timeline + quick actions)
+
+5.3 Leads (/tl/leads)
+
+Data table (TanStack Table) with server filters: Source, Stage, Owner, Score, Age, Consent, Tags
+
+Saved views, column chooser, CSV export
+
+Row actions: open lead profile, reassign, add note, quick WhatsApp/email
+
+5.4 Agents (/tl/agents)
+
+Cards per agent: touches/day, connect %, avg FRT, task backlog, SLA breaches
+
+Drilldown: activity timeline, coaching notes, call outcomes distribution
+
+Actions: reassign from agent, set coaching goals, send nudge
+
+5.5 Tasks (/tl/tasks)
+
+Board by due buckets: Now, Today, Next 3 days, Overdue
+
+SLA timer chip per card; bulk reschedule; assign to pool
+
+5.6 Automations (/tl/automations)
+
+Rule list: trigger, conditions, actions, status
+
+Create rule: visual builder (trigger → if/else → actions)
+
+Examples: Hot Lead SLA, Score threshold, No‑touch re‑nurture
+
+5.7 Analytics (/tl/analytics)
+
+Funnels, Cohorts (time‑to‑contact, time‑to‑qualify), Source ROI, UTM breakdown
+
+Agent productivity report with filters + export
+
+5.8 Reports (/tl/reports)
+
+Prebuilt: Daily TL Pack, Weekly Source Performance, SLA Compliance
+
+Schedule delivery: email list, day/time, CSV+PDF attachments
+
+5.9 Settings (/tl/settings)
+
+Stages & Reasons (drag‑drop order)
+
+Fields Manager (create/hide/validate)
+
+Territories & Teams (assign rules)
+
+Consent & Quiet Hours per channel (WhatsApp/Email/SMS)
+
+5.10 Audit (/tl/audit)
+
+Filter by user/entity/date; diff view for merges/edits
+
+6) Integrations Module (Detailed)
+
+Route: /tl/integrations
+
+6.1 Page Layout
+
+Header: Title, Search, Filters (Status: Connected / Needs Attention / Not Configured, Type: Ads / Forms / WhatsApp / Telephony / Webhook / CSV)
+
+Primary CTA: Add Integration (Button, Plus icon)
+
+Grid of integration cards (3/4 columns responsive)
+
+Card Content
+
+Provider icon + name (e.g., Meta Lead Ads, Google Lead Form Extensions, WhatsApp Cloud API, Exotel, Twilio, Gupshup, Kaleyra, WATI, Webhooks, Embedded Forms, CSV Upload)
+
+Status pill: Connected, Needs Attention, Not Configured
+
+Last sync time, Leads (24h), Failures (24h)
+
+Actions: Manage (primary), overflow menu: View Logs, Disable, Delete
+
+Icons (lucide)
+
+Ads: Megaphone
+
+Forms/Portals: FormInput
+
+WhatsApp/BSP: MessageSquare
+
+Telephony: PhoneCall
+
+Webhooks: Webhook
+
+CSV: FileUp
+
+Generic: Plug / Puzzle
+
+6.2 Add Integration Flow (Modal/Stepper)
+
+Step 1 – Choose Provider
+
+Grid with provider tiles; search; tooltips
+
+Step 2 – Connect (fields vary by provider)
+
+Meta Lead Ads: Business ID, System User Token (long‑lived), select Pages & Lead Forms; webhook subscription confirm
+
+Google Lead Forms: OAuth → pick Ads account & lead form assets
+
+WhatsApp Cloud API: WABA ID, Phone Number ID, Access Token; template sync; webhook URL copy
+
+Telephony (e.g., Exotel/Twilio): Account SID/ID, API Key/Secret, Base URL; webhook endpoints for call events
+
+Webhooks (Inbound): Generate endpoint + signing secret; example payloads
+
+Embedded Forms: domain allowlist + JavaScript SDK key; sample embed snippet
+
+CSV: mapping presets, delimiter, header row
+
+Step 3 – Field Mapping
+
+Two‑column mapper: Provider Field → CRM Field (autocomplete)
+
+Type validation (email/phone/date/number); transforms (trim, lowercase, E.164 normalize)
+
+Required: name/phone/email, source, consent flags
+
+Preview with sample payload
+
+Step 4 – Routing & SLAs
+
+Default owner/team or round‑robin pool (select users)
+
+Territory rule (by city/state/country when present)
+
+SLA policy per source (e.g., Hot 5m, Warm 30m)
+
+Task template on create (e.g., call within 15m)
+
+Step 5 – Tagging & UTM
+
+Auto‑apply tags (e.g., source:meta, campaign:{utm_campaign})
+
+UTM capture (source/medium/campaign/term/content) – required
+
+Step 6 – Test & Save
+
+“Send test lead” or fetch sample; show normalized result
+
+Connection status badge → Connected; write audit event
+
+Persisted Model (Integration)
+
+interface Integration {
+  id: string
+  provider:
+    | 'META_LEAD_ADS' | 'GOOGLE_LEAD_FORM' | 'WHATSAPP_CLOUD'
+    | 'TELEPHONY_EXOTEL' | 'TELEPHONY_TWILIO' | 'GUPSHUP' | 'KALeyra' | 'WATI'
+    | 'WEBHOOK_INBOUND' | 'EMBEDDED_FORMS' | 'CSV_UPLOAD'
+  name: string // display label
+  status: 'CONNECTED' | 'NEEDS_ATTENTION' | 'DISABLED'
+  teams: string[] // which teams can use
+  lastSyncAt?: string
+  metrics24h?: { leads: number; failures: number }
+  credentials: Record<string, string> // encrypted server-side
+  mapping: Array<{ providerField: string; crmField: string; transform?: string }>
+  routing: {
+    defaultOwnerId?: string
+    roundRobinPool?: string[]
+    territoryRule?: string // JSON logic
+    slaPolicyId?: string
+    taskTemplateId?: string
+  }
+  utm: { capture: boolean }
+  tags: string[]
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+}
+
+Logs & Monitoring
+
+Per‑integration Logs tab: success/failed events, error codes, retry controls
+
+Health badge logic: red if failure rate > 5% last hour
+
+Webhook secret rotation, reveal‑once credentials
+
+Permissions & Audit
+
+TL: create/update for assigned teams, cannot view raw secrets (masked)
+
+Admin: full control
+
+All changes → /tl/audit with diff
+
+Empty States & Errors
+
+Clear guidance, docs links, sample payloads
+
+Indexed errors (e.g., 401 invalid token, 403 scope, 400 mapping)
+
+Acceptance Criteria (Integrations)
+
+Can add a Meta Lead Ads integration, map fields, set routing,
+test with sample payload, and see Connected state within the modal
+
+A failing webhook shows Needs Attention and a log entry with error details
+
+Test payload produces a new lead with UTMs and assigned owner per routing
+
+7) UI Component System (shadcn/ui + custom)
+
+Button, Card, Badge, Dialog, Drawer, Input, Select, Tabs, Tooltip, Toast, Separator, ScrollArea, Avatar
+
+Data Table: TanStack Table wrapped in shadcn styles
+
+Charts: recharts (simple Bar/Line/Pie), lazy‑loaded
+
+Form: react-hook-form + zod resolver, Form components from shadcn
+
+Examples of Reusable TL Components
+
+<KPIStat />: label, value, delta, subtitle
+
+<SlaTimer />: countdown chip, color by threshold
+
+<LeadPreviewDrawer />: compact timeline + quick actions
+
+<IntegrationCard />: provider icon, status, KPIs, actions
+
+8) Data Contracts (Frontend Types)
+
+interface LeadSummary { id: string; name: string; phone?: string; email?: string; source: string; utm?: Record<string,string>; stage: string; owner?: UserLite; score?: number; lastActivityAt?: string; ageMinutes: number; slaStatus: 'OK'|'DUE_SOON'|'BREACH' }
+interface UserLite { id: string; name: string; avatarUrl?: string }
+interface AgentKPI { user: UserLite; touches: number; connects: number; qualRate: number; frtMedianSec: number; openTasks: number; breaches: number }
+
+9) API Endpoints (Server)
+
+Auth: Bearer (JWT) or session; all requests scoped to TL’s teams.
+
+GET /api/tl/overview → widgets data
+
+GET /api/tl/queue (query: tab, filters, pagination)
+
+POST /api/tl/queue/assign → {leadIds, ownerId}
+
+GET /api/tl/leads (filters)
+
+GET /api/tl/agents/kpis (date range)
+
+POST /api/tl/tasks/bulk → create tasks
+
+GET /api/tl/integrations → list
+
+POST /api/tl/integrations → create (step payloads)
+
+PATCH /api/tl/integrations/:id → update
+
+POST /api/tl/integrations/:id/test → connection & mapping test
+
+GET /api/tl/integrations/:id/logs → paginated logs
+
+GET /api/tl/audit → activity feed
+
+Webhook Endpoints (server): /webhooks/meta, /webhooks/whatsapp, /webhooks/telephony/*
+
+10) State & Data Fetching
+
+React Query for server data (caching, retries, pagination)
+
+Zustand for UI state (sidebar collapsed, filters, modals)
+
+SSE or WebSockets for live SLA timers & alerts (optional)
+
+11) Accessibility (A11y)
+
+Keyboard focus management in dialogs and drawers
+
+Tooltip only on hover/focus; labels visible in collapsed sidebar via tooltip
+
+High contrast tokens for status colors; semantic roles for tables and charts
+
+12) Performance
+
+Code‑split charts and heavy pages
+
+Virtualize large tables (TanStack Virtual)
+
+Use prefetchQuery for common TL routes
+
+13) Security
+
+Mask secrets; reveal‑once patterns
+
+Role checks on all /tl/* routes
+
+Audit on integration & routing changes
+
+14) QA Acceptance Criteria (Samples)
+
+Dashboard
+
+SLA widget counts match /queue?tab=breachSoon result within ±1
+
+Agent leaderboard order equals frtMedianSec ascending when sorted
+
+Queue
+
+Reassign action updates owner and writes audit event within 2s
+
+Bulk task creation generates N tasks with due dates per template
+
+Integrations
+
+Add, Connect, Map, Route, UTM, Test flow completes without page reload
+
+Invalid token shows inline error with provider‑specific hint
+
+Logs tab shows latest events with timestamp in user’s timezone
+
+15) Implementation Notes for Cursor
+
+Stack
+
+Next.js (App Router) + TypeScript
+
+Tailwind + @/lib/tailwind custom tokens
+
+shadcn/ui installed (button, card, dialog, drawer, table, form, toast, etc.)
+
+lucide-react, @tanstack/react-table, @tanstack/react-query, zod, react-hook-form, recharts, zustand
+
+File Structure
+
+src/
+  app/
+    tl/
+      layout.tsx
+      dashboard/page.tsx
+      queue/page.tsx
+      leads/page.tsx
+      agents/page.tsx
+      tasks/page.tsx
+      automations/page.tsx
+      analytics/page.tsx
+      reports/page.tsx
+      integrations/
+        page.tsx
+        [id]/page.tsx
+      settings/page.tsx
+      audit/page.tsx
+  components/tl/
+    Sidebar.tsx
+    IntegrationCard.tsx
+    KPIStat.tsx
+    LeadPreviewDrawer.tsx
+  lib/
+    api.ts // fetch wrappers via React Query
+    schema.ts // zod schemas
+    icons.ts // lucide map helper
+    store.ts // zustand ui store
+
+Lucide icon map
+
+import {
+  LayoutDashboard, ListChecks, UserSquare2, Users, AlarmClock, Workflow,
+  BarChart3, PieChart, Plug, Settings, ShieldCheck, Moon, Sun, Bell, LifeBuoy,
+  Megaphone, FormInput, MessageSquare, PhoneCall, Webhook, FileUp, Plus
+} from 'lucide-react'
+export const Icons = { LayoutDashboard, ListChecks, UserSquare2, Users, AlarmClock, Workflow, BarChart3, PieChart, Plug, Settings, ShieldCheck, Moon, Sun, Bell, LifeBuoy, Megaphone, FormInput, MessageSquare, PhoneCall, Webhook, FileUp, Plus }
+
+Tailwind config tokens (snippet)
+
+// tailwind.config.js
+module.exports = {
+  darkMode: ['class'],
+  theme: {
+    extend: {
+      colors: {
+        border: { DEFAULT: '#e2e8f0', dark: '#1f2937' },
+        primary: { DEFAULT: '#0891b2', foreground: '#ffffff' },
+      },
+      borderRadius: { xl: '0.75rem', '2xl': '1rem' },
+      boxShadow: { soft: '0 1px 2px rgba(0,0,0,0.05)' },
+    },
+  },
+  plugins: [],
+}
+
+Sidebar example (minimal, accessible)
+
+// components/tl/Sidebar.tsx
+'use client'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { Icons } from '@/lib/icons'
+import { cn } from '@/lib/utils'
+
+const items = [
+  { href: '/tl/dashboard', label: 'Overview', icon: Icons.LayoutDashboard },
+  { href: '/tl/queue', label: 'Queue', icon: Icons.ListChecks },
+  { href: '/tl/leads', label: 'Leads', icon: Icons.UserSquare2 },
+  { href: '/tl/agents', label: 'Agents', icon: Icons.Users },
+  { href: '/tl/tasks', label: 'Tasks', icon: Icons.AlarmClock },
+  { href: '/tl/automations', label: 'Automations', icon: Icons.Workflow },
+  { href: '/tl/analytics', label: 'Analytics', icon: Icons.BarChart3 },
+  { href: '/tl/reports', label: 'Reports', icon: Icons.PieChart },
+  { href: '/tl/integrations', label: 'Integrations', icon: Icons.Plug },
+  { href: '/tl/settings', label: 'Settings', icon: Icons.Settings },
+  { href: '/tl/audit', label: 'Audit', icon: Icons.ShieldCheck },
+]
+
+export default function Sidebar() {
+  const pathname = usePathname()
+  return (
+    <aside className="hidden md:flex h-screen w-72 flex-col border-r bg-white dark:bg-slate-950">
+      <div className="p-4 text-lg font-semibold">Team Lead</div>
+      <nav className="flex-1 px-3 space-y-1">
+        {items.map(({ href, label, icon: Icon }) => {
+          const active = pathname?.startsWith(href)
+          return (
+            <Link key={href} href={href} className={cn(
+              'flex items-center gap-3 rounded-xl px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900',
+              active && 'bg-slate-100 dark:bg-slate-900'
+            )}>
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+            </Link>
+          )
+        })}
+      </nav>
+      <div className="p-3 border-t text-xs text-slate-500">v1.0.0</div>
+    </aside>
+  )
+}
+
+Integrations index page skeleton
+
+// app/tl/integrations/page.tsx
+import { Icons } from '@/lib/icons'
+import { IntegrationCard } from '@/components/tl/IntegrationCard'
+import { Button } from '@/components/ui/button'
+
+export default async function IntegrationsPage() {
+  // fetch server data here or via client using React Query
+  const integrations = [] // placeholder
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Integrations</h1>
+        <Button className="gap-2"><Icons.Plus className="h-4 w-4"/>Add Integration</Button>
+      </div>
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {integrations.map((i) => <IntegrationCard key={i.id} data={i} />)}
+      </div>
+    </div>
+  )
+}
+
+Integration card (status + metrics)
+
+// components/tl/IntegrationCard.tsx
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Icons } from '@/lib/icons'
+
+export function IntegrationCard({ data }: { data: any }) {
+  const Icon = iconByProvider(data.provider)
+  return (
+    <Card className="p-4 rounded-2xl">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4" />
+          <div className="font-medium">{data.name}</div>
+        </div>
+        <Badge variant={data.status === 'CONNECTED' ? 'default' : 'secondary'}>
+          {statusLabel(data.status)}
+        </Badge>
+      </div>
+      <div className="mt-4 text-sm text-slate-500">
+        <div>Last sync: {data.lastSyncAt ?? '—'}</div>
+        <div>Leads (24h): {data.metrics24h?.leads ?? 0}</div>
+        <div>Failures (24h): {data.metrics24h?.failures ?? 0}</div>
+      </div>
+    </Card>
+  )
+}
+
+16) Copy & Empty States (Samples)
+
+No integrations yet: “Connect a source to start capturing leads. Try Meta Lead Ads or Embedded Forms.” Button: Add Integration
+
+Logs empty: “All good! No recent errors. We’ll list sync events here.”
+
+17) Future Enhancements
+
+Integration marketplace with search & reviews
+
+Per‑source attribution dashboards and anomaly alerts
+
+Template library for field mappings per industry
