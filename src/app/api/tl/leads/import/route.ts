@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ success: false, error: "rows array required" }), { status: 400 });
     }
     const values = rows
-      .map((r) => ({
+      .map((r: any) => ({
         phone: typeof r.phone === "string" ? r.phone.trim() : undefined,
         name: r.name ?? null,
         email: r.email ?? null,
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
         stage: r.stage ?? undefined,
         score: typeof r.score === "number" ? r.score : undefined,
       }))
-      .filter((v) => v.phone && v.phone.length > 0);
+      .filter((v: { phone?: string }) => typeof v.phone === "string" && v.phone.length > 0);
 
     if (values.length === 0) {
       return new Response(JSON.stringify({ success: false, error: "no valid rows with phone" }), { status: 400 });
@@ -32,7 +32,9 @@ export async function POST(req: NextRequest) {
 
     // timeline events for created leads
     if (inserted.length) {
-      const ev = inserted.filter((r) => r.phone).map((r) => ({ leadPhone: r.phone, type: "CREATED", data: { source: r.source }, at: new Date() }));
+      const ev = inserted
+        .filter((r) => r.phone)
+        .map((r: { phone: string; source: string | null }) => ({ leadPhone: r.phone, type: "CREATED", data: { source: r.source }, at: new Date() }));
       if (ev.length) await db.insert(leadEvents).values(ev as any);
     }
 

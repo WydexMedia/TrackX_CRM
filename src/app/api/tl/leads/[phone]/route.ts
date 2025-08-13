@@ -1,9 +1,9 @@
-import { NextRequest } from "next/server";
+// No need for NextRequest in a Route Handler; use the standard Request type
 import { db } from "@/db/client";
 import { leads, leadEvents, tasks } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 
-export async function GET(_req: NextRequest, { params }: { params: { phone: string } }) {
+export async function GET(_req: Request, { params }: any) {
   try {
     const phone = decodeURIComponent(params.phone);
     const lead = (await db.select().from(leads).where(eq(leads.phone, phone)))[0];
