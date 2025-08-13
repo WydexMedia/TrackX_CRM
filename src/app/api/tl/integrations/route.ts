@@ -26,4 +26,20 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  try {
+    // Accept id from JSON body or query string for flexibility
+    const body = await req.json().catch(() => null);
+    const idRaw = body?.id ?? new URL(req.url).searchParams.get("id");
+    const id = typeof idRaw === "string" ? parseInt(idRaw, 10) : idRaw;
+    if (!id || Number.isNaN(id)) {
+      return new Response(JSON.stringify({ success: false, error: "id required" }), { status: 400 });
+    }
+    await db.delete(integrations).where(eq(integrations.id, id as number));
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
+  } catch (e: any) {
+    return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to delete integration" }), { status: 500 });
+  }
+}
+
 
