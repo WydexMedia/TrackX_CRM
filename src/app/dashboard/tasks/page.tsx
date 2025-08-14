@@ -464,11 +464,11 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
                     type="radio" 
                     checked={completed === true} 
                     onChange={() => setCompleted(true)}
-                    className="w-4 h-4 text-green-600"
+                    className="w-4  h-4 text-green-600"
                   />
                   <div className="flex items-center gap-2">
                     <CheckCircle2 size={16} className="text-green-600" />
-                    <span className="font-medium">Yes</span>
+                    <span className="text-blue-600 font-medium">Yes</span>
                   </div>
                 </label>
                 <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors cursor-pointer">
@@ -480,7 +480,7 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
                   />
                   <div className="flex items-center gap-2">
                     <XCircle size={16} className="text-red-600" />
-                    <span className="font-medium">No</span>
+                    <span className="text-red-600 font-medium">No</span>
                   </div>
                 </label>
               </div>
@@ -499,7 +499,7 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
                     />
                     <div className="flex items-center gap-2">
                       <CheckCircle2 size={16} className="text-green-600" />
-                      <span className="font-medium">Yes</span>
+                      <span className="text-green-600 font-medium">Yes</span>
                     </div>
                   </label>
                   <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors cursor-pointer">
@@ -511,7 +511,7 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
                     />
                     <div className="flex items-center gap-2">
                       <XCircle size={16} className="text-red-600" />
-                      <span className="font-medium">No</span>
+                      <span className="text-red-600 font-medium">No</span>
                     </div>
                   </label>
                 </div>
@@ -524,7 +524,7 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
                 <select 
                   value={status} 
                   onChange={(e) => setStatus(e.target.value)} 
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full text-blue-600 border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="CONVERTED">✅ Converted</option>
                   <option value="SEND_WHATSAPP">💬 Send in WhatsApp</option>
@@ -540,7 +540,7 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
                 <textarea 
                   value={notes} 
                   onChange={(e) => setNotes(e.target.value)} 
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                  className="w-full text-blue-600 border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                   rows={4}
                   placeholder="Add your notes here..."
                 />
@@ -559,7 +559,7 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
                     <input 
                       value={product} 
                       onChange={(e) => setProduct(e.target.value)} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full text-blue-600 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="e.g. Solar panels"
                     />
                   </div>
@@ -569,7 +569,7 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
                       type="datetime-local" 
                       value={followUpAt} 
                       onChange={(e) => setFollowUpAt(e.target.value)} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      className="w-full text-blue-600 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                     />
                   </div>
                 </div>
@@ -578,7 +578,7 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
                   <textarea 
                     value={notes} 
                     onChange={(e) => setNotes(e.target.value)} 
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    className="w-full text-blue-600 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                     rows={3}
                     placeholder="Add follow-up notes..."
                   />

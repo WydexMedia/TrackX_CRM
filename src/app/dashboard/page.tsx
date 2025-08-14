@@ -64,7 +64,7 @@ function filterSalesByMonth(sales: Sale[], date: Date) {
 
 export default function DashboardPage() {
   const [sales, setSales] = useState<Sale[]>([]);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => getUser());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{ customerName: string; amount: number; newAdmission: string } | null>(null);
   const router = useRouter();
@@ -104,7 +104,13 @@ export default function DashboardPage() {
       .then((data: Sale[]) => setSales(data.filter((s: Sale) => s.ogaName === u.name)));
   }, [router]);
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-6 flex items-center justify-center">
+        <div className="text-slate-600">Loading...</div>
+      </div>
+    );
+  }
 
   const today = new Date();
   const daily = filterSalesByDate(sales, today);
