@@ -1,4 +1,4 @@
-import { pgTable, varchar, integer, timestamp, boolean, jsonb, serial } from "drizzle-orm/pg-core";
+import { pgTable, varchar, integer, timestamp, boolean, jsonb, serial, text } from "drizzle-orm/pg-core";
 
 export const leads = pgTable("leads", {
   phone: varchar("phone", { length: 32 }).primaryKey().notNull(),
@@ -19,10 +19,15 @@ export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   leadPhone: varchar("lead_phone", { length: 32 }).notNull(),
   title: varchar("title", { length: 160 }).notNull(),
+  // PENDING | DONE | SKIPPED | OPEN (backward compatibility)
   status: varchar("status", { length: 24 }).notNull().default("OPEN"),
+  // CALL | FOLLOW_UP | OTHER
+  type: varchar("type", { length: 24 }).default("OTHER"),
   ownerId: varchar("owner_id", { length: 64 }),
   dueAt: timestamp("due_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 export const integrations = pgTable("integrations", {
@@ -48,6 +53,21 @@ export const leadEvents = pgTable("lead_events", {
   data: jsonb("data"),
   at: timestamp("at", { withTimezone: true }).defaultNow(),
   actorId: varchar("actor_id", { length: 64 }),
+});
+
+export const callLogs = pgTable("call_logs", {
+  id: serial("id").primaryKey(),
+  leadPhone: varchar("lead_phone", { length: 32 }).notNull(),
+  salespersonId: varchar("salesperson_id", { length: 64 }),
+  phone: varchar("phone", { length: 32 }).notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow(),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  durationMs: integer("duration_ms"),
+  completed: boolean("completed").default(false),
+  qualified: boolean("qualified"),
+  status: varchar("status", { length: 32 }).default("NONE"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 
