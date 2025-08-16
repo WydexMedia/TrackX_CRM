@@ -46,10 +46,15 @@ export default function FormPage() {
       toast.error('You must be logged in!');
       return;
     }
+    // Normalize newAdmission values to match dashboard expectations (Yes/No)
+    const normalized = {
+      ...data,
+      newAdmission: data.newAdmission?.toLowerCase() === 'yes' ? 'Yes' : 'No',
+    };
     await fetch('/api/sales', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...data, ogaName: user.name }),
+      body: JSON.stringify({ ...normalized, ogaName: user.name }),
     });
     reset();
     toast.success('Sale submitted!');
@@ -62,7 +67,7 @@ export default function FormPage() {
       <Toaster position="top-center" />
       <div className="w-full max-w-md flex justify-end mb-4">
         <button
-          onClick={() => router.push('/login')}
+          onClick={() => router.push('/dashboard')}
           className="px-6 py-2 bg-gray-700 text-white rounded-lg font-semibold shadow hover:from-blue-700 hover:to-purple-700 transition-colors"
         >
           Go to Dashboard
@@ -83,10 +88,10 @@ export default function FormPage() {
         <label className="text-gray-700 font-medium">New Admission?</label>
         <div className="flex gap-4">
           <label className="flex text-black items-center gap-2">
-            <input type="radio" value="yes" {...register('newAdmission')} /> Yes
+            <input type="radio" value="Yes" {...register('newAdmission')} /> Yes
           </label>
           <label className="flex text-black items-center gap-2">
-            <input type="radio" value="no" {...register('newAdmission')} /> No
+            <input type="radio" value="No" {...register('newAdmission')} /> No
           </label>
         </div>
         <p className="text-red-500 text-xs">{errors.newAdmission?.message}</p>

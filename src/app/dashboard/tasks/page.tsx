@@ -23,7 +23,7 @@ function getUser() {
   return user ? JSON.parse(user) : null;
 }
 
-type Lead = { phone: string; name?: string | null; source?: string | null };
+type Lead = { phone: string; name?: string | null; source?: string | null; stage?: string | null };
 type TaskRow = { id: number; leadPhone: string; title: string; status: string; type?: string | null; dueAt?: string | null };
 
 function useCallTimer() {
@@ -197,6 +197,14 @@ export default function TasksPage() {
                   <Phone size={12} />
                   {phoneNumber}
                 </div>
+                {lead?.stage && (
+                  <div className="mt-1">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      {lead.stage}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
             {lead?.source && (

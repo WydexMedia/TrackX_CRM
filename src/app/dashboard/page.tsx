@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Toaster, toast } from 'react-hot-toast';
+import { Toaster, toast } from "react-hot-toast";
 import Link from "next/link";
 
 interface Sale {
   _id?: string;
   customerName: string;
   amount: number;
-  newAdmission: string;
+  newAdmission: string; // "Yes" | "No"
   ogaName: string;
   createdAt?: string;
 }
@@ -22,86 +22,134 @@ interface User {
   target?: number;
 }
 
-function getUser() {
+// ---------- utils ----------
+function getUserFromStorage() {
   if (typeof window === "undefined") return null;
-  const user = localStorage.getItem("user");
-  return user ? JSON.parse(user) : null;
+  try {
+    const raw = localStorage.getItem("user");
+    return raw ? (JSON.parse(raw) as User) : null;
+  } catch {
+    return null;
+  }
 }
 
 function filterSalesByDate(sales: Sale[], date: Date) {
   const y = date.getFullYear();
   const m = date.getMonth();
   const d = date.getDate();
-  return sales.filter(sale => {
+  return sales.filter((sale) => {
     if (!sale.createdAt) return false;
-    const saleDate = new Date(sale.createdAt);
-    return saleDate.getFullYear() === y && saleDate.getMonth() === m && saleDate.getDate() === d;
+    const sd = new Date(sale.createdAt);
+    return sd.getFullYear() === y && sd.getMonth() === m && sd.getDate() === d;
   });
 }
 
 function filterSalesByWeek(sales: Sale[], date: Date) {
   const start = new Date(date);
+  // Week starts on Sunday (0). Adjust if you prefer Monday start.
   start.setDate(date.getDate() - start.getDay());
-  start.setHours(0,0,0,0);
+  start.setHours(0, 0, 0, 0);
   const end = new Date(start);
   end.setDate(start.getDate() + 7);
-  return sales.filter(sale => {
+  return sales.filter((sale) => {
     if (!sale.createdAt) return false;
-    const saleDate = new Date(sale.createdAt);
-    return saleDate >= start && saleDate < end;
+    const sd = new Date(sale.createdAt);
+    return sd >= start && sd < end;
   });
 }
 
 function filterSalesByMonth(sales: Sale[], date: Date) {
   const y = date.getFullYear();
   const m = date.getMonth();
-  return sales.filter(sale => {
+  return sales.filter((sale) => {
     if (!sale.createdAt) return false;
-    const saleDate = new Date(sale.createdAt);
-    return saleDate.getFullYear() === y && saleDate.getMonth() === m;
+    const sd = new Date(sale.createdAt);
+    return sd.getFullYear() === y && sd.getMonth() === m;
   });
 }
 
-export default function DashboardPage() {
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [user, setUser] = useState<User | null>(() => getUser());
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<{ customerName: string; amount: number; newAdmission: string } | null>(null);
-  const router = useRouter();
+const INR = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
 
+// Lightweight skeleton block
+const Skel = ({ className = "" }: { className?: string }) => (
+  <div className={`animate-pulse rounded-xl bg-slate-200/70 ${className}`} />
+);
+
+// Generic stat card
+function StatCard({
+  title,
+  value,
+  gradient,
+  icon,
+  hint,
+}: {
+  title: string;
+  value: string | number;
+  gradient: string; // Tailwind gradient classes
+  icon: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <section
+      className={`rounded-2xl p-5 text-white shadow-xl ring-1 ring-black/5 ${gradient} transition-transform duration-200 hover:scale-[1.02]`}
+      aria-label={title}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="bg-white/20 rounded-xl p-3">{icon}</div>
+        {hint ? <span className="text-xs text-white/80">{hint}</span> : null}
+      </div>
+      <h3 className="text-white/90 text-sm font-medium mb-1">{title}</h3>
+      <p className="text-2xl md:text-3xl font-bold leading-tight">{value}</p>
+    </section>
+  );
+}
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<{
+    customerName: string;
+    amount: number;
+    newAdmission: string;
+  } | null>(null);
+
+  // ------------- bootstrap -------------
   useEffect(() => {
-    const u = getUser();
+    const u = getUserFromStorage();
     if (!u) {
       router.push("/login");
       return;
     }
-    
-    // Redirect team leaders to their dashboard
-    if (u.role === 'teamleader') {
+
+    // Team leaders redirect
+    if (u.role === "teamleader") {
       router.push("/team-leader");
       return;
     }
-    
-    // Fetch current user data from database to get updated target
-    fetch(`/api/users/current?code=${u.code}`)
-      .then(res => res.json())
-      .then(userData => {
-        if (userData.success) {
-          // Update localStorage with fresh data
-          const updatedUser = { ...u, ...userData.user };
-          localStorage.setItem("user", JSON.stringify(updatedUser));
-          setUser(updatedUser);
-        } else {
-          setUser(u);
-        }
+
+    // Load current user from API (fresh target, etc.)
+    const loadUser = fetch(`/api/users/current?code=${u.code}`)
+      .then((res) => res.json())
+      .then((userData) => {
+        const updated = userData?.success ? { ...u, ...userData.user } : u;
+        localStorage.setItem("user", JSON.stringify(updated));
+        setUser(updated);
       })
-      .catch(() => {
-        setUser(u);
-      });
-    
-    fetch("/api/sales")
-      .then(res => res.json())
-      .then((data: Sale[]) => setSales(data.filter((s: Sale) => s.ogaName === u.name)));
+      .catch(() => setUser(u));
+
+    const loadSales = fetch("/api/sales")
+      .then((res) => res.json())
+      .then((data: Sale[]) => setSales(data.filter((s) => s.ogaName === u.name)))
+      .catch(() => toast.error("Failed to load sales"));
+
+    Promise.all([loadUser, loadSales]).finally(() => setIsLoading(false));
   }, [router]);
 
   if (!user) {
@@ -113,45 +161,60 @@ export default function DashboardPage() {
   }
 
   const today = new Date();
-  const daily = filterSalesByDate(sales, today);
-  const weekly = filterSalesByWeek(sales, today);
-  const monthly = filterSalesByMonth(sales, today);
-  const target = user.target || 300000;
 
-  // Calculate days pending in the current month
+  const daily = useMemo(() => filterSalesByDate(sales, today), [sales, today]);
+  const weekly = useMemo(() => filterSalesByWeek(sales, today), [sales, today]);
+  const monthly = useMemo(() => filterSalesByMonth(sales, today), [sales, today]);
+
+  const target = user?.target ?? 300000;
+
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const daysPending = lastDayOfMonth.getDate() - today.getDate();
+  const daysPending = Math.max(0, lastDayOfMonth.getDate() - today.getDate());
 
-  const achievedTarget = monthly.reduce((sum, s) => sum + s.amount, 0);
+  const achievedTarget = monthly.reduce((sum, s) => sum + (s.amount || 0), 0);
   const pendingTarget = Math.max(0, target - achievedTarget);
-  const todayCollection = daily.reduce((sum, s) => sum + s.amount, 0);
+  const todayCollection = daily.reduce((sum, s) => sum + (s.amount || 0), 0);
 
-  // Calculate previous month
   const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-  const lastMonthSales = filterSalesByMonth(sales, prevMonthDate);
-  const lastMonthAchieved = lastMonthSales.reduce((sum, s) => sum + s.amount, 0);
+  const lastMonthSales = useMemo(
+    () => filterSalesByMonth(sales, prevMonthDate),
+    [sales, prevMonthDate]
+  );
+  const lastMonthAchieved = lastMonthSales.reduce((sum, s) => sum + (s.amount || 0), 0);
 
-  // Show last month collection only if it's not the first month
-  const showLastMonth = today.getMonth() > 0 || today.getFullYear() > (sales[0]?.createdAt ? new Date(sales[0].createdAt).getFullYear() : 0);
+  const showLastMonth = useMemo(() => {
+    if (!sales.length) return false;
+    const firstSaleYear = sales[0]?.createdAt
+      ? new Date(sales[0].createdAt).getFullYear()
+      : 0;
+    return today.getMonth() > 0 || today.getFullYear() > firstSaleYear;
+  }, [sales, today]);
 
-  // Edit/delete handlers
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this sale?')) return;
-    try {
-      await fetch(`/api/sales?id=${id}`, { method: 'DELETE' });
-      toast.success('Sale deleted successfully');
-      // Refresh sales
-      fetch("/api/sales")
-        .then(res => res.json())
-        .then(data => setSales(data.filter((s: any) => s.ogaName === user.name)));
-    } catch (error) {
-      toast.error('Failed to delete sale');
-    }
+  // ------------- handlers -------------
+  const refreshSales = () => {
+    if (!user) return;
+    fetch("/api/sales")
+      .then((res) => res.json())
+      .then((data: Sale[]) => setSales(data.filter((s) => s.ogaName === user.name)))
+      .catch(() => toast.error("Failed to refresh sales"));
   };
 
-  const handleEdit = (sale: any) => {
-    setEditingId(sale._id);
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this sale?")) return;
+    await toast.promise(
+      fetch(`/api/sales?id=${id}`, { method: "DELETE" })
+        .then(() => refreshSales()),
+      {
+        loading: "Deleting...",
+        success: "Sale deleted",
+        error: "Delete failed",
+      }
+    );
+  };
+
+  const handleEdit = (sale: Sale) => {
+    setEditingId(sale._id || null);
     setEditData({
       customerName: sale.customerName,
       amount: sale.amount,
@@ -162,51 +225,65 @@ export default function DashboardPage() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId || !editData) return;
-    try {
-      await fetch(`/api/sales`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+    await toast.promise(
+      fetch(`/api/sales`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ _id: editingId, ...editData }),
-      });
-      toast.success('Sale updated successfully');
-      setEditingId(null);
-      setEditData(null);
-      // Refresh sales
-      fetch("/api/sales")
-        .then(res => res.json())
-        .then(data => setSales(data.filter((s: any) => s.ogaName === user.name)));
-    } catch (error) {
-      toast.error('Failed to update sale');
-    }
+      }).then(() => {
+        setEditingId(null);
+        setEditData(null);
+        refreshSales();
+      }),
+      { loading: "Updating...", success: "Sale updated", error: "Update failed" }
+    );
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
+    if (typeof window !== "undefined") localStorage.removeItem("user");
     router.push("/login");
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-6">
-      <Toaster position="top-center" />
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
+        <Toaster position="top-center" />
+        <div className="max-w-3xl mx-auto">
+          <Skel className="h-28 mb-6" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Skel className="h-28" />
+            <Skel className="h-28" />
+            <Skel className="h-28" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 mb-8 border border-white/50">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-3 sm:p-4 md:p-6">
+      <Toaster position="top-center" />
+      <div className="mx-auto max-w-7xl">
+        {/* ---------- header ---------- */}
+        <header className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-4 sm:p-6 mb-4 sm:mb-8 border border-white/50">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                 Welcome back, {user.name}
               </h1>
-              <div className="flex flex-wrap gap-4 text-slate-600">
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-4 0V5a2 2 0 014 0v1" />
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-slate-700">
+                <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs sm:text-sm">
+                  {/* badge icon */}
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 6H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-5" />
+                    <path d="M10 6V5a2 2 0 1 1 4 0v1" />
                   </svg>
                   {user.code}
                 </span>
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs sm:text-sm">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 8l7.89 4.26a2 2 0 0 0 2.22 0L21 8" />
+                    <path d="M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
                   </svg>
                   {user.email}
                 </span>
@@ -214,163 +291,183 @@ export default function DashboardPage() {
             </div>
             <button
               onClick={handleLogout}
-              className="px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl font-semibold hover:from-red-600 hover:to-pink-600 transform hover:scale-105 transition-all duration-200 shadow-lg"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-500 to-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:from-red-600 hover:to-pink-600 hover:scale-[1.02]"
             >
-              Sign Out
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path d="M16 17l5-5-5-5" />
+                <path d="M21 12H9" />
+              </svg>
+              <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Target Card - Emerald to Teal */}
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-white/20 rounded-xl p-3">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        {/* ---------- actions bar ---------- */}
+        <nav aria-label="Quick actions" className="mb-4 sm:mb-6">
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            <Link href="/dashboard/tasks" className="shrink-0">
+              <button className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-green-600 hover:to-emerald-700">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 12h6M9 16h6M9 8h6" />
+                  <path d="M5 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5z" />
                 </svg>
-              </div>
-            </div>
-            <h3 className="text-emerald-100 text-lg font-medium mb-1">Target</h3>
-            <p className="text-3xl font-bold">₹{target.toLocaleString()}</p>
-          </div>
+                Tasks
+              </button>
+            </Link>
 
-          {/* Achieved Target Card - Purple to Pink */}
-          <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-white/20 rounded-xl p-3">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            <Link href="/leaderboard" className="shrink-0">
+              <button className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-pink-500 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-yellow-500 hover:to-pink-600">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2z" />
+                  <path d="M9 9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10" />
+                  <path d="M17 21h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2" />
                 </svg>
-              </div>
-            </div>
-            <h3 className="text-purple-100 text-lg font-medium mb-1">Achieved Target</h3>
-            <p className="text-3xl font-bold">₹{achievedTarget > 0 ? achievedTarget.toLocaleString() : "0"}</p>
-          </div>
+                Sales Leaderboard
+              </button>
+            </Link>
 
-          {/* Pending Target Card - Blue to Indigo */}
-          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-white/20 rounded-xl p-3">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <Link href="/call-leaderboard" className="shrink-0">
+              <button className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-400 to-purple-500 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-indigo-500 hover:to-purple-600">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 5a2 2 0 0 1 2-2h3.28a1 1 0 0 1 .95.68l1.5 4.49a1 1 0 0 1-.5 1.21l-2.26 1.13a11.04 11.04 0 0 0 5.52 5.52l1.13-2.26a1 1 0 0 1 1.21-.5l4.49 1.5a1 1 0 0 1 .68.95V19a2 2 0 0 1-2 2h-1C9.72 21 3 14.28 3 6V5z" />
                 </svg>
-              </div>
-            </div>
-            <h3 className="text-blue-100 text-lg font-medium mb-1">Pending Target</h3>
-            <p className="text-3xl font-bold">₹{pendingTarget > 0 ? pendingTarget.toLocaleString() : "0"}</p>
-          </div>
+                Call Leaderboard
+              </button>
+            </Link>
 
-          {/* Today's Collection Card - Orange to Red */}
-          <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-white/20 rounded-xl p-3">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            <Link href="/combined-leaderboard" className="shrink-0">
+              <button className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-400 to-cyan-500 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-teal-500 hover:to-cyan-600">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 4v5h.58M20 11A8 8 0 0 0 4.58 9M4.58 9H9M20 20v-5h-.58M19.42 15A8 8 0 0 1 4.06 13" />
                 </svg>
-              </div>
-              <span className="text-orange-100 text-sm font-medium">{daily.length} sales</span>
-            </div>
-            <h3 className="text-orange-100 text-lg font-medium mb-1">Today's Collection</h3>
-            <p className="text-3xl font-bold">₹{todayCollection > 0 ? todayCollection.toLocaleString() : "0"}</p>
-          </div>
+                Combined Leaderboard
+              </button>
+            </Link>
 
-          {/* Last Month Collection Card - Cyan to Blue */}
-          {showLastMonth && (
-            <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-white/20 rounded-xl p-3">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            <Link href="/call-form" className="shrink-0">
+              <button className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-indigo-700 hover:to-purple-700">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 5a2 2 0 0 1 2-2h3.28a1 1 0 0 1 .95.68l1.5 4.49a1 1 0 0 1-.5 1.21l-2.26 1.13a11.04 11.04 0 0 0 5.52 5.52l1.13-2.26a1 1 0 0 1 1.21-.5l4.49 1.5a1 1 0 0 1 .68.95V19a2 2 0 0 1-2 2h-1C9.72 21 3 14.28 3 6V5z" />
+                </svg>
+                Log Call
+              </button>
+            </Link>
+
+            <Link href="/form" className="shrink-0">
+              <button className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-purple-700">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 6v12M6 12h12" />
+                </svg>
+                Add New Sale
+              </button>
+            </Link>
+          </div>
+        </nav>
+
+        {/* ---------- stats ---------- */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+            <Skel className="h-28" />
+            <Skel className="h-28" />
+            <Skel className="h-28" />
+            <Skel className="h-28" />
+            <Skel className="h-28" />
+            <Skel className="h-28" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+            <StatCard
+              title="Target"
+              value={INR.format(target)}
+              gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
+              icon={
+                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 21a9 9 0 1 0-9-9" />
+                  <path d="M15 12l-3 3-2-2" />
+                </svg>
+              }
+            />
+
+            <StatCard
+              title="Achieved Target"
+              value={INR.format(achievedTarget)}
+              gradient="bg-gradient-to-br from-purple-500 to-pink-600"
+              icon={
+                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2l2.29 6.86L21 11l-6.71 2.14L12 20l-2.29-6.86L3 11l6.71-2.14L12 2z" />
+                </svg>
+              }
+            />
+
+            <StatCard
+              title="Pending Target"
+              value={INR.format(pendingTarget)}
+              gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
+              icon={
+                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 8v4l3 3" />
+                  <circle cx="12" cy="12" r="9" />
+                </svg>
+              }
+            />
+
+            <StatCard
+              title="Today's Collection"
+              value={INR.format(todayCollection)}
+              gradient="bg-gradient-to-br from-orange-500 to-red-600"
+              hint={`${daily.length} sale${daily.length !== 1 ? "s" : ""}`}
+              icon={
+                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2m0 16v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2m16 0h2" />
+                </svg>
+              }
+            />
+
+            {showLastMonth && (
+              <StatCard
+                title="Last Month Collection"
+                value={today.getDate() === 1 ? INR.format(lastMonthAchieved) : "₹0"}
+                gradient="bg-gradient-to-br from-cyan-500 to-blue-600"
+                icon={
+                  <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <path d="M16 2v4M8 2v4M3 10h18" />
                   </svg>
-                </div>
-              </div>
-              <h3 className="text-cyan-100 text-lg font-medium mb-1">Last Month Collection</h3>
-              <p className="text-3xl font-bold">
-                ₹{today.getDate() === 1 ? lastMonthAchieved.toLocaleString() : "0"}
-              </p>
-            </div>
-          )}
+                }
+              />
+            )}
 
-          {/* Days Pending Card - Violet to Purple */}
-          <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-white/20 rounded-xl p-3">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            <StatCard
+              title="Days Pending"
+              value={`${daysPending} Days`}
+              gradient="bg-gradient-to-br from-violet-500 to-purple-600"
+              icon={
+                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 8v4l3 3" />
+                  <circle cx="12" cy="12" r="9" />
                 </svg>
-              </div>
-            </div>
-            <h3 className="text-violet-100 text-lg font-medium mb-1">Days Pending</h3>
-            <p className="text-3xl font-bold">{daysPending >= 0 ? daysPending : 0} Days</p>
+              }
+            />
           </div>
-        </div>
+        )}
 
-        {/* Add Sale Button */}
-        <div className="flex justify-end mt-3 gap-4">
-          <Link href="/dashboard/tasks">
-            <button className="px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6M9 8h6M5 6a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2H5z" />
-              </svg>
-              Tasks
-            </button>
-          </Link>
-          <Link href="/leaderboard">
-            <button className="px-6 py-4 bg-gradient-to-r from-yellow-400 to-pink-500 text-white rounded-xl font-semibold hover:from-yellow-500 hover:to-pink-600 transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              Sales Leaderboard
-            </button>
-          </Link>
-          <Link href="/call-leaderboard">
-            <button className="px-6 py-4 bg-gradient-to-r from-indigo-400 to-purple-500 text-white rounded-xl font-semibold hover:from-indigo-500 hover:to-purple-600 transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              Call Leaderboard
-            </button>
-          </Link>
-          <Link href="/combined-leaderboard">
-            <button className="px-6 py-4 bg-gradient-to-r from-teal-400 to-cyan-500 text-white rounded-xl font-semibold hover:from-teal-500 hover:to-cyan-600 transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Combined Leaderboard
-            </button>
-          </Link>
-          <Link href="/call-form">
-            <button className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              Log Call
-            </button>
-          </Link>
-          <Link href="/form">
-            <button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add New Sale
-            </button>
-          </Link>
-        </div>
-
-        {/* Sales Table */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl mt-5 shadow-xl border border-white/50 overflow-hidden">
-          <div className="p-6 border-b border-slate-200">
-            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        {/* ---------- data ---------- */}
+        <main className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 overflow-hidden">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 border-b border-slate-200">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
+              <svg className="h-6 w-6 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 5H7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5" />
+                <path d="M20.59 7.41a2 2 0 0 1 0 2.83L12 18.83 9 19l.17-3 8.59-8.59a2 2 0 0 1 2.83 0z" />
               </svg>
               All Sales Records
             </h2>
+            <p className="text-xs sm:text-sm text-slate-500">{weekly.length} this week • {monthly.length} this month</p>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Table on md+ */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
@@ -382,92 +479,191 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {sales.map((sale: any, index) => (
-                  <tr key={sale._id} className={`hover:bg-slate-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-slate-25'}`}>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-slate-900">{sale.customerName}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-semibold text-green-600">₹{sale.amount.toLocaleString()}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        sale.newAdmission === 'Yes' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {sale.newAdmission}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-slate-500">
-                        {sale.createdAt ? new Date(sale.createdAt).toLocaleDateString() : 'N/A'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEdit(sale)}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                {isLoading ? (
+                  [...Array(5)].map((_, i) => (
+                    <tr key={`sk-${i}`}>
+                      <td className="px-6 py-4"><Skel className="h-5 w-40" /></td>
+                      <td className="px-6 py-4"><Skel className="h-5 w-24" /></td>
+                      <td className="px-6 py-4"><Skel className="h-6 w-16 rounded-full" /></td>
+                      <td className="px-6 py-4"><Skel className="h-5 w-24" /></td>
+                      <td className="px-6 py-4"><Skel className="h-8 w-24 rounded-md" /></td>
+                    </tr>
+                  ))
+                ) : sales.length ? (
+                  sales.map((sale, idx) => (
+                    <tr
+                      key={sale._id || `${sale.customerName}-${idx}`}
+                      className={idx % 2 === 0 ? "bg-white" : "bg-slate-25 hover:bg-slate-50"}
+                    >
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-slate-900">{sale.customerName}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-semibold text-green-700">{INR.format(sale.amount)}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            sale.newAdmission === "Yes"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-slate-100 text-slate-800"
+                          }`}
                         >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(sale._id)}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium"
-                        >
-                          Delete
-                        </button>
+                          {sale.newAdmission}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500">
+                        {sale.createdAt ? new Date(sale.createdAt).toLocaleDateString() : "N/A"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEdit(sale)}
+                            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                            aria-label="Edit sale"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => sale._id && handleDelete(sale._id)}
+                            className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-600 shadow-sm hover:bg-red-50"
+                            aria-label="Delete sale"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-10">
+                      <div className="flex flex-col items-center justify-center text-center text-slate-500">
+                        <svg className="h-10 w-10 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 3v18h18" />
+                          <path d="M19 17l-8-8-5 5" />
+                        </svg>
+                        <p className="font-medium">No sales yet</p>
+                        <p className="text-sm">Click "Add New Sale" above to get started.</p>
                       </div>
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
-        </div>
 
-        {/* Edit Modal */}
+          {/* Cards on mobile */}
+          <div className="md:hidden divide-y divide-slate-200">
+            {isLoading ? (
+              [...Array(5)].map((_, i) => (
+                <div key={`mob-skel-${i}`} className="p-4">
+                  <Skel className="h-5 w-40 mb-2" />
+                  <Skel className="h-5 w-24 mb-2" />
+                  <Skel className="h-6 w-20 rounded-full mb-2" />
+                  <Skel className="h-5 w-24" />
+                </div>
+              ))
+            ) : sales.length ? (
+              sales.map((sale, idx) => (
+                <article key={sale._id || `${sale.customerName}-${idx}`} className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-900">{sale.customerName}</h3>
+                      <p className="mt-1 text-sm text-green-700 font-semibold">{INR.format(sale.amount)}</p>
+                    </div>
+                    <span
+                      className={`ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        sale.newAdmission === "Yes"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-slate-100 text-slate-800"
+                      }`}
+                    >
+                      {sale.newAdmission}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-xs text-slate-500">
+                    {sale.createdAt ? new Date(sale.createdAt).toLocaleDateString() : "N/A"}
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      onClick={() => handleEdit(sale)}
+                      className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => sale._id && handleDelete(sale._id)}
+                      className="flex-1 rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-medium text-red-600 shadow-sm hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="p-8 text-center text-slate-500">No sales yet.</div>
+            )}
+          </div>
+        </main>
+
+        {/* ---------- edit modal ---------- */}
         {editingId && editData && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <h2 className="text-xl font-bold mb-4">Edit Sale</h2>
-              <form onSubmit={handleEditSubmit} className="space-y-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50">
+            <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl">
+              <div className="p-5 sm:p-6 border-b border-slate-200 flex items-center justify-between">
+                <h2 className="text-lg sm:text-xl font-bold">Edit Sale</h2>
+                <button
+                  onClick={() => {
+                    setEditingId(null);
+                    setEditData(null);
+                  }}
+                  aria-label="Close"
+                  className="rounded-md p-2 hover:bg-slate-100"
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleEditSubmit} className="p-5 sm:p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Customer Name</label>
                   <input
                     type="text"
                     required
                     value={editData.customerName}
-                    onChange={(e) => setEditData({...editData, customerName: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 dark:bg-gray-900 dark:text-white"
+                    onChange={(e) => setEditData({ ...editData, customerName: e.target.value })}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
                   <input
                     type="number"
+                    min={0}
                     required
                     value={editData.amount}
-                    onChange={(e) => setEditData({...editData, amount: parseInt(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 dark:bg-gray-900 dark:text-white"
+                    onChange={(e) => setEditData({ ...editData, amount: parseInt(e.target.value) || 0 })}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">New Admission</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">New Admission</label>
                   <select
                     value={editData.newAdmission}
-                    onChange={(e) => setEditData({...editData, newAdmission: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 dark:bg-gray-900 dark:text-white"
+                    onChange={(e) => setEditData({ ...editData, newAdmission: e.target.value })}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
                   </select>
                 </div>
-                <div className="flex space-x-3">
+                <div className="flex gap-3 pt-2">
                   <button
                     type="submit"
-                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+                    className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-white font-semibold hover:bg-blue-700"
                   >
                     Update Sale
                   </button>
@@ -477,7 +673,7 @@ export default function DashboardPage() {
                       setEditingId(null);
                       setEditData(null);
                     }}
-                    className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400"
+                    className="flex-1 rounded-lg bg-slate-200 px-4 py-2.5 text-slate-800 font-semibold hover:bg-slate-300"
                   >
                     Cancel
                   </button>
