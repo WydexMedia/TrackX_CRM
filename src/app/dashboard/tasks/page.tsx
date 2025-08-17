@@ -34,7 +34,7 @@ function useCallTimer() {
   const [startedAt, setStartedAt] = useState<number | null>(null);
 
   const start = useCallback(async (leadPhoneIn: string, phoneIn: string, salespersonId?: string) => {
-    const res = await fetch("/api/calls/start", { method: "POST", body: JSON.stringify({ leadPhone: leadPhoneIn, phone: phoneIn, salespersonId }) });
+    const res = await fetch("/api/calls/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ leadPhone: leadPhoneIn, phone: phoneIn, salespersonId }) });
     const data = await res.json();
     setCallLogId(data.callLogId);
     setLeadPhone(leadPhoneIn);
@@ -45,7 +45,7 @@ function useCallTimer() {
 
   const endNow = useCallback(async () => {
     if (!isCalling || !callLogId) return;
-    await fetch("/api/calls/end", { method: "POST", body: JSON.stringify({ callLogId }) });
+    await fetch("/api/calls/end", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ callLogId }) });
     setIsCalling(false);
   }, [isCalling, callLogId]);
 
@@ -126,27 +126,27 @@ export default function TasksPage() {
 
   const submitOutcome = useCallback(async (payload: any) => {
     if (!outcomeFor) return;
-    const res = await fetch("/api/calls/outcome", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ callLogId: outcomeFor.callLogId, ...payload }) });
+    const res = await fetch("/api/calls/outcome", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ callLogId: outcomeFor.callLogId, leadPhone: leadPhone, phone: phone, ...payload }) });
     const data = await res.json();
     setShowOutcome(false);
     setOutcomeFor(null);
     if (data.redirect) window.location.href = data.redirect;
     else load();
-  }, [outcomeFor, load]);
+  }, [outcomeFor, load, leadPhone, phone]);
 
   // Open outcome dialog directly from the menu without placing a real call
   const openOutcomeManually = useCallback(async (leadPhoneIn: string, phoneIn: string) => {
     try {
-      const startRes = await fetch("/api/calls/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ leadPhone: leadPhoneIn, phone: phoneIn, salespersonId: ownerId }) });
-      const startData = await startRes.json();
-      const callLogIdLocal = startData.callLogId;
-      await fetch("/api/calls/end", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ callLogId: callLogIdLocal }) });
-      setOutcomeFor({ callLogId: callLogIdLocal, durationMs: 0 });
+      await start(leadPhoneIn, phoneIn, ownerId);
+      await new Promise((r) => setTimeout(r, 50));
+      await endNow();
+      const id = callLogId || null;
+      setOutcomeFor({ callLogId: id as any, durationMs: 0 });
       setShowOutcome(true);
     } catch (_) {
       // ignore
     }
-  }, [ownerId]);
+  }, [ownerId, start, endNow, callLogId]);
 
   if (!user) return null;
 

@@ -1,7 +1,7 @@
 // No need for NextRequest in a Route Handler; use the standard Request type
 import { db } from "@/db/client";
 import { leads, leadEvents, tasks } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 
 export async function GET(_req: Request, { params }: any) {
   try {
@@ -23,12 +23,28 @@ export async function GET(_req: Request, { params }: any) {
       }
     }
     if (!lead) return new Response(JSON.stringify({ success: false, error: "not found" }), { status: 404 });
-    const events = await db.select().from(leadEvents).where(eq(leadEvents.leadPhone, phone)).orderBy(desc(leadEvents.at));
+    // Build phone variants to handle + prefix and spaces
+    const variantsSet = new Set<string>();
+    const base = String(lead.phone || "");
+    if (base) {
+      variantsSet.add(base);
+      const noSpace = base.replace(/\s+/g, "");
+      variantsSet.add(noSpace);
+      if (base.startsWith("+")) variantsSet.add(base.slice(1));
+      else variantsSet.add(`+${base}`);
+    }
+    const variants = Array.from(variantsSet);
+
+    const events = await db
+      .select()
+      .from(leadEvents)
+      .where(inArray(leadEvents.leadPhone, variants))
+      .orderBy(desc(leadEvents.at));
     // Select only columns that are guaranteed to exist to avoid errors if migrations haven't been applied
     const openTasks = await db
       .select({ id: tasks.id, leadPhone: tasks.leadPhone, title: tasks.title, status: tasks.status, dueAt: tasks.dueAt, createdAt: tasks.createdAt })
       .from(tasks)
-      .where(eq(tasks.leadPhone, phone))
+      .where(inArray(tasks.leadPhone, variants))
       .orderBy(desc(tasks.createdAt));
     return new Response(JSON.stringify({ success: true, lead, events, tasks: openTasks }), { status: 200 });
   } catch (e: any) {

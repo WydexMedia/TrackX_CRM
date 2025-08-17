@@ -402,7 +402,7 @@ export default function LeadsPage() {
                       <td className="px-4 py-3 text-slate-600">{r.source || "—"} {utm && `• ${utm}`}</td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2 py-0.5 text-xs">
-                          {r.stage}
+                          {r.stage || "NEW"}
                         </span>
                       </td>
                       <td className="px-4 py-3">{(sales.find((s) => s.code === (r.ownerId || ""))?.name) || r.ownerId || "—"}</td>

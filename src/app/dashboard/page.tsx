@@ -152,14 +152,6 @@ export default function DashboardPage() {
     Promise.all([loadUser, loadSales]).finally(() => setIsLoading(false));
   }, [router]);
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-6 flex items-center justify-center">
-        <div className="text-slate-600">Loading...</div>
-      </div>
-    );
-  }
-
   const today = new Date();
 
   const daily = useMemo(() => filterSalesByDate(sales, today), [sales, today]);

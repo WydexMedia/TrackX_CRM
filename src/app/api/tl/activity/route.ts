@@ -28,7 +28,20 @@ function summarizeEvent(e: any, leadName: string | null | undefined, nameByCode:
       const status = e.data?.status ? String(e.data.status) : "updated";
       return { title: `Call outcome: ${status}`, detail: name, color: "purple" };
     }
+    case "CALL_LOGGED": {
+      const status = e.data?.status ? String(e.data.status) : "logged";
+      return { title: `Call logged${status ? `: ${status}` : ""}`, detail: name, color: "purple" };
+    }
     case "LEAD_STATUS_CHANGED": {
+      const stage = e.data?.stage ? String(e.data.stage) : "updated";
+      return { title: `Lead stage → ${stage}`, detail: name, color: "cyan" };
+    }
+    // Backward/forward compatibility
+    case "CALL_OUTCOME_RECORDED": {
+      const status = e.data?.status ? String(e.data.status) : "updated";
+      return { title: `Call outcome: ${status}`, detail: name, color: "purple" };
+    }
+    case "STAGE_CHANGE": {
       const stage = e.data?.stage ? String(e.data.stage) : "updated";
       return { title: `Lead stage → ${stage}`, detail: name, color: "cyan" };
     }

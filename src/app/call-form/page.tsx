@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -11,6 +11,8 @@ const schema = yup.object().shape({
   callType: yup.string().required('Please select call type'),
   callStatus: yup.string().required('Please select call status'),
   notes: yup.string().required('Notes are required'),
+  leadPhone: yup.string().optional(),
+  phone: yup.string().optional(),
 });
 
 type FormData = {
@@ -18,11 +20,14 @@ type FormData = {
   callType: string; // 'new' or 'followup'
   callStatus: string; // 'QUALIFIED', 'CONNECTED_TO_WHATSAPP', 'DNP', 'POSITIVE', 'NATC'
   notes: string;
+  leadPhone?: string;
+  phone?: string;
 };
 
 export default function CallFormPage() {
   const [user, setUser] = React.useState<any>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   React.useEffect(() => {
     const u = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
@@ -44,7 +49,9 @@ export default function CallFormPage() {
       callCompleted: 'no',
       callType: '',
       callStatus: '',
-      notes: ''
+      notes: '',
+      leadPhone: searchParams?.get('leadPhone') || '',
+      phone: searchParams?.get('phone') || ''
     }
   });
 
@@ -90,6 +97,21 @@ export default function CallFormPage() {
       >
         <h2 className="text-xl font-bold text-center text-gray-800 mb-2">Call Log Form</h2>
         <div className="text-gray-700 font-medium mb-2">Logged in as: <span className="font-bold">{user.name}</span></div>
+
+        <label className="text-gray-700 font-medium">Lead Phone (exact match to existing lead)</label>
+        <input
+          {...register('leadPhone')}
+          placeholder="e.g. +911234567890"
+          className="input"
+        />
+        <p className="text-xs text-slate-500 mb-2">Tip: This links the log to the lead so the Team Lead timeline updates.</p>
+
+        <label className="text-gray-700 font-medium">Dialed Phone (optional)</label>
+        <input
+          {...register('phone')}
+          placeholder="Customer phone"
+          className="input"
+        />
         
         <label className="text-gray-700 font-medium">Have you completed the call?</label>
         <div className="flex gap-4">
@@ -121,6 +143,7 @@ export default function CallFormPage() {
           <option value="DNP">DNP</option>
           <option value="POSITIVE">POSITIVE</option>
           <option value="NATC">NATC</option>
+          <option value="NOT_INTERESTED">NOT INTERESTED</option>
         </select>
         <p className="text-red-500 text-xs">{errors.callStatus?.message}</p>
         

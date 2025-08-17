@@ -149,7 +149,7 @@ export default function LeadDetailPage() {
         <div>
           <div className="text-sm text-slate-500"><Link href="/team-leader/lead-management/leads" className="hover:underline">Leads</Link> / {lead.phone}</div>
           <h1 className="text-2xl font-semibold">{lead.name || lead.phone}</h1>
-          <div className="text-sm text-slate-600">{lead.email || "—"} • Source: {lead.source || "—"} • Stage: {lead.stage}</div>
+          <div className="text-sm text-slate-600">{lead.email || "—"} • Source: {lead.source || "—"} • Stage: {lead.stage || "NEW"}</div>
         </div>
       </div>
 

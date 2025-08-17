@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/db/client";
-import { callLogs, leadEvents } from "@/db/schema";
+import { callLogs, leadEvents, leads } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,20 +10,50 @@ export async function POST(req: NextRequest) {
     if (!leadPhone || !phone) {
       return new Response(JSON.stringify({ success: false, error: "leadPhone and phone required" }), { status: 400 });
     }
-    const inserted = await db
-      .insert(callLogs)
-      .values({ leadPhone, phone, salespersonId })
-      .returning({ id: callLogs.id });
+    // Normalize leadPhone to the canonical value stored in leads, if possible
+    let canonicalPhone: string = String(leadPhone);
+    try {
+      const raw = String(leadPhone || "");
+      const tryPhones: string[] = [raw];
+      const noSpace = raw.replace(/\s+/g, "");
+      if (noSpace !== raw) tryPhones.push(noSpace);
+      if (raw.startsWith("+")) tryPhones.push(raw.slice(1));
+      else if (raw) tryPhones.push(`+${raw}`);
+      for (const p of tryPhones) {
+        const hit = await db.select().from(leads).where(eq(leads.phone, p)).limit(1);
+        if (hit[0]) { canonicalPhone = p; break; }
+      }
+    } catch {}
+
+    let insertedId: number | null = null;
+    try {
+      const inserted = await db
+        .insert(callLogs)
+        .values({ leadPhone: canonicalPhone, phone, salespersonId })
+        .returning({ id: callLogs.id });
+      insertedId = inserted[0]?.id ?? null;
+    } catch {
+      // If call_logs table is missing, proceed without persisting the log
+      insertedId = null;
+    }
 
     // event
-    await db.insert(leadEvents).values({
-      leadPhone,
-      type: "CALL_STARTED",
-      data: { phone },
-      actorId: salespersonId || null,
-    } as any);
+    try {
+      await db.insert(leadEvents).values({
+        leadPhone: canonicalPhone,
+        type: "CALL_STARTED",
+        data: { phone },
+        actorId: salespersonId || null,
+      } as any);
+    } catch {}
 
-    return new Response(JSON.stringify({ success: true, callLogId: inserted[0]?.id }), { status: 201 });
+    // bump last activity on the lead
+    try {
+      const now = new Date();
+      await db.update(leads).set({ lastActivityAt: now, updatedAt: now }).where(eq(leads.phone, canonicalPhone));
+    } catch {}
+
+    return new Response(JSON.stringify({ success: true, callLogId: insertedId }), { status: 201 });
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "failed" }), { status: 500 });
   }
