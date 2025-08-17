@@ -7,12 +7,35 @@ import Link from "next/link";
 export default function LeadManagementOverviewPage() {
   const [widgets, setWidgets] = useState<{ slaAtRisk: number; leadsToday: number; qualifiedRate: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activities, setActivities] = useState<Array<{ id: number; at: string; title: string; detail: string; color: string }>>([]);
+  const [showAllActivities, setShowAllActivities] = useState(false);
 
   useEffect(() => {
     fetch("/api/tl/overview")
       .then((r) => r.json())
       .then((d) => setWidgets(d.widgets || { slaAtRisk: 0, leadsToday: 0, qualifiedRate: 0 }))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/tl/activity?limit=20")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.success && Array.isArray(d.items)) {
+          setActivities(
+            d.items.map((it: any) => ({
+              id: it.id,
+              at: it.at,
+              title: it.title,
+              detail: it.detail,
+              color: it.color || "indigo",
+            }))
+          );
+        } else {
+          setActivities([]);
+        }
+      })
+      .catch(() => setActivities([]));
   }, []);
 
   const metrics = [
@@ -57,13 +80,53 @@ export default function LeadManagementOverviewPage() {
     }
   ];
 
+  // Dynamic greeting based on local time
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h >= 5 && h < 12) return "Good morning";
+    if (h >= 12 && h < 18) return "Good afternoon";
+    return "Good evening";
+  })();
+
+  const timeAgo = (iso: string) => {
+    const now = Date.now();
+    const t = new Date(iso).getTime();
+    const diff = Math.max(0, Math.floor((now - t) / 1000));
+    if (diff < 60) return `${diff}s ago`;
+    const m = Math.floor(diff / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    return `${d}d ago`;
+  };
+
+  const dotColor = (c: string) => {
+    switch (c) {
+      case "green":
+        return "bg-green-500";
+      case "blue":
+        return "bg-blue-500";
+      case "amber":
+        return "bg-amber-500";
+      case "slate":
+        return "bg-slate-500";
+      case "purple":
+        return "bg-purple-500";
+      case "cyan":
+        return "bg-cyan-500";
+      default:
+        return "bg-indigo-500";
+    }
+  };
+
   return (
     <div className="p-6 bg-slate-50 min-h-screen">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Good morning! 👋</h1>
+            <h1 className="text-3xl font-bold text-slate-900">{greeting}! 👋</h1>
             <p className="text-slate-600 mt-1">Here's what's happening with your leads today</p>
           </div>
           <div className="text-right">
@@ -161,27 +224,30 @@ export default function LeadManagementOverviewPage() {
             <h2 className="text-lg font-semibold text-slate-900">Recent Activity</h2>
           </div>
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <div className="flex-1 text-sm">
-                <span className="font-medium">John assigned</span> 5 new leads
-                <div className="text-xs text-slate-500">2 minutes ago</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <div className="flex-1 text-sm">
-                <span className="font-medium">Sarah completed</span> follow-up task
-                <div className="text-xs text-slate-500">15 minutes ago</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <div className="flex-1 text-sm">
-                <span className="font-medium">System automated</span> lead scoring
-                <div className="text-xs text-slate-500">1 hour ago</div>
-              </div>
-            </div>
+            {activities.length === 0 ? (
+              <div className="text-sm text-slate-500">No recent activity</div>
+            ) : (
+              <>
+                {(showAllActivities ? activities : activities.slice(0, 3)).map((a) => (
+                  <div key={a.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                    <div className={`w-2 h-2 rounded-full ${dotColor(a.color)}`}></div>
+                    <div className="flex-1 text-sm">
+                      <span className="font-medium">{a.title}</span>{" "}
+                      <span className="text-slate-700">{a.detail}</span>
+                      <div className="text-xs text-slate-500">{timeAgo(a.at)}</div>
+                    </div>
+                  </div>
+                ))}
+                {activities.length > 3 && (
+                  <button
+                    onClick={() => setShowAllActivities((v) => !v)}
+                    className="w-full text-center text-blue-600 hover:text-blue-700 text-sm py-2"
+                  >
+                    {showAllActivities ? "Show less" : "Show more"}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>

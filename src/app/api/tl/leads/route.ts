@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { and, desc, eq, ilike, gte, lte, sql } from "drizzle-orm";
+import { and, or, desc, eq, ilike, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { leads, leadEvents } from "@/db/schema";
 
@@ -10,25 +10,108 @@ export async function GET(req: NextRequest) {
     const stage = searchParams.get("stage") || undefined;
     const owner = searchParams.get("owner") || undefined;
     const source = searchParams.get("source") || undefined;
-    const minScore = searchParams.get("minScore") ? Number(searchParams.get("minScore")) : undefined;
-    const maxScore = searchParams.get("maxScore") ? Number(searchParams.get("maxScore")) : undefined;
-    const from = searchParams.get("from") || undefined;
-    const to = searchParams.get("to") || undefined;
+    // Support both legacy minScore/maxScore and new scoreMin/scoreMax
+    const legacyMin = searchParams.get("minScore");
+    const legacyMax = searchParams.get("maxScore");
+    const newMin = searchParams.get("scoreMin");
+    const newMax = searchParams.get("scoreMax");
+    const minScore = newMin ? Number(newMin) : legacyMin ? Number(legacyMin) : undefined;
+    const maxScore = newMax ? Number(newMax) : legacyMax ? Number(legacyMax) : undefined;
+
+    // Date filters: explicit from/to or derived from dateRange
+    let from = searchParams.get("from") || undefined;
+    let to = searchParams.get("to") || undefined;
+    const dateRange = searchParams.get("dateRange") || undefined; // today, yesterday, last7days, last30days, thismonth, lastmonth
+
+    if (!from && !to && dateRange) {
+      const now = new Date();
+      const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+      const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
+      const endOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+
+      switch (dateRange) {
+        case "today":
+          from = startOfDay(now).toISOString();
+          to = endOfDay(now).toISOString();
+          break;
+        case "yesterday": {
+          const y = new Date(now);
+          y.setDate(now.getDate() - 1);
+          from = startOfDay(y).toISOString();
+          to = endOfDay(y).toISOString();
+          break;
+        }
+        case "last7days": {
+          const s = new Date(now);
+          s.setDate(now.getDate() - 7);
+          from = startOfDay(s).toISOString();
+          to = endOfDay(now).toISOString();
+          break;
+        }
+        case "last30days": {
+          const s = new Date(now);
+          s.setDate(now.getDate() - 30);
+          from = startOfDay(s).toISOString();
+          to = endOfDay(now).toISOString();
+          break;
+        }
+        case "thismonth": {
+          const s = startOfMonth(now);
+          const e = endOfMonth(now);
+          from = s.toISOString();
+          to = e.toISOString();
+          break;
+        }
+        case "lastmonth": {
+          const s = startOfMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+          const e = endOfMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+          from = s.toISOString();
+          to = e.toISOString();
+          break;
+        }
+      }
+    }
+
+    // Last activity relative filters
+    const lastActivity = searchParams.get("lastActivity") || undefined; // today, last3days, lastweek, lastmonth, noactivity
     const limit = Number(searchParams.get("limit") || 25);
     const offset = Number(searchParams.get("offset") || 0);
 
     const filters = [
-      q ? ilike(leads.name, `%${q}%`) : undefined,
-      q ? ilike(leads.email, `%${q}%`) : undefined,
-      q ? ilike(leads.phone, `%${q}%`) : undefined,
+      // Search across name OR email OR phone
+      q ? or(ilike(leads.name, `%${q}%`), ilike(leads.email, `%${q}%`), ilike(leads.phone, `%${q}%`)) : undefined,
       stage ? eq(leads.stage, stage) : undefined,
-      owner ? eq(leads.ownerId, owner) : undefined,
+      owner === "unassigned" ? (sql`${leads.ownerId} is null` as any) : owner ? eq(leads.ownerId, owner) : undefined,
       source ? eq(leads.source, source) : undefined,
-      typeof minScore === "number" ? gte(leads.score, minScore) : undefined,
-      typeof maxScore === "number" ? lte(leads.score, maxScore) : undefined,
+      typeof minScore === "number" && !Number.isNaN(minScore) ? gte(leads.score, minScore) : undefined,
+      typeof maxScore === "number" && !Number.isNaN(maxScore) ? lte(leads.score, maxScore) : undefined,
       from ? gte(leads.createdAt, new Date(from)) : undefined,
       to ? lte(leads.createdAt, new Date(to)) : undefined,
     ].filter(Boolean) as any[];
+
+    // Last activity window
+    if (lastActivity) {
+      const now = new Date();
+      const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      if (lastActivity === "noactivity") {
+        filters.push(sql`${leads.lastActivityAt} is null` as any);
+      } else if (lastActivity === "today") {
+        filters.push(gte(leads.lastActivityAt, startOfDay(now)) as any);
+      } else if (lastActivity === "last3days") {
+        const s = new Date(now);
+        s.setDate(now.getDate() - 3);
+        filters.push(gte(leads.lastActivityAt, s) as any);
+      } else if (lastActivity === "lastweek") {
+        const s = new Date(now);
+        s.setDate(now.getDate() - 7);
+        filters.push(gte(leads.lastActivityAt, s) as any);
+      } else if (lastActivity === "lastmonth") {
+        const s = new Date(now);
+        s.setMonth(now.getMonth() - 1);
+        filters.push(gte(leads.lastActivityAt, s) as any);
+      }
+    }
 
     const where = filters.length ? and(...filters) : undefined;
 
