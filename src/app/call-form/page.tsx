@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -11,8 +11,9 @@ const schema = yup.object().shape({
   callType: yup.string().required('Please select call type'),
   callStatus: yup.string().required('Please select call status'),
   notes: yup.string().required('Notes are required'),
-  leadPhone: yup.string().optional(),
-  phone: yup.string().optional(),
+  // mark as defined so keys are always present (may be undefined)
+  leadPhone: yup.string().optional().defined(),
+  phone: yup.string().optional().defined(),
 });
 
 type FormData = {
@@ -20,11 +21,11 @@ type FormData = {
   callType: string; // 'new' or 'followup'
   callStatus: string; // 'QUALIFIED', 'CONNECTED_TO_WHATSAPP', 'DNP', 'POSITIVE', 'NATC'
   notes: string;
-  leadPhone?: string;
-  phone?: string;
+  leadPhone: string;
+  phone: string;
 };
 
-export default function CallFormPage() {
+function CallFormPage() {
   const [user, setUser] = React.useState<any>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -185,4 +186,12 @@ export default function CallFormPage() {
       `}</style>
     </div>
   );
-} 
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div />}> 
+      <CallFormPage />
+    </Suspense>
+  );
+}
