@@ -308,43 +308,6 @@ export default function DashboardPage() {
               </button>
             </Link>
 
-            <Link href="/leaderboard" className="shrink-0">
-              <button className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-pink-500 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-yellow-500 hover:to-pink-600">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2z" />
-                  <path d="M9 9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10" />
-                  <path d="M17 21h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2" />
-                </svg>
-                Sales Leaderboard
-              </button>
-            </Link>
-
-            <Link href="/call-leaderboard" className="shrink-0">
-              <button className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-400 to-purple-500 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-indigo-500 hover:to-purple-600">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 5a2 2 0 0 1 2-2h3.28a1 1 0 0 1 .95.68l1.5 4.49a1 1 0 0 1-.5 1.21l-2.26 1.13a11.04 11.04 0 0 0 5.52 5.52l1.13-2.26a1 1 0 0 1 1.21-.5l4.49 1.5a1 1 0 0 1 .68.95V19a2 2 0 0 1-2 2h-1C9.72 21 3 14.28 3 6V5z" />
-                </svg>
-                Call Leaderboard
-              </button>
-            </Link>
-
-            <Link href="/combined-leaderboard" className="shrink-0">
-              <button className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-400 to-cyan-500 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-teal-500 hover:to-cyan-600">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 4v5h.58M20 11A8 8 0 0 0 4.58 9M4.58 9H9M20 20v-5h-.58M19.42 15A8 8 0 0 1 4.06 13" />
-                </svg>
-                Combined Leaderboard
-              </button>
-            </Link>
-
-            <Link href="/call-form" className="shrink-0">
-              <button className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-indigo-700 hover:to-purple-700">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 5a2 2 0 0 1 2-2h3.28a1 1 0 0 1 .95.68l1.5 4.49a1 1 0 0 1-.5 1.21l-2.26 1.13a11.04 11.04 0 0 0 5.52 5.52l1.13-2.26a1 1 0 0 1 1.21-.5l4.49 1.5a1 1 0 0 1 .68.95V19a2 2 0 0 1-2 2h-1C9.72 21 3 14.28 3 6V5z" />
-                </svg>
-                Log Call
-              </button>
-            </Link>
 
             <Link href="/form" className="shrink-0">
               <button className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-purple-700">
