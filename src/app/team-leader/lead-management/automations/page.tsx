@@ -79,6 +79,9 @@ export default function AutomationsPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [active, setActive] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [showConversionModal, setShowConversionModal] = useState(false);
+  const [pendingRuleId, setPendingRuleId] = useState<string>("");
+  const [selectedConversionRates, setSelectedConversionRates] = useState<string[]>([]);
 
   async function refresh() {
     const d = await fetch("/api/tl/automations", { cache: "no-store" }).then((r) => r.json());
@@ -225,6 +228,14 @@ export default function AutomationsPage() {
                       onClick={async () => {
                         if (isActive) return;
                         
+                        // Show conversion rate modal for CONVERSION_WEIGHTED rule
+                        if (rule.id === "CONVERSION_WEIGHTED") {
+                          setPendingRuleId(rule.id);
+                          setSelectedConversionRates([]);
+                          setShowConversionModal(true);
+                          return;
+                        }
+                        
                         setSaving(true);
                         const res = await fetch("/api/tl/automations", { 
                           method: "POST", 
@@ -302,6 +313,138 @@ export default function AutomationsPage() {
           </div>
         </div>
       </div>
+
+      {/* Conversion Rate Selection Modal */}
+      {showConversionModal && (
+        <div className="fixed inset-0 bg-slate-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="bg-green-100 text-green-600 p-3 rounded-full w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Select Conversion Options</h3>
+              <p className="text-sm text-slate-600">Choose one or more conversion rate levels for lead distribution</p>
+            </div>
+            
+            <div className="space-y-3 mb-6">
+              {[
+                { id: "default", label: "Default Conversion", description: "Standard conversion-weighted distribution algorithm" },
+                { id: "low", label: "Low Conversion Rate", description: "Agents with lower performance get more leads to improve" },
+                { id: "medium", label: "Medium Conversion Rate", description: "Balanced distribution based on moderate performance" },
+                { id: "high", label: "High Conversion Rate", description: "Top performers get priority on new leads" }
+              ].map((option) => {
+                const isSelected = selectedConversionRates.includes(option.id);
+                return (
+                  <button
+                    key={option.id}
+                    className={`w-full text-left p-4 border rounded-xl transition-all duration-200 group ${
+                      isSelected 
+                        ? "border-green-400 bg-green-50" 
+                        : "border-slate-200 hover:border-green-300 hover:bg-green-50"
+                    }`}
+                    onClick={() => {
+                      setSelectedConversionRates(prev => 
+                        prev.includes(option.id)
+                          ? prev.filter(id => id !== option.id)
+                          : [...prev, option.id]
+                      );
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-5 h-5 border-2 rounded transition-colors mt-0.5 flex items-center justify-center ${
+                        isSelected 
+                          ? "border-green-500 bg-green-500" 
+                          : "border-slate-300 group-hover:border-green-500"
+                      }`}>
+                        {isSelected && (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      <div>
+                        <div className={`font-medium ${
+                          isSelected ? "text-green-700" : "text-slate-900 group-hover:text-green-700"
+                        }`}>{option.label}</div>
+                        <div className="text-sm text-slate-600 mt-1">{option.description}</div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors"
+                onClick={() => {
+                  setShowConversionModal(false);
+                  setPendingRuleId("");
+                  setSelectedConversionRates([]);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className={`flex-1 px-4 py-2 rounded-xl font-medium transition-colors ${
+                  selectedConversionRates.length > 0
+                    ? "bg-green-600 text-white hover:bg-green-700"
+                    : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                }`}
+                disabled={selectedConversionRates.length === 0}
+                onClick={async () => {
+                  if (selectedConversionRates.length === 0) return;
+                  
+                  setSaving(true);
+                  setShowConversionModal(false);
+                  
+                  const res = await fetch("/api/tl/automations", { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ 
+                      id: pendingRuleId,
+                      conversionRates: selectedConversionRates 
+                    }), 
+                    cache: "no-store" 
+                  });
+                  
+                  if (res.ok) {
+                    const selectedLabels = selectedConversionRates.map(id => {
+                      const option = [
+                        { id: "default", label: "Default Conversion" },
+                        { id: "low", label: "Low Conversion Rate" },
+                        { id: "medium", label: "Medium Conversion Rate" },
+                        { id: "high", label: "High Conversion Rate" }
+                      ].find(opt => opt.id === id);
+                      return option?.label || id;
+                    }).join(", ");
+                    toast.success(`Conversion-based rule activated with: ${selectedLabels}`);
+                  } else {
+                    toast.error("Failed to update automation");
+                  }
+                  
+                  try {
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("lead_assign_rule", pendingRuleId);
+                      localStorage.setItem("conversion_rate_levels", JSON.stringify(selectedConversionRates));
+                      window.dispatchEvent(new CustomEvent("automation-rule-changed", { detail: { id: pendingRuleId, conversionRates: selectedConversionRates } }));
+                    }
+                  } catch {}
+                  
+                  await refresh();
+                  setSaving(false);
+                  setPendingRuleId("");
+                  setSelectedConversionRates([]);
+                }}
+              >
+                Activate Rule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -26,16 +26,32 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { id } = await req.json();
+    const { id, conversionRate, conversionRates } = await req.json();
     if (!RULES.some((r) => r.id === id)) {
       return new Response(JSON.stringify({ success: false, error: "invalid rule id" }), { status: 400 });
     }
+    
+    // Handle both single and multiple conversion rates
+    const rates = conversionRates || (conversionRate ? [conversionRate] : []);
+    
+    // Validate conversion rates for CONVERSION_WEIGHTED rule
+    if (id === "CONVERSION_WEIGHTED" && rates.length > 0) {
+      const validRates = ["default", "low", "medium", "high"];
+      const invalidRates = rates.filter((rate: string) => !validRates.includes(rate));
+      if (invalidRates.length > 0) {
+        return new Response(JSON.stringify({ success: false, error: `invalid conversion rates: ${invalidRates.join(", ")}` }), { status: 400 });
+      }
+    }
+    
+    // Store rule with conversion rates if provided
+    const ruleData = rates.length > 0 ? { id, conversionRates: rates } : { id };
+    
     // upsert
     await db
       .insert(settings)
-      .values({ key: "lead_assign_rule", value: { id } } as any)
-      .onConflictDoUpdate({ target: settings.key, set: { value: { id } } });
-    return new Response(JSON.stringify({ success: true, active: id }), { status: 200, headers: { "Cache-Control": "no-store" } });
+      .values({ key: "lead_assign_rule", value: ruleData } as any)
+      .onConflictDoUpdate({ target: settings.key, set: { value: ruleData } });
+    return new Response(JSON.stringify({ success: true, active: id, conversionRates: rates }), { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to update rule" }), { status: 500, headers: { "Cache-Control": "no-store" } });
   }
