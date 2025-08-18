@@ -44,9 +44,14 @@ function useCallTimer() {
   }, []);
 
   const endNow = useCallback(async () => {
-    if (!isCalling || !callLogId) return;
-    await fetch("/api/calls/end", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ callLogId }) });
-    setIsCalling(false);
+    if (!isCalling) return;
+    try {
+      if (callLogId) {
+        await fetch("/api/calls/end", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ callLogId }) });
+      }
+    } finally {
+      setIsCalling(false);
+    }
   }, [isCalling, callLogId]);
 
   useEffect(() => {
@@ -74,6 +79,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(false);
   const [showOutcome, setShowOutcome] = useState(false);
   const [outcomeFor, setOutcomeFor] = useState<{ callLogId: number; durationMs: number } | null>(null);
+  const [hasShownOutcome, setHasShownOutcome] = useState(false);
 
   const { isCalling, callLogId, start, endNow, leadPhone, phone, startedAt } = useCallTimer();
 
@@ -113,16 +119,18 @@ export default function TasksPage() {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    async function fetchDuration() {
-      if (!callLogId || startedAt == null) return;
+    if (!isCalling && startedAt != null && !showOutcome && !hasShownOutcome) {
       const elapsed = Date.now() - startedAt;
-      setOutcomeFor({ callLogId, durationMs: elapsed });
+      setOutcomeFor({ callLogId: callLogId ?? 0, durationMs: elapsed });
       setShowOutcome(true);
+      setHasShownOutcome(true);
     }
-    if (!isCalling && callLogId) {
-      fetchDuration();
-    }
-  }, [isCalling, callLogId, startedAt]);
+  }, [isCalling, callLogId, startedAt, showOutcome, hasShownOutcome]);
+
+  // Reset the one-time outcome guard on new call start
+  useEffect(() => {
+    if (isCalling) setHasShownOutcome(false);
+  }, [isCalling]);
 
   const submitOutcome = useCallback(async (payload: any) => {
     if (!outcomeFor) return;
@@ -162,15 +170,6 @@ export default function TasksPage() {
           <Phone size={16} />
           Call
         </a>
-        {isCalling && (
-          <button 
-            onClick={endNow} 
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
-          >
-            <PhoneOff size={16} />
-            End Call
-          </button>
-        )}
       </div>
     );
   };
@@ -568,7 +567,7 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
                       value={product} 
                       onChange={(e) => setProduct(e.target.value)} 
                       className="w-full text-blue-600 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="e.g. Solar panels"
+                      placeholder="e.g. Resin Kit"
                     />
                   </div>
                   <div>
