@@ -35,7 +35,7 @@ export async function POST(request) {
       } else {
         await db_pg.update(leads).set({ lastActivityAt: now, updatedAt: now }).where(eq(leads.phone, `+${p}`));
       }
-      await db_pg.insert(leadEvents).values({ leadPhone: p, type: 'CALL_LOGGED', data: { status: data?.callStatus, notes: data?.notes }, actorId: actor } as any);
+      await db_pg.insert(leadEvents).values({ leadPhone: p, type: 'CALL_LOGGED', data: { status: data?.callStatus, notes: data?.notes }, actorId: actor });
 
       // If the salesperson marks NOT_INTERESTED here, reflect it in lead stage and timeline
       if (String(data?.callStatus || '').toUpperCase() === 'NOT_INTERESTED') {
@@ -46,7 +46,7 @@ export async function POST(request) {
         } else {
           await db_pg.update(leads).set({ stage: 'NOT_INTERESTED', updatedAt: now, lastActivityAt: now }).where(eq(leads.phone, `+${p}`));
         }
-        await db_pg.insert(leadEvents).values({ leadPhone: p, type: 'STAGE_CHANGE', data: { stage: 'NOT_INTERESTED' }, actorId: actor } as any);
+        await db_pg.insert(leadEvents).values({ leadPhone: p, type: 'STAGE_CHANGE', data: { stage: 'NOT_INTERESTED' }, actorId: actor });
       }
     }
   } catch {}
