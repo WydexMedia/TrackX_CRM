@@ -49,7 +49,9 @@ type OGAStat = {
 
 function getLeaderboard(sales: Sale[]): OGAStat[] {
   const leaderboard: Record<string, OGAStat> = {};
+  console.log('Processing sales for leaderboard:', sales);
   for (const sale of sales) {
+    console.log('Processing sale:', sale);
     if (!leaderboard[sale.ogaName]) {
       leaderboard[sale.ogaName] = {
         name: sale.ogaName,
@@ -60,13 +62,15 @@ function getLeaderboard(sales: Sale[]): OGAStat[] {
       };
     }
     leaderboard[sale.ogaName].total += Number(sale.amount);
-    if (sale.newAdmission === 'yes') {
+    if (((sale.newAdmission ?? '') + '').trim().toLowerCase() === 'yes') {
+      console.log('Counting new admission for:', sale.ogaName, 'newAdmission value:', sale.newAdmission);
       leaderboard[sale.ogaName].count += 1;
     }
     if (sale.createdAt && (!leaderboard[sale.ogaName].lastSale || sale.createdAt > leaderboard[sale.ogaName].lastSale!)) {
       leaderboard[sale.ogaName].lastSale = sale.createdAt;
     }
   }
+  console.log('Final leaderboard:', leaderboard);
   return Object.values(leaderboard)
     .map(oga => ({
       ...oga,
@@ -104,13 +108,11 @@ function groupLeaderboardByTotal(leaderboard: OGAStat[]) {
 }
 
 function filterSalesByDate(sales: Sale[], date: Date) {
-  const y = date.getFullYear();
-  const m = date.getMonth();
-  const d = date.getDate();
+  const targetDay = new Date(date).toISOString().split('T')[0];
   return sales.filter(sale => {
     if (!sale.createdAt) return false;
-    const saleDate = new Date(sale.createdAt);
-    return saleDate.getFullYear() === y && saleDate.getMonth() === m && saleDate.getDate() === d;
+    const saleDay = new Date(sale.createdAt).toISOString().split('T')[0];
+    return saleDay === targetDay;
   });
 }
 
@@ -134,6 +136,8 @@ export default function CompetitiveLeaderboard() {
       try {
         const res = await fetch('/api/sales');
         const data = await res.json();
+        console.log('Fetched sales data:', data);
+        console.log('Sales with newAdmission:', data.filter((s: Sale) => s.newAdmission));
         setSales(data);
         setLastUpdateTime(new Date());
         setPulseEffect(Date.now());

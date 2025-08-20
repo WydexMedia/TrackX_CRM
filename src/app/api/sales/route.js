@@ -11,12 +11,24 @@ if (!clientPromise) {
 }
 
 export async function POST(request) {
-  const data = await request.json();
+  const raw = await request.json();
+  console.log('Raw sales data received:', raw);
   const client = await clientPromise;
   const db = client.db();
   const sales = db.collection('sales');
-  data.createdAt = new Date();
+
+  // Normalize fields
+  const data = {
+    customerName: (raw.customerName || '').toString().trim(),
+    amount: Number(raw.amount || 0),
+    newAdmission: (((raw.newAdmission ?? '') + '').trim().toLowerCase() === 'yes') ? 'yes' : 'no',
+    ogaName: (raw.ogaName || '').toString().trim(),
+    createdAt: new Date()
+  };
+  console.log('Normalized sales data:', data);
+
   await sales.insertOne(data);
+  console.log('Sale saved to database');
   return NextResponse.json({ success: true });
 }
 
@@ -39,6 +51,15 @@ export async function PUT(request) {
   // Remove fields that shouldn't be updated
   delete updateData._id;
   updateData.updatedAt = new Date();
+  if (updateData.newAdmission !== undefined) {
+    updateData.newAdmission = (((updateData.newAdmission ?? '') + '').trim().toLowerCase() === 'yes') ? 'yes' : 'no';
+  }
+  if (updateData.amount !== undefined) {
+    updateData.amount = Number(updateData.amount || 0);
+  }
+  if (updateData.ogaName !== undefined) {
+    updateData.ogaName = (updateData.ogaName || '').toString().trim();
+  }
   const result = await sales.updateOne(
     { _id: new ObjectId(_id) },
     { $set: updateData }
