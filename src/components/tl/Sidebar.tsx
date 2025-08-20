@@ -55,6 +55,8 @@ export default function Sidebar() {
         return { short: "CW", title: "Conversion-based", color: "bg-green-100 text-green-700" };
       case "HYBRID":
         return { short: "HY", title: "Hybrid", color: "bg-purple-100 text-purple-700" };
+      case "CUSTOM":
+        return { short: "CU", title: "Custom Automation", color: "bg-orange-100 text-orange-700" };
       default:
         return null;
     }

@@ -25,6 +25,12 @@ const getRuleIcon = (id: string) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
       );
+    case "CUSTOM":
+      return (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        </svg>
+      );
     default:
       return (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,6 +69,15 @@ const getRuleColor = (id: string) => {
         activeBg: "bg-purple-100",
         activeText: "text-purple-800"
       };
+    case "CUSTOM":
+      return {
+        bg: "bg-orange-50",
+        text: "text-orange-700",
+        icon: "text-orange-600",
+        border: "border-orange-200",
+        activeBg: "bg-orange-100",
+        activeText: "text-orange-800"
+      };
     default:
       return {
         bg: "bg-gray-50",
@@ -82,6 +97,12 @@ export default function AutomationsPage() {
   const [showConversionModal, setShowConversionModal] = useState(false);
   const [pendingRuleId, setPendingRuleId] = useState<string>("");
   const [selectedConversionRates, setSelectedConversionRates] = useState<string[]>([]);
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [customConfig, setCustomConfig] = useState({
+    adSpendPercentages: [15, 30],
+    selectedOptions: [] as string[],
+    customRules: [] as string[]
+  });
 
   async function refresh() {
     const d = await fetch("/api/tl/automations", { cache: "no-store" }).then((r) => r.json());
@@ -90,6 +111,25 @@ export default function AutomationsPage() {
   }
 
   useEffect(() => { refresh(); }, []);
+
+  // Add custom rule to the rules array
+  useEffect(() => {
+    if (rules.length > 0 && !rules.find(r => r.id === "CUSTOM")) {
+      setRules(prev => [...prev, {
+        id: "CUSTOM",
+        label: "Custom Automation",
+        description: "Advanced lead assignment based on custom criteria including ad spend percentages and multiple business rules"
+      }]);
+    }
+  }, [rules]);
+
+  // Update active state when custom rule is activated
+  useEffect(() => {
+    const storedRule = localStorage.getItem("lead_assign_rule");
+    if (storedRule && storedRule === "CUSTOM" && active !== "CUSTOM") {
+      setActive("CUSTOM");
+    }
+  }, [active]);
 
   return (
     <div className="p-6 bg-slate-50 min-h-screen">
@@ -213,6 +253,14 @@ export default function AutomationsPage() {
                             <li>• Balanced approach for most teams</li>
                           </ul>
                         )}
+                        {rule.id === "CUSTOM" && (
+                          <ul className={`text-sm ${colors.text} space-y-1`}>
+                            <li>• Advanced lead assignment based on custom criteria</li>
+                            <li>• Configure ad spend percentages (15%, 30%, etc.)</li>
+                            <li>• Multiple business rules and conditions</li>
+                            <li>• Highly customizable for complex scenarios</li>
+                          </ul>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -233,6 +281,13 @@ export default function AutomationsPage() {
                           setPendingRuleId(rule.id);
                           setSelectedConversionRates([]);
                           setShowConversionModal(true);
+                          return;
+                        }
+                        
+                        // Show custom automation modal for CUSTOM rule
+                        if (rule.id === "CUSTOM") {
+                          setPendingRuleId(rule.id);
+                          setShowCustomModal(true);
                           return;
                         }
                         
@@ -440,6 +495,202 @@ export default function AutomationsPage() {
                 }}
               >
                 Activate Rule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Custom Automation Modal */}
+      {showCustomModal && (
+        <div className="fixed inset-0 bg-slate-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="text-center mb-6">
+              <div className="bg-orange-100 text-orange-600 p-3 rounded-full w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Custom Automation Configuration</h3>
+              <p className="text-sm text-slate-600">Configure advanced lead assignment rules with ad spend percentages and multiple options</p>
+            </div>
+            
+            {/* Ad Spend Percentages */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-3">Ad Spend Percentages (%)</label>
+              <div className="flex flex-wrap gap-2">
+                {[5, 10, 15, 20, 25, 30, 35, 40, 45, 50].map((percentage) => (
+                  <button
+                    key={percentage}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      customConfig.adSpendPercentages.includes(percentage)
+                        ? "bg-orange-100 text-orange-700 border-2 border-orange-300"
+                        : "bg-slate-100 text-slate-600 border-2 border-transparent hover:bg-slate-200"
+                    }`}
+                    onClick={() => {
+                      setCustomConfig(prev => ({
+                        ...prev,
+                        adSpendPercentages: prev.adSpendPercentages.includes(percentage)
+                          ? prev.adSpendPercentages.filter(p => p !== percentage)
+                          : [...prev.adSpendPercentages, percentage].sort((a, b) => a - b)
+                      }));
+                    }}
+                  >
+                    {percentage}%
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 mt-2">Select the ad spend percentage thresholds for lead distribution</p>
+            </div>
+            
+            {/* Multiple Options */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-3">Business Rules</label>
+              <div className="space-y-3">
+                {[
+                  { id: "location_based", label: "Location-Based Assignment", description: "Assign leads based on geographic proximity" },
+                  { id: "time_based", label: "Time-Based Assignment", description: "Consider agent availability and time zones" },
+                  { id: "skill_based", label: "Skill-Based Assignment", description: "Match leads to agents with specific expertise" },
+                  { id: "load_balanced", label: "Load Balancing", description: "Distribute leads to maintain even workload" },
+                  { id: "priority_based", label: "Priority-Based Assignment", description: "High-value leads get top performers" },
+                  { id: "campaign_based", label: "Campaign-Based Assignment", description: "Assign based on lead source and campaign" }
+                ].map((option) => {
+                  const isSelected = customConfig.selectedOptions.includes(option.id);
+                  return (
+                    <button
+                      key={option.id}
+                      className={`w-full text-left p-4 border rounded-xl transition-all duration-200 group ${
+                        isSelected 
+                          ? "border-orange-400 bg-orange-50" 
+                          : "border-slate-200 hover:border-orange-300 hover:bg-orange-50"
+                      }`}
+                      onClick={() => {
+                        setCustomConfig(prev => ({
+                          ...prev,
+                          selectedOptions: prev.selectedOptions.includes(option.id)
+                            ? prev.selectedOptions.filter(id => id !== option.id)
+                            : [...prev.selectedOptions, option.id]
+                        }));
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-5 h-5 border-2 rounded transition-colors mt-0.5 flex items-center justify-center ${
+                          isSelected 
+                            ? "border-orange-500 bg-orange-500" 
+                            : "border-slate-300 group-hover:border-orange-500"
+                        }`}>
+                          {isSelected && (
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-4.242 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                        <div>
+                          <div className={`font-medium ${
+                            isSelected ? "text-orange-700" : "text-slate-900 group-hover:text-orange-700"
+                          }`}>{option.label}</div>
+                          <div className="text-sm text-slate-600 mt-1">{option.description}</div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Custom Rules Input */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-3">Custom Rules (Optional)</label>
+              <textarea
+                className="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                rows={3}
+                placeholder="Enter any additional custom rules or conditions..."
+                value={customConfig.customRules.join('\n')}
+                onChange={(e) => {
+                  setCustomConfig(prev => ({
+                    ...prev,
+                    customRules: e.target.value.split('\n').filter(rule => rule.trim())
+                  }));
+                }}
+              />
+              <p className="text-xs text-slate-500 mt-2">Add custom business logic or conditions for lead assignment</p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors"
+                onClick={() => {
+                  setShowCustomModal(false);
+                  setPendingRuleId("");
+                  setCustomConfig({
+                    adSpendPercentages: [15, 30],
+                    selectedOptions: [],
+                    customRules: []
+                  });
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className={`flex-1 px-4 py-2 rounded-xl font-medium transition-colors ${
+                  customConfig.adSpendPercentages.length > 0 && customConfig.selectedOptions.length > 0
+                    ? "bg-orange-600 text-white hover:bg-orange-700"
+                    : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                }`}
+                disabled={customConfig.adSpendPercentages.length === 0 || customConfig.selectedOptions.length === 0}
+                onClick={async () => {
+                  if (customConfig.adSpendPercentages.length === 0 || customConfig.selectedOptions.length === 0) return;
+                  
+                  setSaving(true);
+                  setShowCustomModal(false);
+                  
+                  const res = await fetch("/api/tl/automations", { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ 
+                      id: pendingRuleId,
+                      customConfig: customConfig
+                    }), 
+                    cache: "no-store" 
+                  });
+                  
+                  if (res.ok) {
+                    const selectedLabels = customConfig.selectedOptions.map(id => {
+                      const option = [
+                        { id: "location_based", label: "Location-Based Assignment" },
+                        { id: "time_based", label: "Time-Based Assignment" },
+                        { id: "skill_based", label: "Skill-Based Assignment" },
+                        { id: "load_balanced", label: "Load Balancing" },
+                        { id: "priority_based", label: "Priority-Based Assignment" },
+                        { id: "campaign_based", label: "Campaign-Based Assignment" }
+                      ].find(opt => opt.id === id);
+                      return option?.label || id;
+                    }).join(", ");
+                    toast.success(`Custom automation activated with ${customConfig.adSpendPercentages.join('%, ')}% ad spend and: ${selectedLabels}`);
+                    setActive("CUSTOM");
+                  } else {
+                    toast.error("Failed to update automation");
+                  }
+                  
+                  try {
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("lead_assign_rule", pendingRuleId);
+                      localStorage.setItem("custom_automation_config", JSON.stringify(customConfig));
+                      window.dispatchEvent(new CustomEvent("automation-rule-changed", { detail: { id: pendingRuleId, customConfig: customConfig } }));
+                    }
+                  } catch {}
+                  
+                  await refresh();
+                  setSaving(false);
+                  setPendingRuleId("");
+                  setCustomConfig({
+                    adSpendPercentages: [15, 30],
+                    selectedOptions: [],
+                    customRules: []
+                  });
+                }}
+              >
+                Activate Custom Rule
               </button>
             </div>
           </div>
