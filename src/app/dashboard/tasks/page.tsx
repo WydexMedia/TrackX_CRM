@@ -82,6 +82,12 @@ function LeadDetailModal({ lead, onClose, onRefresh }: { lead: any; onClose: () 
   const [addingNote, setAddingNote] = useState(false);
   const [selectedStage, setSelectedStage] = useState(lead?.stage || "NEW");
   const [updatingStage, setUpdatingStage] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [collectingPayment, setCollectingPayment] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<"razorpay" | "custom" | "mobile" | "qr" | "bank" | null>(null);
+  const [qrImage, setQrImage] = useState<File | null>(null);
+  const [qrImagePreview, setQrImagePreview] = useState<string>("");
 
   useEffect(() => {
     const fetchLeadData = async () => {
@@ -203,6 +209,122 @@ function LeadDetailModal({ lead, onClose, onRefresh }: { lead: any; onClose: () 
     }
   };
 
+  const handleCollectPayment = async () => {
+    if (!paymentAmount.trim() || isNaN(Number(paymentAmount))) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    
+    if (!paymentMode) {
+      toast.error("Please select a payment mode");
+      return;
+    }
+    
+    try {
+      setCollectingPayment(true);
+      
+      let whatsappMessage = "";
+      
+      if (paymentMode === "razorpay") {
+        // Generate Razorpay payment link (you'll need to implement this based on your Razorpay setup)
+        const paymentLink = `https://rzp.io/l/${lead?.phone}_${Date.now()}`; // Placeholder - replace with actual Razorpay link generation
+        whatsappMessage = `Hi ${lead?.name || 'there'}! Here's your payment link for ₹${paymentAmount}: ${paymentLink}`;
+      } else if (paymentMode === "mobile") {
+        // Send mobile number for payment
+        whatsappMessage = `Hi ${lead?.name || 'there'}! Please send ₹${paymentAmount} to mobile number: 7012527588`;
+      } else if (paymentMode === "qr") {
+        // For QR collection, send QR image and payment instructions
+        whatsappMessage = `Hi ${lead?.name || 'there'}! Please scan the QR code to pay ₹${paymentAmount}. Amount: ₹${paymentAmount}`;
+      } else if (paymentMode === "bank") {
+        // For bank transfer, send bank account details
+        whatsappMessage = `Hi ${lead?.name || 'there'}! Please transfer ₹${paymentAmount} to the following bank account:\n\nAccount Holder: WYDEX VENTURES LLP\nAccount Number: 50200112774904\nIFSC: HDFC0006698\nBranch: PALAZHI\nAccount Type: CURRENT\n\nGpay number: 7012527588`;
+      }
+      
+      const whatsappUrl = `https://wa.me/${lead?.phone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappMessage)}`;
+      
+      // For QR mode, first send the QR image via WhatsApp
+      if (paymentMode === "qr") {
+        // Create a temporary URL for the QR image
+        const qrImageUrl = "/qr.jpg";
+        
+        // Send QR image first, then payment message
+        const qrWhatsappUrl = `https://wa.me/${lead?.phone?.replace(/[^0-9]/g, '')}`;
+        window.open(qrWhatsappUrl, '_blank');
+        
+        // Show instructions to user
+        toast.success("WhatsApp opened! Please send the QR image (/qr.jpg) first, then the payment message.");
+      } else {
+        // For Razorpay, open directly with payment message
+        window.open(whatsappUrl, '_blank');
+      }
+      
+      // Update lead stage to PAYMENT_DONE
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: "PAYMENT_DONE" })
+      });
+      
+      if (res.ok) {
+        // Update the lead object locally
+        lead.stage = "PAYMENT_DONE";
+        setSelectedStage("PAYMENT_DONE");
+        
+        // Refresh the data
+        const dataRes = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`);
+        if (dataRes.ok) {
+          const data = await dataRes.json();
+          setTasks(data.tasks || []);
+          setNotes(data.events?.filter((event: any) => event.type === "NOTE_ADDED") || []);
+        }
+        
+        // Refresh the parent dashboard
+        onRefresh();
+        
+        // Close payment modal
+        setShowPaymentModal(false);
+        setPaymentAmount("");
+        setPaymentMode(null);
+        setQrImage(null);
+        setQrImagePreview("");
+        
+        const successMessage = paymentMode === "razorpay" 
+          ? `Payment link sent to ${lead?.phone}! Stage updated to PAYMENT_DONE.`
+          : paymentMode === "mobile"
+          ? `Mobile number sent to ${lead?.phone}! Stage updated to PAYMENT_DONE.`
+          : paymentMode === "qr"
+          ? `QR code ready for ${lead?.phone}! Stage updated to PAYMENT_DONE.`
+          : paymentMode === "bank"
+          ? `Bank details sent to ${lead?.phone}! Stage updated to PAYMENT_DONE.`
+          : `Payment information sent to ${lead?.phone}! Stage updated to PAYMENT_DONE.`;
+        toast.success(successMessage);
+      } else {
+        toast.error("Failed to update stage after payment collection");
+      }
+    } catch (error) {
+      console.error("Failed to collect payment:", error);
+      toast.error("Failed to collect payment");
+    } finally {
+      setCollectingPayment(false);
+    }
+  };
+
+  const handleQrImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith('image/')) {
+        setQrImage(file);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setQrImagePreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        toast.error("Please select an image file");
+      }
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -307,6 +429,17 @@ function LeadDetailModal({ lead, onClose, onRefresh }: { lead: any; onClose: () 
                         </button>
                       </div>
                     </div>
+                    {/* Collect Payment Button */}
+                    {selectedStage === "PAYMENT_INITIAL" && (
+                      <div className="md:col-span-2">
+                        <button
+                          onClick={() => setShowPaymentModal(true)}
+                          className="w-full bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                        >
+                          💰 Collect Payment
+                        </button>
+                      </div>
+                    )}
                     <div>
                       <label className="block text-sm font-medium text-gray-600 mb-1">Score</label>
                       <p className="text-gray-900 font-medium">{lead?.score || 0}</p>
@@ -436,6 +569,229 @@ function LeadDetailModal({ lead, onClose, onRefresh }: { lead: any; onClose: () 
           )}
         </div>
       </div>
+
+      {/* Payment Collection Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-700 p-4 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white">
+                    💰
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Collect Payment</h3>
+                    <p className="text-green-100 text-sm">{lead?.name || 'Lead'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPaymentModal(false)}
+                  className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <XCircle size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-4">
+              <div className="space-y-3">
+                {/* Payment Mode Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Collection Mode
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setPaymentMode("razorpay")}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        paymentMode === "razorpay"
+                          ? "border-green-500 bg-green-50 text-green-700"
+                          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-2xl mb-1">💳</div>
+                        <div className="text-sm font-medium">Razorpay</div>
+                        <div className="text-xs text-gray-500">Online Payment</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setPaymentMode("custom")}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        paymentMode === "custom"
+                          ? "border-green-500 bg-green-50 text-green-700"
+                          : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-2xl mb-1">📱</div>
+                        <div className="text-sm font-medium">Custom</div>
+                        <div className="text-xs text-gray-500">Multiple Options</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Custom Payment Options */}
+                {(paymentMode === "custom" || paymentMode === "mobile" || paymentMode === "qr" || paymentMode === "bank") && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Custom Payment Method
+                    </label>
+                    <div className="grid grid-cols-1 gap-2">
+                      <button
+                        onClick={() => setPaymentMode("mobile")}
+                        className={`p-3 rounded-lg border-2 transition-all text-left ${
+                          paymentMode === "mobile"
+                            ? "border-green-500 bg-green-50 text-green-700"
+                            : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="text-2xl">📞</div>
+                          <div>
+                            <div className="font-medium">Via Mobile Number</div>
+                            <div className="text-xs text-gray-500">Send payment to mobile number</div>
+                          </div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => setPaymentMode("qr")}
+                        className={`p-3 rounded-lg border-2 transition-all text-left ${
+                          paymentMode === "qr"
+                            ? "border-green-500 bg-green-50 text-green-700"
+                            : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="text-2xl">🖼️</div>
+                          <div>
+                            <div className="font-medium">QR Code</div>
+                            <div className="text-xs text-gray-500">Send QR code image</div>
+                          </div>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => setPaymentMode("bank")}
+                        className={`p-3 rounded-lg border-2 transition-all text-left ${
+                          paymentMode === "bank"
+                            ? "border-green-500 bg-green-50 text-green-700"
+                            : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="text-2xl">🏦</div>
+                          <div>
+                            <div className="font-medium">Direct Bank Transfer</div>
+                            <div className="text-xs text-gray-500">Send bank account details</div>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Amount (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    placeholder="Enter amount"
+                    className="w-full text-black px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    min="1"
+                    step="0.01"
+                  />
+                </div>
+                
+                {/* QR Image Upload for QR Mode */}
+                {paymentMode === "qr" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      QR Code Image
+                    </label>
+                    <div className="space-y-2">
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600 mb-2">QR Code from public folder:</p>
+                        <div className="w-48 h-32 mx-auto border border-gray-300 rounded-lg overflow-hidden flex items-center justify-center bg-white">
+                          <img
+                            src="/qr.jpg"
+                            alt="QR Code"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 text-blue-600 mt-0.5">
+                      ℹ️
+                    </div>
+                    <div className="text-sm text-blue-800">
+                      <p className="font-medium">What happens next?</p>
+                      <ul className="mt-1 space-y-1 text-blue-700">
+                        {paymentMode === "razorpay" ? (
+                          <li>• Payment link will be sent via WhatsApp</li>
+                        ) : paymentMode === "mobile" ? (
+                          <li>• Mobile number will be sent via WhatsApp</li>
+                        ) : paymentMode === "qr" ? (
+                          <li>• QR image will be sent via WhatsApp</li>
+                        ) : paymentMode === "bank" ? (
+                          <li>• Bank account details will be sent via WhatsApp</li>
+                        ) : paymentMode === "custom" ? (
+                          <li>• Select a custom payment method above</li>
+                        ) : (
+                          <li>• Select a payment mode above</li>
+                        )}
+                        <li>• Lead stage will be updated to PAYMENT_DONE</li>
+                        <li>• You can track payment status in Razorpay</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-3">
+                  <button
+                    onClick={() => setShowPaymentModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCollectPayment}
+                    disabled={!paymentAmount.trim() || isNaN(Number(paymentAmount)) || !paymentMode || collectingPayment}
+                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  >
+                    {collectingPayment ? (
+                      <>
+                        <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        {paymentMode === "razorpay" ? "💳 Send Payment Link" : 
+                         paymentMode === "mobile" ? "📞 Send Mobile Number" :
+                         paymentMode === "qr" ? "🖼️ Send QR Code" :
+                         paymentMode === "bank" ? "🏦 Send Bank Details" :
+                         paymentMode === "custom" ? "Select Method" :
+                         "Select Mode"}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

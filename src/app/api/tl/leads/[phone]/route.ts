@@ -56,7 +56,7 @@ export async function PUT(_req: Request, { params }: any) {
   try {
     const phone = decodeURIComponent(await params.phone);
     const body = await _req.json();
-    const { stage, score, ownerId, source } = body || {};
+    const { stage, score, ownerId, source, actorId } = body || {};
     
     // Get current lead to capture previous values
     const currentLead = await db.select().from(leads).where(eq(leads.phone, phone)).limit(1);
@@ -83,10 +83,26 @@ export async function PUT(_req: Request, { params }: any) {
         data: { 
           from: currentLead[0].stage, 
           to: stage,
-          actorId: currentLead[0].ownerId || "system",
+          actorId: actorId || currentLead[0].ownerId || "system",
           message: `Stage changed from ${currentLead[0].stage} to ${stage}`
         },
-        actorId: currentLead[0].ownerId || "system",
+        actorId: actorId || currentLead[0].ownerId || "system",
+        at: new Date()
+      } as any);
+    }
+
+    // Log assignment change event if ownerId was updated
+    if (ownerId !== undefined && ownerId !== currentLead[0].ownerId) {
+      await db.insert(leadEvents).values({
+        leadPhone: phone,
+        type: "ASSIGNED",
+        data: { 
+          from: currentLead[0].ownerId || "unassigned", 
+          to: ownerId,
+          actorId: actorId || currentLead[0].ownerId || "system",
+          message: `Lead reassigned from ${currentLead[0].ownerId || "unassigned"} to ${ownerId}`
+        },
+        actorId: actorId || currentLead[0].ownerId || "system",
         at: new Date()
       } as any);
     }

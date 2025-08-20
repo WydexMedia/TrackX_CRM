@@ -16,9 +16,20 @@ function summarizeEvent(e: any, leadName: string | null | undefined, nameByCode:
     case "CREATED":
       return { title: `Lead created`, detail: name, color: "green" };
     case "ASSIGNED": {
-      const owner = e.data?.ownerId ? String(e.data.ownerId) : "";
-      const ownerLabel = owner ? (nameByCode?.get(owner) ? `${nameByCode?.get(owner)}` : owner) : "";
-      return { title: `Assigned${ownerLabel ? ` to ${ownerLabel}` : ""}`, detail: name, color: "blue" };
+      const fromOwner = e.data?.from ? String(e.data.from) : "unassigned";
+      const toOwner = e.data?.to ? String(e.data.to) : "";
+      const actorId = e.data?.actorId || e.actorId;
+      
+      if (actorId && actorId !== "system") {
+        const actorName = nameByCode?.get(String(actorId)) || actorId;
+        const fromOwnerName = fromOwner === "unassigned" ? "Unassigned" : (nameByCode?.get(fromOwner) || fromOwner);
+        const toOwnerName = nameByCode?.get(toOwner) || toOwner;
+        return { title: `${actorName} reassigned lead`, detail: `${fromOwnerName} → ${toOwnerName}`, color: "blue" };
+      } else {
+        const fromOwnerName = fromOwner === "unassigned" ? "Unassigned" : (nameByCode?.get(fromOwner) || fromOwner);
+        const toOwnerName = nameByCode?.get(toOwner) || toOwner;
+        return { title: `Lead reassigned`, detail: `${fromOwnerName} → ${toOwnerName}`, color: "blue" };
+      }
     }
     case "CALL_STARTED":
       return { title: `Call started${who}` , detail: name, color: "amber" };

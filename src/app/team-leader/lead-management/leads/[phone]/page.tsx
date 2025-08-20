@@ -104,6 +104,8 @@ export default function LeadDetailPage() {
   const [assignee, setAssignee] = useState<string>("");
 
   const [assigning, setAssigning] = useState(false);
+  const [selectedOwner, setSelectedOwner] = useState<string>("");
+  const [reassigning, setReassigning] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
 
@@ -128,10 +130,68 @@ export default function LeadDetailPage() {
     }
   };
 
+  // Function to get current user from localStorage
+  const getCurrentUser = () => {
+    if (typeof window === 'undefined') return null;
+    const userStr = localStorage.getItem("user");
+    if (!userStr) return null;
+    try {
+      return JSON.parse(userStr);
+    } catch {
+      return null;
+    }
+  };
+
   // Function to resolve actor ID to user name
   const resolveActorName = (actorId: string) => {
     if (!actorId || actorId === "system") return "System";
     return userNames.get(actorId) || actorId;
+  };
+
+  // Function to handle lead reassignment
+  const handleReassign = async () => {
+    if (!selectedOwner || selectedOwner === lead?.ownerId) {
+      toast.error("Please select a different owner");
+      return;
+    }
+    
+    try {
+      setReassigning(true);
+      const toastId = toast.loading("Reassigning lead...");
+      
+      const currentUser = getCurrentUser();
+      const actorId = currentUser?.code || "system";
+      
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead?.phone || '')}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          ownerId: selectedOwner,
+          actorId: actorId 
+        })
+      });
+      
+      if (res.ok) {
+        // Update local state
+        if (lead) lead.ownerId = selectedOwner;
+        
+        // Refresh data
+        const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
+        setLead(d.lead || null);
+        setEvents(d.events || []);
+        setTasks(d.tasks || []);
+        
+        toast.success("Lead reassigned successfully", { id: toastId });
+        setSelectedOwner("");
+      } else {
+        toast.error("Failed to reassign lead", { id: toastId });
+      }
+    } catch (error) {
+      console.error("Failed to reassign lead:", error);
+      toast.error("Failed to reassign lead");
+    } finally {
+      setReassigning(false);
+    }
   };
 
   useEffect(() => {
@@ -174,10 +234,20 @@ export default function LeadDetailPage() {
       let label = type;
       let meta: string | undefined = undefined;
       if (type === "ASSIGNED") {
-        const ownerCode = e.data?.ownerId || "";
-        const ownerName = salesByCode[ownerCode]?.name || ownerCode || undefined;
-        label = "Lead Assigned";
-        meta = ownerName ? `Assigned to ${ownerName}` : undefined;
+        const fromOwnerCode = e.data?.from || "unassigned";
+        const toOwnerCode = e.data?.to || "";
+        const fromOwnerName = fromOwnerCode === "unassigned" ? "Unassigned" : (salesByCode[fromOwnerCode]?.name || fromOwnerCode);
+        const toOwnerName = salesByCode[toOwnerCode]?.name || toOwnerCode;
+        const actorId = e.data?.actorId || e.actorId || "system";
+        
+        if (actorId && actorId !== "system") {
+          const actorName = resolveActorName(actorId);
+          label = `${actorName} reassigned lead`;
+          meta = `${fromOwnerName} → ${toOwnerName}`;
+        } else {
+          label = "Lead Reassigned";
+          meta = `${fromOwnerName} → ${toOwnerName}`;
+        }
       }
       if (type === "STAGE_CHANGE") {
         label = "Stage Updated";
@@ -211,9 +281,9 @@ export default function LeadDetailPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm text-slate-500"><Link href="/team-leader/lead-management/leads" className="hover:underline">Leads</Link> / {lead.phone}</div>
-          <h1 className="text-2xl font-semibold">{lead.name || lead.phone}</h1>
-          <div className="text-sm text-slate-600">{lead.email || "—"} • Source: {lead.source || "—"} • Stage: {lead.stage || "NEW"}</div>
+          <div className="text-sm text-slate-500"><Link href="/team-leader/lead-management/leads" className="hover:underline">Leads</Link> / {lead?.phone}</div>
+          <h1 className="text-2xl font-semibold">{lead?.name || lead?.phone}</h1>
+          <div className="text-sm text-slate-600">{lead?.email || "—"} • Source: {lead?.source || "—"} • Stage: {lead?.stage || "NEW"}</div>
         </div>
       </div>
 
@@ -318,6 +388,35 @@ export default function LeadDetailPage() {
                 </dd>
               </div>
               <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Reassign Lead</dt>
+                <dd className="mt-1">
+                  <select
+                    value={selectedOwner || lead.ownerId || ""}
+                    onChange={(e) => setSelectedOwner(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Owner</option>
+                    {Object.entries(salesByCode).map(([code, salesperson]) => (
+                      <option key={code} value={code}>
+                        {salesperson.name} ({code})
+                      </option>
+                    ))}
+                  </select>
+                  {selectedOwner && selectedOwner !== lead.ownerId && (
+                    <button
+                      onClick={handleReassign}
+                      disabled={reassigning}
+                      className="mt-2 w-full bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                    >
+                      {reassigning ? (
+                        <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
+                      ) : null}
+                      <span>{reassigning ? "Reassigning..." : "Reassign Lead"}</span>
+                    </button>
+                  )}
+                </dd>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
                 <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Score</dt>
                 <dd className="mt-1">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -388,47 +487,6 @@ export default function LeadDetailPage() {
             </div>
 
             <div className="pt-4 border-t border-slate-200">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Reassign Lead</label>
-              <div className="space-y-3">
-                <select
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={assignee}
-                  onChange={(e) => setAssignee(e.target.value)}
-                >
-                  <option value="">Select salesperson…</option>
-                  {Object.values(salesByCode).map((s) => (
-                    <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
-                  ))}
-                </select>
-                <button
-                  className="w-full rounded-lg bg-slate-800 text-white px-4 py-2 text-sm font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
-                  disabled={!assignee || assigning}
-                  onClick={async () => {
-                    try {
-                      setAssigning(true);
-                      const toastId = toast.loading("Assigning…");
-                      const res = await fetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "assign", phones: [lead.phone], ownerId: assignee }) });
-                      if (res.ok) {
-                        toast.success("Lead reassigned", { id: toastId });
-                        const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
-                        setLead(d.lead || null); setEvents(d.events || []); setTasks(d.tasks || []);
-                      } else {
-                        toast.error("Failed to reassign", { id: toastId });
-                      }
-                    } finally {
-                      setAssigning(false);
-                    }
-                  }}
-                >
-                  {assigning && (
-                    <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
-                  )}
-                  <span>{assigning ? "Assigning…" : "Assign Lead"}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-200">
               <div className="flex items-center gap-2 mb-3">
                 <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -466,6 +524,7 @@ export default function LeadDetailPage() {
           </div>
         </div>
       </div>
+      
     </div>
   );
 }
