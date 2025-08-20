@@ -36,6 +36,12 @@ const getEventIcon = (type: string) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
         </svg>
       );
+    case "NOTE_ADDED":
+      return (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      );
     default:
       return (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,6 +74,13 @@ const getEventColor = (type: string) => {
         text: "text-purple-700",
         bgLight: "bg-purple-50"
       };
+    case "NOTE_ADDED":
+      return {
+        bg: "bg-amber-500",
+        ring: "ring-amber-100",
+        text: "text-amber-700",
+        bgLight: "bg-amber-50"
+      };
     default:
       return {
         bg: "bg-gray-500",
@@ -85,9 +98,41 @@ export default function LeadDetailPage() {
   const [events, setEvents] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [salesByCode, setSalesByCode] = useState<Record<string, { name: string; code: string }>>({});
   const [assignee, setAssignee] = useState<string>("");
+
   const [assigning, setAssigning] = useState(false);
+  const [newNote, setNewNote] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
+
+  // Function to fetch user names from API
+  const fetchUserNames = async () => {
+    try {
+      const response = await fetch("/api/tl/users");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.users) {
+          const nameMap = new Map<string, string>();
+          Object.entries(data.users).forEach(([code, name]) => {
+            nameMap.set(code, name as string);
+          });
+          setUserNames(nameMap);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch user names:", error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  // Function to resolve actor ID to user name
+  const resolveActorName = (actorId: string) => {
+    if (!actorId || actorId === "system") return "System";
+    return userNames.get(actorId) || actorId;
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -95,6 +140,9 @@ export default function LeadDetailPage() {
       .then((r) => r.json())
       .then((d) => { setLead(d.lead || null); setEvents(d.events || []); setTasks(d.tasks || []); })
       .finally(() => setLoading(false));
+    
+    // Fetch user names for actor resolution
+    fetchUserNames();
   }, [phone]);
 
   useEffect(() => {
@@ -132,8 +180,24 @@ export default function LeadDetailPage() {
         meta = ownerName ? `Assigned to ${ownerName}` : undefined;
       }
       if (type === "STAGE_CHANGE") {
-        label = "Stage Changed";
-        meta = e.data?.from && e.data?.to ? `${e.data.from} → ${e.data.to}` : undefined;
+        label = "Stage Updated";
+        const fromStage = e.data?.from || "Unknown";
+        const toStage = e.data?.to || "Unknown";
+        const actorId = e.data?.actorId || e.actorId || "system";
+        
+        // Create a more user-friendly message
+        if (actorId && actorId !== "system") {
+          const actorName = resolveActorName(actorId);
+          label = `${actorName} updated stage`;
+          meta = `${fromStage} → ${toStage}`;
+        } else {
+          label = "Stage changed";
+          meta = `${fromStage} → ${toStage}`;
+        }
+      }
+      if (type === "NOTE_ADDED") {
+        label = "Note Added";
+        meta = e.data?.note || "Note content";
       }
       items.push({ id: e.id, label, at: e.at, meta, type, data: e.data });
     }
@@ -238,6 +302,22 @@ export default function LeadDetailPage() {
                 <dd className="mt-1 text-sm font-semibold text-slate-900">{salesByCode[lead.ownerId || ""]?.name || lead.ownerId || "—"}</dd>
               </div>
               <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Stage</dt>
+                <dd className="mt-1">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    lead.stage === 'CONVERTED' || lead.stage === 'CUSTOMER' || lead.stage === 'SALES_CLOSED' ? 'text-green-800 bg-green-100 border border-green-200' :
+                    lead.stage === 'INTERESTED' || lead.stage === 'QUALIFIED' || lead.stage === 'PROSPECT' ? 'text-blue-800 bg-blue-100 border border-blue-200' :
+                    lead.stage === 'PAYMENT_INITIAL' || lead.stage === 'PAYMENT_DONE' ? 'text-yellow-800 bg-yellow-100 border border-yellow-200' :
+                    lead.stage === 'FOLLOW_UP' ? 'text-purple-800 bg-purple-100 border border-purple-200' :
+                    lead.stage === 'DNP' || lead.stage === 'DNC' || lead.stage === 'DISQUALIFIED' || lead.stage === 'NOT_INTERESTED' ? 'text-red-800 bg-red-100 border border-red-200' :
+                    lead.stage === 'NIFC' || lead.stage === 'NOT_CONTACTED' ? 'text-gray-800 bg-gray-100 border border-gray-200' :
+                    'text-slate-800 bg-slate-100 border border-slate-200'
+                  }`}>
+                    {lead.stage || "NEW"}
+                  </span>
+                </dd>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
                 <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Score</dt>
                 <dd className="mt-1">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -252,6 +332,58 @@ export default function LeadDetailPage() {
               <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
                 <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Created</dt>
                 <dd className="mt-1 text-sm font-medium text-slate-900">{lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : "—"}</dd>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-200">
+              <div className="flex items-center gap-2 mb-3">
+                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="text-sm font-medium text-slate-700">Add Note</h3>
+              </div>
+              <div className="space-y-3">
+                <textarea
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  rows={3}
+                  placeholder="Add a note about this lead..."
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                />
+                <button
+                  className="w-full rounded-lg bg-amber-600 text-white px-4 py-2 text-sm font-medium hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
+                  disabled={!newNote.trim() || addingNote}
+                  onClick={async () => {
+                    try {
+                      setAddingNote(true);
+                      const toastId = toast.loading("Adding note...");
+                      const res = await fetch("/api/tl/leads/notes", { 
+                        method: "POST", 
+                        headers: { "Content-Type": "application/json" }, 
+                        body: JSON.stringify({ 
+                          phone: lead.phone, 
+                          note: newNote.trim() 
+                        }) 
+                      });
+                      if (res.ok) {
+                        toast.success("Note added successfully", { id: toastId });
+                        setNewNote("");
+                        // Refresh events to show the new note
+                        const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
+                        setEvents(d.events || []);
+                      } else {
+                        toast.error("Failed to add note", { id: toastId });
+                      }
+                    } finally {
+                      setAddingNote(false);
+                    }
+                  }}
+                >
+                  {addingNote && (
+                    <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
+                  )}
+                  <span>{addingNote ? "Adding..." : "Add Note"}</span>
+                </button>
               </div>
             </div>
 

@@ -65,10 +65,60 @@ export async function POST(req: NextRequest) {
     let redirect: string | undefined;
     const now = new Date();
     let newStage: string | undefined;
-    if (status === "CONVERTED") newStage = "CONVERTED";
-    else if (status === "NEED_FOLLOW_UP") newStage = "FOLLOW_UP";
-    else if (status === "SEND_WHATSAPP") newStage = "SEND_WHATSAPP";
-    else if (status === "NOT_INTERESTED") newStage = "NOT_INTERESTED";
+    // Map call outcome statuses to lead stages
+    switch (status) {
+      case "CONVERTED":
+        newStage = "CONVERTED";
+        break;
+      case "NEED_FOLLOW_UP":
+        newStage = "FOLLOW_UP";
+        break;
+      case "SEND_WHATSAPP":
+        newStage = "SEND_WHATSAPP";
+        break;
+      case "NOT_INTERESTED":
+        newStage = "NOT_INTERESTED";
+        break;
+      case "DNP":
+        newStage = "DNP";
+        break;
+      case "DNC":
+        newStage = "DNC";
+        break;
+      case "ASKED_TO_CALL_BACK":
+        newStage = "CALLBACK";
+        break;
+      case "INTERESTED":
+        newStage = "INTERESTED";
+        break;
+      case "QUALIFIED":
+        newStage = "QUALIFIED";
+        break;
+      case "NIFC":
+        newStage = "NIFC";
+        break;
+      case "DISQUALIFIED":
+        newStage = "DISQUALIFIED";
+        break;
+      case "PROSPECT":
+        newStage = "PROSPECT";
+        break;
+      case "PAYMENT_INITIAL":
+        newStage = "PAYMENT_INITIAL";
+        break;
+      case "PAYMENT_DONE":
+        newStage = "PAYMENT_DONE";
+        break;
+      case "SALES_CLOSED":
+        newStage = "SALES_CLOSED";
+        break;
+      case "CUSTOMER":
+        newStage = "CUSTOMER";
+        break;
+      case "NOT_CONTACTED":
+        newStage = "NOT_CONTACTED";
+        break;
+    }
 
     if (newStage) {
       // capture previous stage for better timeline readability
@@ -76,7 +126,17 @@ export async function POST(req: NextRequest) {
         const prevLead = (await db.select().from(leads).where(eq(leads.phone, canonicalPhone)).limit(1))[0] as any;
         const prevStage = prevLead?.stage || null;
         await db.update(leads).set({ stage: newStage, updatedAt: now, lastActivityAt: now }).where(eq(leads.phone, canonicalPhone));
-        await db.insert(leadEvents).values({ leadPhone: canonicalPhone, type: "STAGE_CHANGE", data: { from: prevStage, to: newStage }, actorId: (log as any).salespersonId || null } as any);
+        await db.insert(leadEvents).values({ 
+          leadPhone: canonicalPhone, 
+          type: "STAGE_CHANGE", 
+          data: { 
+            from: prevStage, 
+            to: newStage,
+            actorId: (log as any).salespersonId || null,
+            message: `Stage changed from ${prevStage} to ${newStage}`
+          }, 
+          actorId: (log as any).salespersonId || null 
+        } as any);
       } catch {}
     } else {
       try {

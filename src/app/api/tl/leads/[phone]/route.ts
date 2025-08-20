@@ -5,7 +5,7 @@ import { eq, desc, inArray } from "drizzle-orm";
 
 export async function GET(_req: Request, { params }: any) {
   try {
-    const phone = decodeURIComponent(params.phone);
+    const phone = decodeURIComponent(await params.phone);
     let lead = (await db.select().from(leads).where(eq(leads.phone, phone)))[0];
     if (!lead) {
       const noSpace = phone.replace(/\s+/g, "");
@@ -49,6 +49,51 @@ export async function GET(_req: Request, { params }: any) {
     return new Response(JSON.stringify({ success: true, lead, events, tasks: openTasks }), { status: 200 });
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "failed" }), { status: 500 });
+  }
+}
+
+export async function PUT(_req: Request, { params }: any) {
+  try {
+    const phone = decodeURIComponent(await params.phone);
+    const body = await _req.json();
+    const { stage, score, ownerId, source } = body || {};
+    
+    // Get current lead to capture previous values
+    const currentLead = await db.select().from(leads).where(eq(leads.phone, phone)).limit(1);
+    if (!currentLead[0]) {
+      return new Response(JSON.stringify({ success: false, error: "Lead not found" }), { status: 404 });
+    }
+
+    const updateData: any = {};
+    if (stage !== undefined) updateData.stage = stage;
+    if (score !== undefined) updateData.score = score;
+    if (ownerId !== undefined) updateData.ownerId = ownerId;
+    if (source !== undefined) updateData.source = source;
+    updateData.updatedAt = new Date();
+    updateData.lastActivityAt = new Date();
+
+    // Update the lead
+    await db.update(leads).set(updateData).where(eq(leads.phone, phone));
+
+    // Log stage change event if stage was updated
+    if (stage !== undefined && stage !== currentLead[0].stage) {
+      await db.insert(leadEvents).values({
+        leadPhone: phone,
+        type: "STAGE_CHANGE",
+        data: { 
+          from: currentLead[0].stage, 
+          to: stage,
+          actorId: currentLead[0].ownerId || "system",
+          message: `Stage changed from ${currentLead[0].stage} to ${stage}`
+        },
+        actorId: currentLead[0].ownerId || "system",
+        at: new Date()
+      } as any);
+    }
+
+    return new Response(JSON.stringify({ success: true, phone: phone }), { status: 200 });
+  } catch (e: any) {
+    return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to update lead" }), { status: 500 });
   }
 }
 

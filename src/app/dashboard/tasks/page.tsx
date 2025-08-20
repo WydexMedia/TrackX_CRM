@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useMemo } from "react";
+import toast from "react-hot-toast";
 import { 
   Phone, 
   PhoneOff, 
@@ -71,6 +73,373 @@ function useCallTimer() {
   return { isCalling, callLogId, start, endNow, leadPhone, phone, startedAt };
 }
 
+// Lead Detail Modal Component
+function LeadDetailModal({ lead, onClose, onRefresh }: { lead: any; onClose: () => void; onRefresh: () => void }) {
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [newNote, setNewNote] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
+  const [selectedStage, setSelectedStage] = useState(lead?.stage || "NEW");
+  const [updatingStage, setUpdatingStage] = useState(false);
+
+  useEffect(() => {
+    const fetchLeadData = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setTasks(data.tasks || []);
+          setNotes(data.events?.filter((event: any) => event.type === "NOTE_ADDED") || []);
+          setSelectedStage(lead?.stage || "NEW");
+        }
+      } catch (error) {
+        console.error("Failed to fetch lead data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (lead) {
+      fetchLeadData();
+    }
+  }, [lead?.phone, lead?.stage]);
+
+  const getStageColor = (stage: string) => {
+    const colors: Record<string, string> = {
+      NEW: "bg-blue-100 text-blue-800 border-blue-200",
+      INTERESTED: "bg-green-100 text-green-800 border-green-200",
+      QUALIFIED: "bg-emerald-100 text-emerald-800 border-emerald-200",
+      PROSPECT: "bg-purple-100 text-purple-800 border-purple-200",
+      PAYMENT_INITIAL: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      PAYMENT_DONE: "bg-orange-100 text-orange-800 border-orange-200",
+      SALES_CLOSED: "bg-indigo-100 text-indigo-800 border-indigo-200",
+      CUSTOMER: "bg-green-100 text-green-800 border-green-200",
+      CONVERTED: "bg-green-100 text-green-800 border-green-200",
+      FOLLOW_UP: "bg-amber-100 text-amber-800 border-amber-200",
+      DNP: "bg-red-100 text-red-800 border-red-200",
+      DNC: "bg-red-100 text-red-800 border-red-200",
+      NIFC: "bg-gray-100 text-gray-800 border-gray-200",
+      DISQUALIFIED: "bg-red-100 text-red-800 border-red-200",
+      NOT_INTERESTED: "bg-red-100 text-red-800 border-red-200",
+      SEND_WHATSAPP: "bg-green-100 text-green-800 border-green-200",
+      NOT_CONTACTED: "bg-gray-100 text-gray-800 border-gray-200",
+      CALLBACK: "bg-blue-100 text-blue-800 border-blue-200"
+    };
+    return colors[stage] || "bg-gray-100 text-gray-800 border-gray-200";
+  };
+
+  const handleStageUpdate = async () => {
+    if (selectedStage === lead?.stage) {
+      toast.success("Stage is already set to this value.");
+      return;
+    }
+    
+    const previousStage = lead?.stage;
+    
+    try {
+      setUpdatingStage(true);
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: selectedStage })
+      });
+      
+      if (res.ok) {
+        // Update the lead object locally
+        lead.stage = selectedStage;
+        // Refresh the data
+        const dataRes = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`);
+        if (dataRes.ok) {
+          const data = await dataRes.json();
+          setTasks(data.tasks || []);
+          setNotes(data.events?.filter((event: any) => event.type === "NOTE_ADDED") || []);
+        }
+        // Refresh the parent dashboard
+        onRefresh();
+        toast.success(`Stage updated from ${previousStage} to ${selectedStage}!`);
+      } else {
+        toast.error("Failed to update stage.");
+      }
+    } catch (error) {
+      console.error("Failed to update stage:", error);
+      toast.error("Failed to update stage.");
+    } finally {
+      setUpdatingStage(false);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+    
+    try {
+      setAddingNote(true);
+      const res = await fetch("/api/tl/leads/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: lead.phone, note: newNote.trim() })
+      });
+      
+      if (res.ok) {
+        setNewNote("");
+        // Refresh notes
+        const dataRes = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`);
+        if (dataRes.ok) {
+          const data = await dataRes.json();
+          setNotes(data.events?.filter((event: any) => event.type === "NOTE_ADDED") || []);
+        }
+        // Refresh the parent dashboard
+        onRefresh();
+        toast.success("Note added successfully!");
+      } else {
+        toast.error("Failed to add note.");
+      }
+    } catch (error) {
+      console.error("Failed to add note:", error);
+      toast.error("Failed to add note.");
+    } finally {
+      setAddingNote(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-t-2xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white font-semibold text-xl">
+                {(lead?.name || "U").charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h3 className="text-2xl font-semibold text-white">{lead?.name || "Unknown Lead"}</h3>
+                <p className="text-blue-100 text-sm">{lead?.phone}</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+            >
+              <XCircle size={24} />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Lead Information */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Basic Info */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <UserPlus size={20} className="text-blue-600" />
+                    Lead Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Name</label>
+                      <p className="text-gray-900 font-medium">{lead?.name || "—"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Phone</label>
+                      <p className="text-gray-900 font-medium">{lead?.phone}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
+                      <p className="text-gray-900 font-medium">{lead?.email || "—"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Source</label>
+                      <p className="text-gray-900 font-medium">{lead?.source || "—"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Stage</label>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={selectedStage}
+                          onChange={(e) => setSelectedStage(e.target.value)}
+                          disabled={updatingStage}
+                          className={`px-3 py-1 rounded-lg text-sm font-medium border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${getStageColor(selectedStage)} ${updatingStage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <option value="NEW">🆕 NEW</option>
+                          <option value="INTERESTED">😊 INTERESTED</option>
+                          <option value="QUALIFIED">⭐ QUALIFIED</option>
+                          <option value="PROSPECT">🔍 PROSPECT</option>
+                          <option value="PAYMENT_INITIAL">💰 PAYMENT_INITIAL</option>
+                          <option value="PAYMENT_DONE">💳 PAYMENT_DONE</option>
+                          <option value="SALES_CLOSED">🎯 SALES_CLOSED</option>
+                          <option value="CUSTOMER">👤 CUSTOMER</option>
+                          <option value="CONVERTED">✅ CONVERTED</option>
+                          <option value="FOLLOW_UP">📅 FOLLOW_UP</option>
+                          <option value="DNP">🚫 DNP</option>
+                          <option value="DNC">📞 DNC</option>
+                          <option value="NIFC">📋 NIFC</option>
+                          <option value="DISQUALIFIED">❌ DISQUALIFIED</option>
+                          <option value="NOT_INTERESTED">❌ NOT_INTERESTED</option>
+                          <option value="SEND_WHATSAPP">💬 SEND_WHATSAPP</option>
+                          <option value="NOT_CONTACTED">📱 NOT_CONTACTED</option>
+                          <option value="CALLBACK">📞 CALLBACK</option>
+                        </select>
+                        <button
+                          onClick={handleStageUpdate}
+                          disabled={updatingStage || selectedStage === lead?.stage}
+                          className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {updatingStage ? "Updating..." : "Update"}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Score</label>
+                      <p className="text-gray-900 font-medium">{lead?.score || 0}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Created</label>
+                      <p className="text-gray-900 font-medium">{lead?.createdAt ? formatDate(lead.createdAt) : "—"}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Last Activity</label>
+                      <p className="text-gray-900 font-medium">{lead?.lastActivityAt ? formatDate(lead.lastActivityAt) : "—"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tasks */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <CheckCircle2 size={20} className="text-blue-600" />
+                    Tasks
+                  </h4>
+                  {tasks.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No tasks assigned</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {tasks.map((task) => (
+                        <div key={task.id} className="bg-white rounded-lg border border-gray-200 p-3">
+                          <p className="text-sm font-medium text-gray-900">{task.title}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {task.status}
+                            </span>
+                            {task.dueAt && (
+                              <span className="text-xs text-gray-500">
+                                Due: {formatDate(task.dueAt)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Notes Section */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <MessageCircle size={20} className="text-blue-600" />
+                    Notes
+                  </h4>
+                  
+                  {/* Add New Note */}
+                  <div className="mb-6">
+                    <div className="flex gap-2">
+                      <textarea
+                        value={newNote}
+                        onChange={(e) => setNewNote(e.target.value)}
+                        placeholder="Add a note about this lead..."
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                        rows={3}
+                      />
+                      <button
+                        onClick={handleAddNote}
+                        disabled={!newNote.trim() || addingNote}
+                        className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors self-end"
+                      >
+                        {addingNote ? "Adding..." : "Add Note"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Display Notes */}
+                  {notes.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No notes added yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {notes.slice().reverse().map((note, index) => (
+                        <div key={index} className="bg-white rounded-lg border border-gray-200 p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-900">{note.data?.note}</p>
+                              {note.at && (
+                                <p className="text-xs text-gray-500 mt-2">{formatDate(note.at)}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Sidebar */}
+              <div className="space-y-6">
+                {/* Quick Actions */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <MoreVertical size={20} className="text-blue-600" />
+                    Quick Actions
+                  </h4>
+                  <div className="space-y-3">
+                    <button className="w-full flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                      <Phone size={16} />
+                      Call Lead
+                    </button>
+                    <button className="w-full flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                      <MessageCircle size={16} />
+                      Send WhatsApp
+                    </button>
+                    <button className="w-full flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors">
+                      <Calendar size={16} />
+                      Schedule Follow-up
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TasksPage() {
   const [user, setUser] = useState<any>(null);
   const [dueCalls, setDueCalls] = useState<Array<{ task: TaskRow; lead: Lead }>>([]);
@@ -80,6 +449,9 @@ export default function TasksPage() {
   const [showOutcome, setShowOutcome] = useState(false);
   const [outcomeFor, setOutcomeFor] = useState<{ callLogId: number; durationMs: number } | null>(null);
   const [hasShownOutcome, setHasShownOutcome] = useState(false);
+  const [showLeadDetail, setShowLeadDetail] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [leadDetailLoading, setLeadDetailLoading] = useState(false);
 
   const { isCalling, callLogId, start, endNow, leadPhone, phone, startedAt } = useCallTimer();
 
@@ -156,6 +528,25 @@ export default function TasksPage() {
     }
   }, [ownerId, start, endNow, callLogId]);
 
+  // Fetch lead details when lead name is clicked
+  const openLeadDetail = useCallback(async (leadPhone: string) => {
+    try {
+      setLeadDetailLoading(true);
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(leadPhone)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedLead(data.lead);
+        setShowLeadDetail(true);
+      } else {
+        console.error("Failed to fetch lead details");
+      }
+    } catch (error) {
+      console.error("Error fetching lead details:", error);
+    } finally {
+      setLeadDetailLoading(false);
+    }
+  }, []);
+
   if (!user) return null;
 
   const CallButton = ({ lead, task }: { lead?: Lead; task?: TaskRow }) => {
@@ -188,7 +579,11 @@ export default function TasksPage() {
                 {(lead?.name || "U").charAt(0).toUpperCase()}
               </div>
               <div>
-                <div className="font-semibold text-gray-900 flex items-center gap-2">
+                <div 
+                  className="font-semibold text-gray-900 flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => openLeadDetail(phoneNumber)}
+                  title="Click to view lead details"
+                >
                   {lead?.name || "Unknown"}
                   {showPriority && <Star size={14} className="text-amber-500 fill-current" />}
                 </div>
@@ -387,10 +782,22 @@ export default function TasksPage() {
         {showOutcome && outcomeFor && (
           <OutcomeDialog
             durationMs={outcomeFor.durationMs}
-            onClose={() => setShowOutcome(false)}
-            onSubmit={submitOutcome}
             leadPhone={leadPhone || ""}
             phone={phone || ""}
+            onClose={() => setShowOutcome(false)}
+            onSubmit={submitOutcome}
+          />
+        )}
+
+        {/* Lead Detail Modal */}
+        {showLeadDetail && selectedLead && (
+          <LeadDetailModal
+            lead={selectedLead}
+            onClose={() => {
+              setShowLeadDetail(false);
+              setSelectedLead(null);
+            }}
+            onRefresh={load}
           />
         )}
       </div>
@@ -454,11 +861,11 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
 
         {/* Content */}
         <div className="p-6">
-          <div className="bg-gray-50 rounded-lg p-4 mb-6 flex items-center gap-3">
+          <div className="bg-gray-50  text-black rounded-lg p-4 mb-6 flex items-center gap-3">
             <Phone size={16} className="text-gray-600" />
             <div className="text-sm">
-              <span className="font-medium text-gray-900">Lead:</span> {leadPhone} • 
-              <span className="font-medium text-gray-900 ml-2">Phone:</span> {phone}
+              <span className="font-medium text-black">Lead:</span> {leadPhone} • 
+              <span className="font-medium text-black ml-2">Phone:</span> {phone}
             </div>
           </div>
 
@@ -534,6 +941,19 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
                   className="w-full text-blue-600 border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="CONVERTED">✅ Converted</option>
+                  <option value="DNP">🚫 DNP (Do Not Pickup)</option>
+                  <option value="DNC">📞 DNC (Do Not Call)</option>
+                  <option value="ASKED_TO_CALL_BACK">📞 Asked to Call Back</option>
+                  <option value="INTERESTED">😊 Interested</option>
+                  <option value="QUALIFIED">⭐ Qualified</option>
+                  <option value="NIFC">📋 NIFC (Not Interested in Further Contact)</option>
+                  <option value="DISQUALIFIED">❌ Disqualified</option>
+                  <option value="PROSPECT">🔍 Prospect</option>
+                  <option value="PAYMENT_INITIAL">💰 Payment Initial</option>
+                  <option value="PAYMENT_DONE">💳 Payment Done</option>
+                  <option value="SALES_CLOSED">🎯 Sales Closed</option>
+                  <option value="CUSTOMER">👤 Customer</option>
+                  <option value="NOT_CONTACTED">📱 Not Contacted</option>
                   <option value="SEND_WHATSAPP">💬 Send in WhatsApp</option>
                   <option value="NOT_INTERESTED">❌ Not interested</option>
                   <option value="NEED_FOLLOW_UP">📅 Need follow-up</option>

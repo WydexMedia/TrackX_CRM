@@ -42,8 +42,16 @@ function summarizeEvent(e: any, leadName: string | null | undefined, nameByCode:
       return { title: `Call outcome: ${status}`, detail: name, color: "purple" };
     }
     case "STAGE_CHANGE": {
-      const stage = e.data?.stage ? String(e.data.stage) : "updated";
-      return { title: `Lead stage → ${stage}`, detail: name, color: "cyan" };
+      const fromStage = e.data?.from ? String(e.data.from) : "Unknown";
+      const toStage = e.data?.to ? String(e.data.to) : "Unknown";
+      const actorId = e.data?.actorId || e.actorId;
+      
+      if (actorId) {
+        const actorName = nameByCode?.get(String(actorId)) || actorId;
+        return { title: `${actorName} updated stage`, detail: `${fromStage} → ${toStage}`, color: "cyan" };
+      } else {
+        return { title: `Stage changed`, detail: `${fromStage} → ${toStage}`, color: "cyan" };
+      }
     }
     default:
       return { title: t.replaceAll("_", " "), detail: name, color: "indigo" };
