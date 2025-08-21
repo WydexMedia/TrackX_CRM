@@ -224,35 +224,37 @@ export default function JuniorLeaderPage() {
         }
       });
       
-      // Sort dates and create combined data
-      const sortedDates = Array.from(allDates).sort();
-      const combinedData = sortedDates.map(date => {
-        const dateStr = date as string;
+      // Create comprehensive daily data - EXACTLY like Team Leader
+      const comprehensiveData = Array.from(allDates).map((dateStr) => {
+        const date = new Date(dateStr as string);
+        const dailyAmount = dailySalesMap.get(dateStr as string) || 0;
+        const salesCount = dailySalesCountMap.get(dateStr) || 0;
         
-        // Find daily report for this date
+        // Find corresponding daily report data
         const dailyReport = dailyReportsData.reports.find((report: any) => {
           const reportDate = new Date(report.date).toISOString().split('T')[0];
-          return reportDate === dateStr;
+          return reportDate === dateStr && report.salespersons.some((sp: any) => 
+            sp.name.toLowerCase() === salesPerson.name.toLowerCase()
+          );
         });
         
-        const salespersonReport = dailyReport?.salespersons.find((sp: any) => 
+        const salesPersonData = dailyReport?.salespersons.find((sp: any) => 
           sp.name.toLowerCase() === salesPerson.name.toLowerCase()
         );
         
         return {
-          date: dateStr,
-          // Daily report data
-          callsMade: salespersonReport?.callsMade || 0,
-          callsAnswered: salespersonReport?.callsAnswered || 0,
-          appointments: salespersonReport?.appointments || 0,
-          followUps: salespersonReport?.followUps || 0,
-          // Sales data
-          salesAmount: dailySalesMap.get(dateStr) || 0,
-          salesCount: dailySalesCountMap.get(dateStr) || 0,
+          _id: dailyReport?._id || `sales_${dateStr}`,
+          date: date.toISOString(),
+          dailyAmount: dailyAmount,
+          salesCount: salesCount,
+          leadsAssigned: salesPersonData?.prospects || 0,
+          salesConverted: salesCount,
+          // Use sales data for more accurate conversion calculation
+          conversionRate: salesPersonData?.prospects > 0 ? ((salesCount / salesPersonData.prospects) * 100).toFixed(1) : 0
         };
-      });
+      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by date descending
       
-      setKpiData(combinedData);
+      setKpiData(comprehensiveData);
     } catch (error) {
       console.error('Error fetching KPI data:', error);
       toast.error('Failed to load KPI data');
@@ -260,6 +262,34 @@ export default function JuniorLeaderPage() {
       setLoadingKPI(false);
     }
   };
+
+  const filterDataByDateRange = () => {
+    if (!dateRange.startDate || !dateRange.endDate) {
+      return kpiData;
+    }
+    
+    const startDate = new Date(dateRange.startDate);
+    const endDate = new Date(dateRange.endDate);
+    
+    return kpiData.filter((report) => {
+      const reportDate = new Date(report.date);
+      return reportDate >= startDate && reportDate <= endDate;
+    });
+  };
+
+  const filteredKpiData = filterDataByDateRange();
+
+  // Calculate total sales for the filtered date range
+  const calculateFilteredSales = () => {
+    if (filteredKpiData.length === 0) {
+      return selectedSalesPerson?.todaySales || 0;
+    }
+    
+    // Count days with actual sales activity (dailyAmount > 0)
+    return filteredKpiData.filter(report => (report.dailyAmount || 0) > 0).length;
+  };
+
+  const filteredSales = calculateFilteredSales();
 
   if (loading) {
     return (
@@ -486,110 +516,142 @@ export default function JuniorLeaderPage() {
               </button>
             </div>
             
-            {/* Date Range Filter */}
-            <div className="mb-4 flex space-x-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Start Date</label>
-                <input
-                  type="date"
-                  value={dateRange.startDate}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">End Date</label>
-                <input
-                  type="date"
-                  value={dateRange.endDate}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                />
-              </div>
-            </div>
-
             {loadingKPI ? (
-              <div className="text-center py-4">
-                <div className="inline-block h-8 w-8 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
-                <p className="mt-2 text-gray-600">Loading KPI data...</p>
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center space-x-2">
+                  <svg className="animate-spin h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="text-lg text-gray-600">Loading KPI data...</span>
+                </div>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Calls Made
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Calls Answered
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Appointments
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Follow Ups
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Sales Count
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Sales Amount
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {kpiData
-                      .filter(item => {
-                        if (!dateRange.startDate && !dateRange.endDate) return true;
-                        const itemDate = new Date(item.date);
-                        const start = dateRange.startDate ? new Date(dateRange.startDate) : null;
-                        const end = dateRange.endDate ? new Date(dateRange.endDate) : null;
-                        
-                        if (start && end) {
-                          return itemDate >= start && itemDate <= end;
-                        } else if (start) {
-                          return itemDate >= start;
-                        } else if (end) {
-                          return itemDate <= end;
-                        }
-                        return true;
-                      })
-                      .map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(item.date).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {item.callsMade}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {item.callsAnswered}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {item.appointments}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {item.followUps}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {item.salesCount}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                            ₹{item.salesAmount}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-                {kpiData.length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500">No KPI data available for this salesperson</p>
+              <div className="space-y-6">
+                {/* Date Range Filter */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex flex-col sm:flex-row gap-4 items-center">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Date Range Filter</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          value={dateRange.startDate}
+                          onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
+                          className="flex-1 text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="Start Date"
+                        />
+                        <input
+                          type="date"
+                          value={dateRange.endDate}
+                          onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
+                          className="flex-1 text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="End Date"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium">Total Sales Days:</span> {filteredSales}
+                    </div>
                   </div>
-                )}
+                </div>
+
+                {/* Detailed KPI Table */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900">Daily Performance Breakdown</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Leads Assigned
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Sales Converted
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Amount Collected
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Conversion %
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ad Spend
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ad Spend %
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredKpiData.length > 0 ? (
+                          filteredKpiData.map((report, index) => {
+                            const leadsAssigned = parseInt(report.leadsAssigned) || 0;
+                            const salesConverted = parseInt(report.salesConverted) || 0;
+                            const amountCollected = parseFloat(report.dailyAmount) || 0;
+                            const conversionRate = parseFloat(report.conversionRate) || 0;
+                            const adSpend = leadsAssigned * 50;
+                            const adSpendPercentage = amountCollected > 0 ? ((adSpend / amountCollected) * 100).toFixed(1) : 0;
+
+                            return (
+                              <tr key={report._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {new Date(report.date).toLocaleDateString('en-IN', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {leadsAssigned}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">
+                                  {salesConverted}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-semibold">
+                                  ₹{amountCollected.toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-600 font-semibold">
+                                  {conversionRate}%
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600 font-semibold">
+                                  ₹{adSpend.toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">
+                                  {adSpendPercentage}%
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                              <div className="flex flex-col items-center">
+                                <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                                <p className="text-lg font-medium">
+                                  {dateRange.startDate && dateRange.endDate ? 'No data found for selected date range' : 'No KPI data available'}
+                                </p>
+                                <p className="text-sm">
+                                  {dateRange.startDate && dateRange.endDate 
+                                    ? 'Try adjusting your date range or clear the filter.'
+                                    : 'No performance data found for this sales person.'
+                                  }
+                                </p>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
           </div>
