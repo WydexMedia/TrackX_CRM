@@ -19,15 +19,16 @@ if (!clientPromise) {
 // Get all team leaders for a tenant
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const client = await clientPromise!;
     const mongoDb = client.db();
     const users = mongoDb.collection("users");
 
     // Get tenant details to get the subdomain
-    const tenantId = parseInt(params.id);
+    const tenantId = parseInt(id);
     const tenantResult = await db
       .select()
       .from(tenants)
@@ -67,7 +68,7 @@ export async function GET(
 // Create a new team leader
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await req.json();

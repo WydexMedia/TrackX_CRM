@@ -16,9 +16,10 @@ if (!clientPromise) {
 // Update a team leader
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string; leaderId: string } }
+  { params }: { params: Promise<{ id: string; leaderId: string }> }
 ) {
   try {
+    const { id, leaderId } = await params;
     const body = await req.json();
     const { code, name, email, phone, password, role, tenantSubdomain } = body;
 
@@ -37,7 +38,7 @@ export async function PUT(
     const existingUser = await users.findOne({
       code,
       tenantSubdomain,
-      _id: { $ne: new ObjectId(params.leaderId) },
+      _id: { $ne: new ObjectId(leaderId) },
     });
 
     if (existingUser) {
@@ -65,7 +66,7 @@ export async function PUT(
 
     // Update the team leader
     const result = await users.updateOne(
-      { _id: new ObjectId(params.leaderId) },
+      { _id: new ObjectId(leaderId) },
       { $set: updateData }
     );
 
@@ -94,16 +95,17 @@ export async function PUT(
 // Delete a team leader
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string; leaderId: string } }
+  { params }: { params: Promise<{ id: string; leaderId: string }> }
 ) {
   try {
+    const { id, leaderId } = await params;
     const client = await clientPromise!;
-    const db = client.db();
-    const users = db.collection("users");
+    const mongoDb = client.db();
+    const users = mongoDb.collection("users");
 
     // Delete the team leader
     const result = await users.deleteOne({
-      _id: new ObjectId(params.leaderId),
+      _id: new ObjectId(leaderId),
     });
 
     if (result.deletedCount === 0) {

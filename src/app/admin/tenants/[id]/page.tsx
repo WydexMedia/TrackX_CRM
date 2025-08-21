@@ -15,7 +15,9 @@ import {
   CheckCircle,
   XCircle,
   Edit,
-  Trash2
+  Trash2,
+  Eye,
+  EyeOff
 } from "lucide-react";
 
 interface Tenant {
@@ -34,6 +36,7 @@ interface TeamLeader {
   name: string;
   email: string;
   phone?: string;
+  password?: string;
   role: string;
   tenantSubdomain: string;
   createdAt: string;
@@ -49,6 +52,8 @@ export default function TenantDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingLeader, setEditingLeader] = useState<TeamLeader | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     code: "",
@@ -128,6 +133,8 @@ export default function TenantDetailPage() {
           confirmPassword: "",
         });
         setShowCreateForm(false);
+        setShowPassword(false);
+        setShowConfirmPassword(false);
         fetchTeamLeaders();
         setError(null);
       } else {
@@ -146,9 +153,11 @@ export default function TenantDetailPage() {
       name: leader.name,
       email: leader.email,
       phone: leader.phone || "",
-      password: "",
-      confirmPassword: "",
+      password: leader.password || "",
+      confirmPassword: leader.password || "",
     });
+    setShowPassword(true);
+    setShowConfirmPassword(true);
     setShowCreateForm(true);
   };
 
@@ -322,6 +331,8 @@ export default function TenantDetailPage() {
                 onClick={() => {
                   setShowCreateForm(true);
                   setEditingLeader(null);
+                  setShowPassword(false);
+                  setShowConfirmPassword(false);
                   setFormData({
                     code: "",
                     name: "",
@@ -419,30 +430,48 @@ export default function TenantDetailPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Password {editingLeader ? "(leave blank to keep current)" : "*"}
                       </label>
-                      <input
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        required={!editingLeader}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="••••••••"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          name="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          required={!editingLeader}
+                          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="••••••••"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Confirm Password {editingLeader ? "(leave blank to keep current)" : "*"}
                       </label>
-                      <input
-                        type="password"
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleInputChange}
-                        required={!editingLeader}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="••••••••"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? "text" : "password"}
+                          name="confirmPassword"
+                          value={formData.confirmPassword}
+                          onChange={handleInputChange}
+                          required={!editingLeader}
+                          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="••••••••"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
