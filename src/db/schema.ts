@@ -104,17 +104,12 @@ export const tenants = pgTable(
   "tenants",
   {
     id: serial("id").primaryKey(),
-    subdomain: varchar("subdomain", { length: 63 }).notNull(),
-    name: varchar("name", { length: 160 }),
-    active: boolean("active").notNull().default(true),
-    // Optional: free-form metadata for future onboarding fields
+    subdomain: varchar("subdomain", { length: 255 }).notNull().unique(),
+    name: varchar("name", { length: 255 }).notNull(),
     metadata: jsonb("metadata"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().$onUpdateFn(() => dsql`now()`),
-  },
-  (t) => ({
-    tenantsSubdomainIdx: uniqueIndex("tenants_subdomain_idx").on(t.subdomain),
-  })
+  }
 );
 
 

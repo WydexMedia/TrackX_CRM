@@ -613,6 +613,18 @@ export default function TeamLeaderPage() {
                     </div>
                   </button>
                 </Link>
+
+                <Link href="/team-leader/team-management">
+                  <button className="group relative bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-white px-8 py-4 rounded-2xl hover:from-emerald-400 hover:via-teal-400 hover:to-cyan-500 font-bold flex items-center justify-center gap-3 text-lg transition-all duration-300 shadow-2xl hover:shadow-teal-500/25 transform hover:-translate-y-1 hover:scale-105 min-w-[220px]">
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-cyan-700 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
+                    <div className="relative flex items-center gap-3">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      <span>Team Management</span>
+                    </div>
+                  </button>
+                </Link>
               </div>
             </nav>
           </div>

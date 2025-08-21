@@ -72,6 +72,8 @@ export default function LoginAndDashboard() {
       // Redirect based on role
       if (user.role === 'teamleader') {
         router.push('/team-leader');
+      } else if (user.role === 'jl') {
+        router.push('/junior-leader');
       } else {
         router.push('/dashboard');
       }
