@@ -62,6 +62,14 @@ export default function JuniorLeaderPage() {
   const [calls, setCalls] = useState<Call[]>([]);
   const [callPerformance, setCallPerformance] = useState<CallPerformance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showKPIModal, setShowKPIModal] = useState(false);
+  const [selectedSalesPerson, setSelectedSalesPerson] = useState<any>(null);
+  const [kpiData, setKpiData] = useState<any[]>([]);
+  const [loadingKPI, setLoadingKPI] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
   const router = useRouter();
 
   useEffect(() => {
@@ -156,6 +164,100 @@ export default function JuniorLeaderPage() {
       }
     } catch (error) {
       console.error("Error fetching calls:", error);
+    }
+  };
+
+  const handleSalesPersonClick = async (salesPerson: any) => {
+    setSelectedSalesPerson(salesPerson);
+    setShowKPIModal(true);
+    setLoadingKPI(true);
+    
+    try {
+      // Fetch both daily reports and sales data
+      const [dailyReportsResponse, salesResponse] = await Promise.all([
+        fetch('/api/daily-reports'),
+        fetch('/api/sales')
+      ]);
+      
+      const dailyReportsData = await dailyReportsResponse.json();
+      const salesData = await salesResponse.json();
+      
+      if (dailyReportsData.error) {
+        throw new Error(dailyReportsData.error);
+      }
+      
+      // Filter sales data for the selected sales person
+      const salesPersonSales = salesData.filter((sale: any) => 
+        sale.ogaName?.toLowerCase() === salesPerson.name.toLowerCase()
+      );
+      
+      // Create a map of daily sales amounts
+      const dailySalesMap = new Map();
+      const dailySalesCountMap = new Map();
+      
+      salesPersonSales.forEach((sale: any) => {
+        if (sale.createdAt) {
+          const saleDate = new Date(sale.createdAt).toISOString().split('T')[0];
+          const existingAmount = dailySalesMap.get(saleDate) || 0;
+          const existingCount = dailySalesCountMap.get(saleDate) || 0;
+          dailySalesMap.set(saleDate, existingAmount + (sale.amount || 0));
+          dailySalesCountMap.set(saleDate, existingCount + 1);
+        }
+      });
+      
+      // Get all unique dates from both daily reports and sales data
+      const allDates = new Set();
+      
+      // Add dates from daily reports
+      dailyReportsData.reports.forEach((report: any) => {
+        if (report.salespersons.some((sp: any) => 
+          sp.name.toLowerCase() === salesPerson.name.toLowerCase()
+        )) {
+          allDates.add(new Date(report.date).toISOString().split('T')[0]);
+        }
+      });
+      
+      // Add dates from sales data
+      salesPersonSales.forEach((sale: any) => {
+        if (sale.createdAt) {
+          allDates.add(new Date(sale.createdAt).toISOString().split('T')[0]);
+        }
+      });
+      
+      // Sort dates and create combined data
+      const sortedDates = Array.from(allDates).sort();
+      const combinedData = sortedDates.map(date => {
+        const dateStr = date as string;
+        
+        // Find daily report for this date
+        const dailyReport = dailyReportsData.reports.find((report: any) => {
+          const reportDate = new Date(report.date).toISOString().split('T')[0];
+          return reportDate === dateStr;
+        });
+        
+        const salespersonReport = dailyReport?.salespersons.find((sp: any) => 
+          sp.name.toLowerCase() === salesPerson.name.toLowerCase()
+        );
+        
+        return {
+          date: dateStr,
+          // Daily report data
+          callsMade: salespersonReport?.callsMade || 0,
+          callsAnswered: salespersonReport?.callsAnswered || 0,
+          appointments: salespersonReport?.appointments || 0,
+          followUps: salespersonReport?.followUps || 0,
+          // Sales data
+          salesAmount: dailySalesMap.get(dateStr) || 0,
+          salesCount: dailySalesCountMap.get(dateStr) || 0,
+        };
+      });
+      
+      setKpiData(combinedData);
+    } catch (error) {
+      console.error('Error fetching KPI data:', error);
+      toast.error('Failed to load KPI data');
+    } finally {
+      setLoadingKPI(false);
     }
   };
 
@@ -298,7 +400,12 @@ export default function JuniorLeaderPage() {
                               </span>
                             </div>
                             <div>
-                              <div className="text-sm font-medium text-gray-900">{salesperson.name}</div>
+                              <div 
+                                className="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer"
+                                onClick={() => handleSalesPersonClick(salesperson)}
+                              >
+                                {salesperson.name}
+                              </div>
                               <div className="text-sm text-gray-500">{salesperson.email}</div>
                             </div>
                           </div>
@@ -360,6 +467,134 @@ export default function JuniorLeaderPage() {
           </div>
         </div>
       </div>
+
+      {/* KPI Modal */}
+      {showKPIModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                KPI Details - {selectedSalesPerson?.name}
+              </h3>
+              <button
+                onClick={() => setShowKPIModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Date Range Filter */}
+            <div className="mb-4 flex space-x-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Start Date</label>
+                <input
+                  type="date"
+                  value={dateRange.startDate}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">End Date</label>
+                <input
+                  type="date"
+                  value={dateRange.endDate}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                />
+              </div>
+            </div>
+
+            {loadingKPI ? (
+              <div className="text-center py-4">
+                <div className="inline-block h-8 w-8 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+                <p className="mt-2 text-gray-600">Loading KPI data...</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Calls Made
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Calls Answered
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Appointments
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Follow Ups
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Sales Count
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Sales Amount
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {kpiData
+                      .filter(item => {
+                        if (!dateRange.startDate && !dateRange.endDate) return true;
+                        const itemDate = new Date(item.date);
+                        const start = dateRange.startDate ? new Date(dateRange.startDate) : null;
+                        const end = dateRange.endDate ? new Date(dateRange.endDate) : null;
+                        
+                        if (start && end) {
+                          return itemDate >= start && itemDate <= end;
+                        } else if (start) {
+                          return itemDate >= start;
+                        } else if (end) {
+                          return itemDate <= end;
+                        }
+                        return true;
+                      })
+                      .map((item, index) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(item.date).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.callsMade}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.callsAnswered}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.appointments}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.followUps}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.salesCount}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                            ₹{item.salesAmount}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+                {kpiData.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No KPI data available for this salesperson</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
