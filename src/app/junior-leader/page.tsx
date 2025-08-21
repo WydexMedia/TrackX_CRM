@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 
 interface User {
+  _id: string;
   code: string;
   name: string;
   email: string;
   role: string;
+  target: number;
   assignedTo?: string;
 }
 
@@ -26,8 +28,39 @@ interface TeamData {
   salesPersons: SalesPerson[];
 }
 
+interface Analytics {
+  _id: string;
+  name: string;
+  code: string;
+  email: string;
+  target: number;
+  achievedTarget: number;
+  pendingTarget: number;
+  todayCollection: number;
+  lastMonthCollection: number;
+  daysPending: number;
+  totalSales: number;
+  todaySales: number;
+}
+
+interface Call {
+  _id: string;
+  ogaName: string;
+  callCompleted: string;
+}
+
+interface CallPerformance {
+  name: string;
+  totalCalls: number;
+  completedCalls: number;
+  conversionPercentage: number;
+}
+
 export default function JuniorLeaderPage() {
   const [teamData, setTeamData] = useState<TeamData | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics[]>([]);
+  const [calls, setCalls] = useState<Call[]>([]);
+  const [callPerformance, setCallPerformance] = useState<CallPerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -45,6 +78,8 @@ export default function JuniorLeaderPage() {
     }
 
     fetchTeamData(userData.email);
+    fetchAnalytics();
+    fetchCalls();
   }, [router]);
 
   const fetchTeamData = async (userEmail: string) => {
@@ -62,6 +97,65 @@ export default function JuniorLeaderPage() {
       toast.error("Failed to fetch team data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const response = await fetch("/api/analytics");
+      if (response.ok) {
+        const data = await response.json();
+        setAnalytics(data);
+      }
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+    }
+  };
+
+  const fetchCalls = async () => {
+    try {
+      const response = await fetch("/api/calls");
+      if (response.ok) {
+        const data = await response.json();
+        setCalls(data);
+        
+        // Calculate call performance for team members
+        if (teamData) {
+          const performanceMap = new Map<string, CallPerformance>();
+          
+          data.forEach((call: Call) => {
+            const salespersonName = call.ogaName;
+            if (salespersonName) {
+              if (!performanceMap.has(salespersonName)) {
+                performanceMap.set(salespersonName, {
+                  name: salespersonName,
+                  totalCalls: 0,
+                  completedCalls: 0,
+                  conversionPercentage: 0
+                });
+              }
+              
+              const performance = performanceMap.get(salespersonName)!;
+              performance.totalCalls++;
+              
+              if (call.callCompleted === "yes") {
+                performance.completedCalls++;
+              }
+            }
+          });
+          
+          // Calculate conversion percentages
+          performanceMap.forEach(performance => {
+            performance.conversionPercentage = performance.totalCalls > 0 
+              ? Math.round((performance.completedCalls / performance.totalCalls) * 100)
+              : 0;
+          });
+          
+          setCallPerformance(Array.from(performanceMap.values()));
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching calls:", error);
     }
   };
 
@@ -88,6 +182,22 @@ export default function JuniorLeaderPage() {
 
   const currentJL = teamData.juniorLeaders[0]; // JL should only see themselves
   const assignedSales = teamData.salesPersons;
+  
+  // Filter analytics to only show team members
+  const teamAnalytics = analytics.filter(analyticsItem => 
+    assignedSales.some(sales => sales.name.toLowerCase() === analyticsItem.name.toLowerCase())
+  );
+  
+  // Filter call performance to only show team members
+  const teamCallPerformance = callPerformance.filter(performance => 
+    assignedSales.some(sales => sales.name.toLowerCase() === performance.name.toLowerCase())
+  );
+
+  // Calculate team totals
+  const teamTotalTarget = teamAnalytics.reduce((sum, item) => sum + (item.target || 0), 0);
+  const teamTotalAchieved = teamAnalytics.reduce((sum, item) => sum + (item.achievedTarget || 0), 0);
+  const teamTotalCollection = teamAnalytics.reduce((sum, item) => sum + (item.todayCollection || 0), 0);
+  const teamTotalSales = teamAnalytics.reduce((sum, item) => sum + (item.totalSales || 0), 0);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -95,7 +205,7 @@ export default function JuniorLeaderPage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Junior Leader Dashboard</h1>
-          <p className="mt-2 text-gray-600">Manage your assigned team members</p>
+          <p className="mt-2 text-gray-600">Manage your assigned team members and view performance</p>
         </div>
 
         {/* JL Info Card */}
@@ -113,43 +223,120 @@ export default function JuniorLeaderPage() {
           </div>
         </div>
 
-        {/* Team Members */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Team Members</h3>
+        {/* Team Performance Overview */}
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Team Performance Overview</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{teamTotalTarget}</div>
+              <p className="text-sm text-gray-600">Total Target</p>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">{teamTotalAchieved}</div>
+              <p className="text-sm text-gray-600">Achieved</p>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">{teamTotalCollection}</div>
+              <p className="text-sm text-gray-600">Today's Collection</p>
+            </div>
+            <div className="text-center p-4 bg-orange-50 rounded-lg">
+              <div className="text-2xl font-bold text-orange-600">{teamTotalSales}</div>
+              <p className="text-sm text-gray-600">Total Sales</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Team Members with Analytics */}
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Team Members Performance</h3>
           {assignedSales.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500">No team members assigned yet</p>
               <p className="text-sm text-gray-400">Team Leader will assign sales persons to your team</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {assignedSales.map((salesperson) => (
-                <div key={salesperson.code} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-green-600 font-medium text-lg">
-                        {salesperson.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">{salesperson.name}</div>
-                      <div className="text-sm text-gray-500">{salesperson.email}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Sales Person
-                    </span>
-                    <span className="text-xs text-gray-500">Code: {salesperson.code}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Target
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Achieved
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Today's Collection
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Total Sales
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Call Performance
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {assignedSales.map((salesperson) => {
+                    const analytics = teamAnalytics.find(a => 
+                      a.name.toLowerCase() === salesperson.name.toLowerCase()
+                    );
+                    const callPerf = teamCallPerformance.find(c => 
+                      c.name.toLowerCase() === salesperson.name.toLowerCase()
+                    );
+                    
+                    return (
+                      <tr key={salesperson.code}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                              <span className="text-green-600 font-medium text-lg">
+                                {salesperson.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{salesperson.name}</div>
+                              <div className="text-sm text-gray-500">{salesperson.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{analytics?.target || 0}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{analytics?.achievedTarget || 0}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{analytics?.todayCollection || 0}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{analytics?.totalSales || 0}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {callPerf ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {callPerf.completedCalls}/{callPerf.totalCalls} ({callPerf.conversionPercentage}%)
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">No calls</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow p-6 mt-8">
+        <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button

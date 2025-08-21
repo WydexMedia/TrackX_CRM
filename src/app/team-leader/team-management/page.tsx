@@ -396,7 +396,7 @@ export default function TeamManagementPage() {
                               <select
                                 value={jlSelections[salesperson.code] || ""}
                                 onChange={(e) => setJlSelections(prev => ({ ...prev, [salesperson.code]: e.target.value }))}
-                                className="px-2 py-1 border border-gray-300 rounded-md text-xs"
+                                className="px-2 text-black py-1 border border-gray-300 rounded-md text-xs"
                               >
                                 <option value="">Select new JL</option>
                                 {teamData.juniorLeaders
