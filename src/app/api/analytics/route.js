@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
+import { getTenantContextFromRequest } from '@/lib/mongoTenant';
 
 const uri = process.env.MONGODB_URI;
 let client;
@@ -39,7 +40,8 @@ function getLastMonthDate() {
 }
 
 // Get analytics for team leader
-export async function GET() {
+export async function GET(request) {
+  const { tenantSubdomain } = await getTenantContextFromRequest(request);
   const client = await clientPromise;
   const db = client.db();
   const users = db.collection('users');
@@ -47,19 +49,22 @@ export async function GET() {
   const dailyReports = db.collection('daily_reports');
 
   // Get all users (excluding team leaders)
-  const allUsers = await users.find({ role: { $ne: 'teamleader' } }).toArray();
-  const allSales = await sales.find({}).toArray();
+  const userFilter = Object.assign({ role: { $ne: 'teamleader' } }, tenantSubdomain ? { tenantSubdomain } : {});
+  const allUsers = await users.find(userFilter).toArray();
+  const allSales = await sales.find(tenantSubdomain ? { tenantSubdomain } : {}).toArray();
 
   // Get all daily reports for the current month
   const now = new Date();
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  const allReports = await dailyReports.find({
+  const reportFilter = {
     date: {
       $gte: firstDayOfMonth.toISOString(),
       $lte: lastDayOfMonth.toISOString(),
     },
-  }).toArray();
+    ...(tenantSubdomain ? { tenantSubdomain } : {}),
+  };
+  const allReports = await dailyReports.find(reportFilter).toArray();
 
   const today = new Date();
   const lastMonth = getLastMonthDate();

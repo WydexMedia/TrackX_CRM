@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { MongoClient } from "mongodb";
+import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,7 +13,9 @@ export async function GET(req: NextRequest) {
     await mongo.connect();
     const mdb = mongo.db();
     const users = mdb.collection("users");
-    const docs = await users.find({}, { projection: { code: 1, name: 1 } }).toArray();
+    const { tenantSubdomain } = await getTenantContextFromRequest(req as any);
+    const filter = tenantSubdomain ? { tenantSubdomain } : {};
+    const docs = await users.find(filter, { projection: { code: 1, name: 1 } }).toArray();
     
     const userMap: Record<string, string> = {};
     for (const u of docs) {

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { and, or, desc, eq, ilike, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { leads, leadEvents } from "@/db/schema";
+import { requireTenantIdFromRequest } from "@/lib/tenant";
 
 export async function GET(req: NextRequest) {
   try {
@@ -114,11 +115,13 @@ export async function GET(req: NextRequest) {
     }
 
     const where = filters.length ? and(...filters) : undefined;
+    const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
+    const scopedWhere = tenantId ? (where ? and(where, eq(leads.tenantId, tenantId)) : eq(leads.tenantId, tenantId)) : where as any;
 
     const rows = await db
       .select()
       .from(leads)
-      .where(where as any)
+      .where(scopedWhere as any)
       .orderBy(desc(leads.createdAt))
       .limit(limit)
       .offset(offset);
@@ -126,7 +129,7 @@ export async function GET(req: NextRequest) {
     const totalRow = await db
       .select({ c: sql<number>`count(*)` })
       .from(leads)
-      .where(where as any);
+      .where(scopedWhere as any);
 
     return new Response(JSON.stringify({ success: true, rows, total: Number((totalRow[0] as any)?.c || 0) }), { status: 200 });
   } catch (e: any) {
@@ -137,6 +140,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
     const { phone, name, email, source, stage, score } = body || {};
     if (!phone || typeof phone !== "string" || phone.trim() === "") {
       return new Response(JSON.stringify({ success: false, error: "phone is required" }), { status: 400 });
@@ -148,12 +152,13 @@ export async function POST(req: NextRequest) {
       source: source ?? null,
       stage: stage ?? undefined,
       score: typeof score === "number" ? score : undefined,
+      tenantId: tenantId || null,
     } as any;
 
     const inserted = await db.insert(leads).values(values).returning({ phone: leads.phone, createdAt: leads.createdAt, source: leads.source });
     // timeline event for creation
     if (inserted[0]?.phone) {
-      await db.insert(leadEvents).values({ leadPhone: inserted[0].phone, type: "CREATED", data: { source: inserted[0].source }, at: new Date() } as any);
+      await db.insert(leadEvents).values({ leadPhone: inserted[0].phone, type: "CREATED", data: { source: inserted[0].source }, at: new Date(), tenantId: tenantId || null } as any);
     }
     return new Response(JSON.stringify({ success: true, phone: inserted[0]?.phone }), { status: 201 });
   } catch (e: any) {

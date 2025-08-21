@@ -1,12 +1,14 @@
 import { NextRequest } from "next/server";
 import { db } from "@/db/client";
 import { callLogs, leadEvents, leads } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { requireTenantIdFromRequest } from "@/lib/tenant";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { leadPhone, phone, salespersonId } = body || {};
+    const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
     if (!leadPhone || !phone) {
       return new Response(JSON.stringify({ success: false, error: "leadPhone and phone required" }), { status: 400 });
     }
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest) {
       if (raw.startsWith("+")) tryPhones.push(raw.slice(1));
       else if (raw) tryPhones.push(`+${raw}`);
       for (const p of tryPhones) {
-        const hit = await db.select().from(leads).where(eq(leads.phone, p)).limit(1);
+        const hit = await db.select().from(leads).where(tenantId ? and(eq(leads.phone, p), eq(leads.tenantId, tenantId)) : eq(leads.phone, p)).limit(1);
         if (hit[0]) { canonicalPhone = p; break; }
       }
     } catch {}
@@ -29,7 +31,7 @@ export async function POST(req: NextRequest) {
     try {
       const inserted = await db
         .insert(callLogs)
-        .values({ leadPhone: canonicalPhone, phone, salespersonId })
+        .values({ leadPhone: canonicalPhone, phone, salespersonId, tenantId: tenantId || null })
         .returning({ id: callLogs.id });
       insertedId = inserted[0]?.id ?? null;
     } catch {
@@ -44,13 +46,14 @@ export async function POST(req: NextRequest) {
         type: "CALL_STARTED",
         data: { phone },
         actorId: salespersonId || null,
+        tenantId: tenantId || null,
       } as any);
     } catch {}
 
     // bump last activity on the lead
     try {
       const now = new Date();
-      await db.update(leads).set({ lastActivityAt: now, updatedAt: now }).where(eq(leads.phone, canonicalPhone));
+      await db.update(leads).set({ lastActivityAt: now, updatedAt: now }).where(tenantId ? and(eq(leads.phone, canonicalPhone), eq(leads.tenantId, tenantId)) : eq(leads.phone, canonicalPhone));
     } catch {}
 
     return new Response(JSON.stringify({ success: true, callLogId: insertedId }), { status: 201 });

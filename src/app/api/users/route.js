@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MongoClient, ObjectId } from 'mongodb';
+import { getTenantContextFromRequest } from '@/lib/mongoTenant';
 
 const uri = process.env.MONGODB_URI;
 let client;
@@ -11,11 +12,13 @@ if (!clientPromise) {
 }
 
 // Get all users (for team leader)
-export async function GET() {
+export async function GET(request) {
+  const { tenantSubdomain } = await getTenantContextFromRequest(request);
   const client = await clientPromise;
   const db = client.db();
   const users = db.collection('users');
-  const allUsers = await users.find({}).toArray();
+  const filter = tenantSubdomain ? { tenantSubdomain } : {};
+  const allUsers = await users.find(filter).toArray();
   
   console.log('All users from DB (including passwords):', allUsers); // Debug log
   
@@ -33,11 +36,12 @@ export async function POST(request) {
   const db = client.db();
   const users = db.collection('users');
   const data = await request.json();
+  const { tenantSubdomain } = await getTenantContextFromRequest(request);
   
   console.log('Creating user with data:', data); // Debug log
   
   // Check if user with same code already exists
-  const existingUser = await users.findOne({ code: data.code });
+  const existingUser = await users.findOne(tenantSubdomain ? { code: data.code, tenantSubdomain } : { code: data.code });
   if (existingUser) {
     return NextResponse.json({ success: false, error: 'User with this code already exists' }, { status: 400 });
   }
@@ -45,6 +49,7 @@ export async function POST(request) {
   data.createdAt = new Date();
   data.role = data.role || 'sales'; // Default role is sales
   data.target = data.target || 0; // Default target is 0
+  if (tenantSubdomain) data.tenantSubdomain = tenantSubdomain;
   
   console.log('Final user data to insert:', data); // Debug log
   
@@ -60,6 +65,7 @@ export async function PUT(request) {
   const db = client.db();
   const users = db.collection('users');
   const { _id, ...updateData } = await request.json();
+  const { tenantSubdomain } = await getTenantContextFromRequest(request);
   
   if (!_id) {
     return NextResponse.json({ success: false, error: 'Missing user ID' }, { status: 400 });
@@ -70,7 +76,7 @@ export async function PUT(request) {
   updateData.updatedAt = new Date();
   
   const result = await users.updateOne(
-    { _id: new ObjectId(_id) },
+    tenantSubdomain ? { _id: new ObjectId(_id), tenantSubdomain } : { _id: new ObjectId(_id) },
     { $set: updateData }
   );
   
@@ -88,12 +94,13 @@ export async function DELETE(request) {
   const users = db.collection('users');
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
+  const { tenantSubdomain } = await getTenantContextFromRequest(request);
   
   if (!id) {
     return NextResponse.json({ success: false, error: 'Missing user ID' }, { status: 400 });
   }
   
-  const result = await users.deleteOne({ _id: new ObjectId(id) });
+  const result = await users.deleteOne(tenantSubdomain ? { _id: new ObjectId(id), tenantSubdomain } : { _id: new ObjectId(id) });
   
   if (result.deletedCount === 1) {
     return NextResponse.json({ success: true });

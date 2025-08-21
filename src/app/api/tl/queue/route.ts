@@ -3,6 +3,7 @@ import { and, asc, desc, eq, isNull, sql, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { leads, tasks, settings, leadEvents } from "@/db/schema";
 import { MongoClient } from "mongodb";
+import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,6 +11,7 @@ export async function GET(req: NextRequest) {
     const tab = searchParams.get("tab") || "unassigned"; // unassigned|aging|hot
     const limit = Number(searchParams.get("limit") || 25);
     const offset = Number(searchParams.get("offset") || 0);
+    const { tenantId } = await getTenantContextFromRequest(req as any);
 
     let where: any = undefined;
     if (tab === "unassigned") where = isNull(leads.ownerId);
@@ -21,7 +23,7 @@ export async function GET(req: NextRequest) {
     const rows = await db
       .select()
       .from(leads)
-      .where(where as any)
+      .where(tenantId ? and(where as any, eq(leads.tenantId, tenantId)) : where as any)
       .orderBy(order)
       .limit(limit)
       .offset(offset);
@@ -29,7 +31,7 @@ export async function GET(req: NextRequest) {
     const totalRow = await db
       .select({ c: sql<number>`count(*)` })
       .from(leads)
-      .where(where as any);
+      .where(tenantId ? and(where as any, eq(leads.tenantId, tenantId)) : where as any);
 
     return new Response(JSON.stringify({ success: true, rows, total: Number((totalRow[0] as any)?.c || 0) }), { status: 200 });
   } catch (e: any) {
@@ -41,14 +43,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action } = body || {};
+    const { tenantId, tenantSubdomain } = await getTenantContextFromRequest(req as any);
     if (action === "assign") {
       const { phones, ownerId } = body as { phones: string[]; ownerId: string };
       if (!Array.isArray(phones) || !ownerId) {
         return new Response(JSON.stringify({ success: false, error: "phones[] and ownerId required" }), { status: 400 });
       }
-      await db.update(leads).set({ ownerId }).where(inArray(leads.phone, phones));
+      await db.update(leads).set({ ownerId }).where(tenantId ? and(inArray(leads.phone, phones), eq(leads.tenantId, tenantId)) : inArray(leads.phone, phones));
       // timeline events
-      const eventValues = phones.map((p) => ({ leadPhone: p, type: "ASSIGNED", data: { ownerId }, at: new Date() }));
+      const eventValues = phones.map((p) => ({ leadPhone: p, type: "ASSIGNED", data: { ownerId }, at: new Date(), tenantId: tenantId || null }));
       if (eventValues.length) {
         await db.insert(leadEvents).values(eventValues as any);
       }
@@ -59,7 +62,7 @@ export async function POST(req: NextRequest) {
       if (!Array.isArray(phones) || !title) {
         return new Response(JSON.stringify({ success: false, error: "phones[] and title required" }), { status: 400 });
       }
-      const values = phones.map((p) => ({ leadPhone: p, title, status: "OPEN", dueAt: dueAt ? new Date(dueAt) : null }));
+      const values = phones.map((p) => ({ leadPhone: p, title, status: "OPEN", dueAt: dueAt ? new Date(dueAt) : null, tenantId: tenantId || null }));
       await db.insert(tasks).values(values as any);
       return new Response(JSON.stringify({ success: true }), { status: 201 });
     }
@@ -88,7 +91,7 @@ export async function POST(req: NextRequest) {
       const mdb = mongo.db();
       const users = mdb.collection("users");
       const agents = await users
-        .find({ $or: [{ role: "sales" }, { role: { $exists: false } }] }, { projection: { code: 1, name: 1, role: 1 } })
+        .find(Object.assign({ $or: [{ role: "sales" }, { role: { $exists: false } }] }, tenantSubdomain ? { tenantSubdomain } : {}), { projection: { code: 1, name: 1, role: 1 } })
         .toArray();
       const sales = agents.filter((u: any) => typeof u.code === "string" && u.code.trim().length > 0);
       if (sales.length === 0) {
@@ -123,6 +126,7 @@ export async function POST(req: NextRequest) {
           const salesColl = mdb.collection("sales");
           const agg = await salesColl
             .aggregate([
+              ...(tenantSubdomain ? [{ $match: { tenantSubdomain } }] : []),
               { $group: { _id: "$code", c: { $sum: 1 } } },
             ])
             .toArray();
@@ -156,7 +160,7 @@ export async function POST(req: NextRequest) {
         assignCodes = await pickWeighted(phones.length);
       } else {
         // HYBRID
-        const rows = await db.select().from(leads).where(inArray(leads.phone, phones));
+        const rows = await db.select().from(leads).where(tenantId ? and(inArray(leads.phone, phones), eq(leads.tenantId, tenantId)) : inArray(leads.phone, phones));
         const isHot = new Map<string, boolean>();
         for (const r of rows as any[]) {
           const hot = (typeof r.score === "number" && r.score >= 50) || ["META", "GOOGLE"].includes(r.source || "");
@@ -177,9 +181,9 @@ export async function POST(req: NextRequest) {
           byOwner[owner].push(p);
         }
         for (const [owner, list] of Object.entries(byOwner)) {
-          await db.update(leads).set({ ownerId: owner }).where(inArray(leads.phone, list));
+          await db.update(leads).set({ ownerId: owner }).where(tenantId ? and(inArray(leads.phone, list), eq(leads.tenantId, tenantId)) : inArray(leads.phone, list));
         }
-        const eventsToInsert = phones.map((p) => ({ leadPhone: p, type: "ASSIGNED", data: { ownerId: mapping.get(p) }, at: new Date() }));
+        const eventsToInsert = phones.map((p) => ({ leadPhone: p, type: "ASSIGNED", data: { ownerId: mapping.get(p) }, at: new Date(), tenantId: tenantId || null }));
         if (eventsToInsert.length) await db.insert(leadEvents).values(eventsToInsert as any);
         await mongo.close();
         return new Response(JSON.stringify({ success: true, rule: rule }), { status: 200 });
@@ -193,9 +197,9 @@ export async function POST(req: NextRequest) {
         byOwner[owner].push(p);
       });
       for (const [owner, list] of Object.entries(byOwner)) {
-        await db.update(leads).set({ ownerId: owner }).where(inArray(leads.phone, list));
+        await db.update(leads).set({ ownerId: owner }).where(tenantId ? and(inArray(leads.phone, list), eq(leads.tenantId, tenantId)) : inArray(leads.phone, list));
       }
-      const eventsToInsert = phones.map((p, i) => ({ leadPhone: p, type: "ASSIGNED", data: { ownerId: assignCodes[i % assignCodes.length] }, at: new Date() }));
+      const eventsToInsert = phones.map((p, i) => ({ leadPhone: p, type: "ASSIGNED", data: { ownerId: assignCodes[i % assignCodes.length] }, at: new Date(), tenantId: tenantId || null }));
       if (eventsToInsert.length) await db.insert(leadEvents).values(eventsToInsert as any);
       await mongo.close();
       return new Response(JSON.stringify({ success: true, rule: rule }), { status: 200 });

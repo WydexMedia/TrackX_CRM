@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
+import { getTenantContextFromRequest } from '@/lib/mongoTenant';
 
 const uri = process.env.MONGODB_URI;
 let client;
@@ -11,13 +12,13 @@ if (!clientPromise) {
 }
 
 // Get all users with passwords (for team leader credentials view)
-export async function GET() {
+export async function GET(request) {
+  const { tenantSubdomain } = await getTenantContextFromRequest(request);
   const client = await clientPromise;
   const db = client.db();
   const users = db.collection('users');
-  
-  // Get all users including passwords, but exclude team leaders
-  const allUsers = await users.find({ role: { $ne: 'teamleader' } }).toArray();
+  const query = Object.assign({ role: { $ne: 'teamleader' } }, tenantSubdomain ? { tenantSubdomain } : {});
+  const allUsers = await users.find(query).toArray();
   
   console.log('Users with passwords for credentials view:', allUsers.length);
   

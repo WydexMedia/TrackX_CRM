@@ -1,17 +1,19 @@
 import { NextRequest } from "next/server";
 import { db } from "@/db/client";
 import { callLogs, leadEvents, leads } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { requireTenantIdFromRequest } from "@/lib/tenant";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { callLogId } = body || {};
+    const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
     if (!callLogId) {
       return new Response(JSON.stringify({ success: false, error: "callLogId required" }), { status: 400 });
     }
 
-    const rows = callLogId ? await db.select().from(callLogs).where(eq(callLogs.id, Number(callLogId))).limit(1) : [];
+    const rows = callLogId ? await db.select().from(callLogs).where(tenantId ? and(eq(callLogs.id, Number(callLogId)), eq(callLogs.tenantId, tenantId)) : eq(callLogs.id, Number(callLogId))).limit(1) : [];
     const row = rows[0];
     if (!row) {
       // If there was no call_log persisted, still return success to unblock the flow
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest) {
     const now = new Date();
     const startedAt = row.startedAt ? new Date(row.startedAt as any) : now;
     const durationMs = Math.max(0, now.getTime() - startedAt.getTime());
-    await db.update(callLogs).set({ endedAt: now, durationMs }).where(eq(callLogs.id, row.id));
+    await db.update(callLogs).set({ endedAt: now, durationMs }).where(tenantId ? and(eq(callLogs.id, row.id), eq(callLogs.tenantId, tenantId)) : eq(callLogs.id, row.id));
 
     // Resolve canonical lead phone
     const rawPhone = String((row as any).leadPhone || "");
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest) {
       if (rawPhone.startsWith("+")) tryPhones.push(rawPhone.slice(1));
       else if (rawPhone) tryPhones.push(`+${rawPhone}`);
       for (const p of tryPhones) {
-        const hit = await db.select().from(leads).where(eq(leads.phone, p)).limit(1);
+        const hit = await db.select().from(leads).where(tenantId ? and(eq(leads.phone, p), eq(leads.tenantId, tenantId)) : eq(leads.phone, p)).limit(1);
         if (hit[0]) { canonicalPhone = p; break; }
       }
     } catch {}
@@ -43,13 +45,14 @@ export async function POST(req: NextRequest) {
         type: "CALL_ENDED",
         data: { callLogId: row.id, durationMs },
         actorId: row.salespersonId || null,
+        tenantId: tenantId || null,
       } as any);
     } catch {}
 
     // bump last activity on the lead
     try {
       const now2 = new Date();
-      await db.update(leads).set({ lastActivityAt: now2, updatedAt: now2 }).where(eq(leads.phone, canonicalPhone));
+      await db.update(leads).set({ lastActivityAt: now2, updatedAt: now2 }).where(tenantId ? and(eq(leads.phone, canonicalPhone), eq(leads.tenantId, tenantId)) : eq(leads.phone, canonicalPhone));
     } catch {}
 
     return new Response(JSON.stringify({ success: true, durationMs }), { status: 200 });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
+import { getTenantContextFromRequest } from '@/lib/mongoTenant';
 
 const uri = process.env.MONGODB_URI;
 
@@ -13,6 +14,7 @@ export async function GET(request) {
     
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
+    const { tenantSubdomain } = await getTenantContextFromRequest(request);
     
     if (!code) {
       return NextResponse.json({ 
@@ -21,7 +23,7 @@ export async function GET(request) {
       }, { status: 400 });
     }
     
-    const user = await users.findOne({ code: code });
+    const user = await users.findOne(tenantSubdomain ? { code: code, tenantSubdomain } : { code: code });
     
     if (!user) {
       return NextResponse.json({ 

@@ -1,11 +1,13 @@
 import { NextRequest } from "next/server";
 import { db } from "@/db/client";
 import { leads, leadEvents } from "@/db/schema";
+import { requireTenantIdFromRequest } from "@/lib/tenant";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const rows = Array.isArray(body?.rows) ? body.rows : [];
+    const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
     if (rows.length === 0) {
       return new Response(JSON.stringify({ success: false, error: "rows array required" }), { status: 400 });
     }
@@ -17,6 +19,7 @@ export async function POST(req: NextRequest) {
         source: r.source ?? null,
         stage: r.stage ?? undefined,
         score: typeof r.score === "number" ? r.score : undefined,
+        tenantId: tenantId || null,
       }))
       .filter((v: { phone?: string }) => typeof v.phone === "string" && v.phone.length > 0);
 
@@ -27,14 +30,14 @@ export async function POST(req: NextRequest) {
     const inserted = await db
       .insert(leads)
       .values(values as any)
-      .onConflictDoNothing({ target: leads.phone })
+      .onConflictDoNothing({ target: [leads.tenantId, leads.phone] })
       .returning({ phone: leads.phone, source: leads.source });
 
     // timeline events for created leads
     if (inserted.length) {
       const ev = inserted
         .filter((r) => r.phone)
-        .map((r: { phone: string; source: string | null }) => ({ leadPhone: r.phone, type: "CREATED", data: { source: r.source }, at: new Date() }));
+        .map((r: { phone: string; source: string | null }) => ({ leadPhone: r.phone, type: "CREATED", data: { source: r.source }, at: new Date(), tenantId: tenantId || null }));
       if (ev.length) await db.insert(leadEvents).values(ev as any);
     }
 

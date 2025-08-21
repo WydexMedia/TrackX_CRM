@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { db } from "@/db/client";
 import { leads, leadEvents } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { MongoClient } from "mongodb";
+import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 
 function summarizeEvent(e: any, leadName: string | null | undefined, nameByCode: Map<string, string> | null) {
   const t = e.type as string;
@@ -73,6 +74,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const limit = Number(searchParams.get("limit") || 10);
+    const { tenantSubdomain, tenantId } = await getTenantContextFromRequest(req as any);
 
     // Optional: load users to resolve codes -> names
     let nameByCode: Map<string, string> | null = null;
@@ -83,7 +85,7 @@ export async function GET(req: NextRequest) {
         await mongo.connect();
         const mdb = mongo.db();
         const users = mdb.collection("users");
-        const docs = await users.find({}, { projection: { code: 1, name: 1 } }).toArray();
+        const docs = await users.find(tenantSubdomain ? { tenantSubdomain } : {}, { projection: { code: 1, name: 1 } }).toArray();
         nameByCode = new Map<string, string>();
         for (const u of docs) {
           if (typeof (u as any).code === "string" && typeof (u as any).name === "string") {
@@ -109,6 +111,9 @@ export async function GET(req: NextRequest) {
       })
       .from(leadEvents)
       .leftJoin(leads, eq(leads.phone, leadEvents.leadPhone))
+      .where(
+        tenantId ? and(eq(leadEvents.tenantId, tenantId)) : undefined as any
+      )
       .orderBy(desc(leadEvents.at))
       .limit(limit);
 
