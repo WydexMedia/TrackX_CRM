@@ -4,6 +4,21 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { 
+  Target, 
+  BarChart3, 
+  RefreshCw, 
+  FileText, 
+  Phone, 
+  TrendingUp, 
+  Clock,
+  User,
+  Phone as PhoneIcon,
+  FileText as FileTextIcon,
+  CheckCircle,
+  XCircle,
+  Clock as ClockIcon
+} from "lucide-react";
 
 interface Lead {
   phone: string;
@@ -155,7 +170,7 @@ export default function LeadDetailPage() {
   }, [events]);
 
   const timeline = (() => {
-    const items: Array<{ id: string | number; label: string; at?: string; meta?: string; type: string; data?: any; icon: string; color: string }> = [];
+    const items: Array<{ id: string | number; label: string; at?: string; meta?: string; type: string; data?: any; icon: any; color: string; notes?: string }> = [];
     
     console.log('Timeline generation - Total events:', events.length);
     console.log('Events types found:', events.map(e => e.type));
@@ -167,7 +182,7 @@ export default function LeadDetailPage() {
         at: lead.createdAt || undefined,
         meta: `Source: ${lead.source || "—"}`,
         type: "created",
-        icon: "🎯",
+        icon: Target,
         color: "emerald"
       });
     }
@@ -183,8 +198,9 @@ export default function LeadDetailPage() {
       
       let label = type;
       let meta: string | undefined = undefined;
-      let icon = "📝";
+      let icon: any = FileText;
       let color = "blue";
+      let notes: string | undefined = undefined;
       
       if (type === "STAGE_CHANGE") {
         console.log('Processing STAGE_CHANGE event:', e);
@@ -207,8 +223,10 @@ export default function LeadDetailPage() {
           if (callStatus) {
             meta += ` - Call: ${callStatus}`;
           }
+          
+          // Store notes separately for clean display
           if (stageNotes) {
-            meta += ` - ${stageNotes}`;
+            notes = stageNotes;
           }
         } else {
           label = "Stage Changed";
@@ -216,10 +234,13 @@ export default function LeadDetailPage() {
           if (reason) {
             meta += ` (${reason})`;
           }
+          if (stageNotes) {
+            notes = stageNotes;
+          }
         }
-        icon = "📊";
+        icon = BarChart3;
         color = "purple";
-        console.log('STAGE_CHANGE processed - label:', label, 'meta:', meta);
+        console.log('STAGE_CHANGE processed - label:', label, 'meta:', meta, 'notes:', notes);
       }
       
       if (type === "ASSIGNED") {
@@ -237,15 +258,16 @@ export default function LeadDetailPage() {
           label = "Lead Reassigned";
           meta = `${fromOwnerName} → ${toOwnerName}`;
         }
-        icon = "🔄";
+        icon = RefreshCw;
         color = "blue";
       }
       
       if (type === "NOTE_ADDED") {
         label = "Note Added";
         meta = e.data?.note || "Note content";
-        icon = "📝";
+        icon = FileText;
         color = "amber";
+        notes = e.data?.note;
       }
       
       if (type === "CALL_LOGGED") {
@@ -264,20 +286,27 @@ export default function LeadDetailPage() {
           if (status) callMeta.push(`Status: ${status}`);
           if (callType) callMeta.push(`Type: ${callType}`);
           if (callCompleted) callMeta.push(`Completed: ${callCompleted}`);
-          if (note) callMeta.push(`Notes: ${note}`);
           
           meta = callMeta.join(" • ");
+          
+          // Store notes separately
+          if (note) {
+            notes = note;
+          }
         } else {
           label = "Call Logged";
           const callMeta = [];
           if (status) callMeta.push(`Status: ${status}`);
           if (callType) callMeta.push(`Type: ${callType}`);
           if (callCompleted) callMeta.push(`Completed: ${callCompleted}`);
-          if (note) callMeta.push(`Notes: ${note}`);
           
           meta = callMeta.join(" • ");
+          
+          if (note) {
+            notes = note;
+          }
         }
-        icon = "📞";
+        icon = Phone;
         color = "green";
       }
       
@@ -292,12 +321,20 @@ export default function LeadDetailPage() {
         if (actorId && actorId !== "system") {
           const actorName = resolveActorName(actorId);
           label = `${actorName} logged call`;
-          meta = `${status}${note ? ` - ${note}` : ""}`;
+          meta = `${status}`;
+          
+          if (note) {
+            notes = note;
+          }
         } else {
           label = "Call Logged";
-          meta = `${status}${note ? ` - ${note}` : ""}`;
+          meta = `${status}`;
+          
+          if (note) {
+            notes = note;
+          }
         }
-        icon = "📞";
+        icon = Phone;
         color = "green";
       }
       
@@ -313,19 +350,19 @@ export default function LeadDetailPage() {
           label = "Status Updated";
           meta = `Stage: ${stage}`;
         }
-        icon = "📈";
+        icon = TrendingUp;
         color = "cyan";
       }
       
       // Only add events that have meaningful business value
       if (["ASSIGNED", "STAGE_CHANGE", "NOTE_ADDED", "CALL_LOGGED", "CALL_OUTCOME", "LEAD_STATUS_CHANGED"].includes(type)) {
-        console.log('Adding event to timeline:', type, { label, meta, icon, color });
-        items.push({ id: e.id, label, at: e.at, meta, type, data: e.data, icon, color });
+        console.log('Adding event to timeline:', type, { label, meta, icon, color, notes });
+        items.push({ id: e.id, label, at: e.at, meta, type, data: e.data, icon, color, notes });
       }
     }
     
     console.log('Timeline generation complete - Final items count:', items.length);
-    console.log('Timeline items:', items.map(item => ({ type: item.type, label: item.label, meta: item.meta })));
+    console.log('Timeline items:', items.map(item => ({ type: item.type, label: item.label, meta: item.meta, notes: item.notes })));
     
     return items.reverse(); // Show latest first
   })();
@@ -346,18 +383,17 @@ export default function LeadDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6">
           <div className="flex items-center gap-2 mb-6">
-            <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <Clock className="w-5 h-5 text-slate-600" />
             <h2 className="text-lg font-semibold text-slate-900">Activity Timeline</h2>
           </div>
           
           {timeline.length === 0 ? (
-            <div className="text-center py-12">
-              <svg className="mx-auto h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="mt-4 text-sm text-slate-500">No activity yet</p>
+            <div className="text-center py-16">
+              <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                <Clock className="w-8 h-8 text-slate-400" />
+              </div>
+              <p className="text-lg font-medium text-slate-600 mb-2">No activity yet</p>
+              <p className="text-sm text-slate-500">This lead hasn't had any activity recorded yet.</p>
             </div>
           ) : (
             <div className="flow-root">
@@ -430,28 +466,46 @@ export default function LeadDetailPage() {
                         )}
                         <div className="relative flex items-start space-x-4">
                           {/* Event Icon */}
-                          <div className={`relative flex-shrink-0 ${colors.bgLight} rounded-full p-1`}>
-                            <div className={`h-12 w-12 rounded-full ${colors.bg} flex items-center justify-center ring-4 ${colors.ring} shadow-sm`}>
-                              <span className="text-lg">{item.icon}</span>
+                          <div className={`relative flex-shrink-0 ${colors.bgLight} rounded-full p-2`}>
+                            <div className={`h-14 w-14 rounded-full ${colors.bg} flex items-center justify-center ring-4 ${colors.ring} shadow-lg hover:shadow-xl transition-all duration-200`}>
+                              <item.icon className="w-7 h-7 text-white" />
                             </div>
                           </div>
                           
                           {/* Event Content */}
                           <div className="flex-1 min-w-0">
-                            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-200 hover:border-slate-300">
                               <div className="flex items-start justify-between">
-                                <div className="flex-1">
+                                <div className="flex-1 space-y-3">
                                   <h3 className="text-sm font-semibold text-slate-900 leading-5">{item.label}</h3>
                                   {item.meta && (
-                                    <div className="mt-2">
-                                      <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${colors.text} ${colors.bgLight} border border-current/20`}>
+                                    <div>
+                                      <span className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium ${colors.text} ${colors.bgLight} border border-current/20 shadow-sm`}>
                                         {item.meta}
                                       </span>
                                     </div>
                                   )}
+                                  
+                                  {/* Notes Display */}
+                                  {item.notes && (
+                                    <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg shadow-sm">
+                                      <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                          <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                                            <FileTextIcon className="w-4 h-4 text-amber-600" />
+                                          </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-semibold text-amber-800 mb-1">Notes</p>
+                                          <p className="text-sm text-amber-700 leading-relaxed">{item.notes}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                                 {item.at && (
-                                  <time className="flex-shrink-0 ml-4 text-xs text-slate-500 font-medium bg-slate-50 px-2 py-1 rounded-md">
+                                  <time className="flex-shrink-0 ml-4 text-xs text-slate-500 font-medium bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
+                                    <Clock className="w-3 h-3 inline mr-1" />
                                     {new Date(item.at).toLocaleDateString('en-US', { 
                                       month: 'short', 
                                       day: 'numeric',
@@ -476,18 +530,14 @@ export default function LeadDetailPage() {
         <div className="bg-white border border-slate-200 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
-              </svg>
+              <User className="w-5 h-5 text-slate-600" />
               <h2 className="text-lg font-semibold text-slate-900">Lead Details</h2>
             </div>
             <Link
               href={`/call-form?leadPhone=${encodeURIComponent(lead.phone)}`}
               className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
+              <PhoneIcon className="w-4 h-4" />
               Log Call
             </Link>
           </div>
@@ -672,61 +722,7 @@ export default function LeadDetailPage() {
 
             <div className="pt-4 border-t border-slate-200">
               <div className="flex items-center gap-2 mb-3">
-                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <h3 className="text-sm font-medium text-slate-700">Add Note</h3>
-              </div>
-              <div className="space-y-3">
-                <textarea
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  rows={3}
-                  placeholder="Add a note about this lead..."
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                />
-                <button
-                  className="w-full rounded-lg bg-amber-600 text-white px-4 py-2 text-sm font-medium hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
-                  disabled={!newNote.trim() || addingNote}
-                  onClick={async () => {
-                    try {
-                      setAddingNote(true);
-                      const toastId = toast.loading("Adding note...");
-                      const res = await fetch("/api/tl/leads/notes", { 
-                        method: "POST", 
-                        headers: { "Content-Type": "application/json" }, 
-                        body: JSON.stringify({ 
-                          phone: lead.phone, 
-                          note: newNote.trim() 
-                        }) 
-                      });
-                      if (res.ok) {
-                        toast.success("Note added successfully", { id: toastId });
-                        setNewNote("");
-                        // Refresh events to show the new note
-                        const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
-                        setEvents(d.events || []);
-                      } else {
-                        toast.error("Failed to add note", { id: toastId });
-                      }
-                    } finally {
-                      setAddingNote(false);
-                    }
-                  }}
-                >
-                  {addingNote && (
-                    <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
-                  )}
-                  <span>{addingNote ? "Adding..." : "Add Note"}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-200">
-              <div className="flex items-center gap-2 mb-3">
-                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
+                <Phone className="w-4 h-4 text-slate-600" />
                 <h3 className="text-sm font-medium text-slate-700">Quick Call Log</h3>
               </div>
               <div className="space-y-3">
@@ -808,9 +804,57 @@ export default function LeadDetailPage() {
 
             <div className="pt-4 border-t border-slate-200">
               <div className="flex items-center gap-2 mb-3">
-                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
+                <FileText className="w-4 h-4 text-slate-600" />
+                <h3 className="text-sm font-medium text-slate-700">Add Note</h3>
+              </div>
+              <div className="space-y-3">
+                <textarea
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  rows={3}
+                  placeholder="Add a note about this lead..."
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                />
+                <button
+                  className="w-full rounded-lg bg-amber-600 text-white px-4 py-2 text-sm font-medium hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
+                  disabled={!newNote.trim() || addingNote}
+                  onClick={async () => {
+                    try {
+                      setAddingNote(true);
+                      const toastId = toast.loading("Adding note...");
+                      const res = await fetch("/api/tl/leads/notes", { 
+                        method: "POST", 
+                        headers: { "Content-Type": "application/json" }, 
+                        body: JSON.stringify({ 
+                          phone: lead.phone, 
+                          note: newNote.trim() 
+                        }) 
+                      });
+                      if (res.ok) {
+                        toast.success("Note added successfully", { id: toastId });
+                        setNewNote("");
+                        // Refresh events to show the new note
+                        const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
+                        setEvents(d.events || []);
+                      } else {
+                        toast.error("Failed to add note", { id: toastId });
+                      }
+                    } finally {
+                      setAddingNote(false);
+                    }
+                  }}
+                >
+                  {addingNote && (
+                    <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
+                  )}
+                  <span>{addingNote ? "Adding..." : "Add Note"}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-200">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="w-4 h-4 text-slate-600" />
                 <h3 className="text-sm font-medium text-slate-700">Tasks</h3>
               </div>
               <div className="space-y-2">
