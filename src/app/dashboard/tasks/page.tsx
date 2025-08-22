@@ -1168,6 +1168,7 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
   const [notes, setNotes] = useState("");
   const [followUpAt, setFollowUpAt] = useState<string>("");
   const [product, setProduct] = useState<string>("");
+  const [stageNotes, setStageNotes] = useState<string>("");
 
   const band = useMemo(() => {
     if (durationMs < 5 * 60_000) return { 
@@ -1187,11 +1188,119 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
     };
   }, [durationMs]);
 
+  const onCloseModal = useCallback(() => {
+    setCompleted(null);
+    setQualified(null);
+    setStatus("");
+    setNotes("");
+    setFollowUpAt("");
+    setProduct("");
+    setStageNotes("");
+    onClose();
+  }, [onClose]);
+
   const submit = useCallback(() => {
+    if (!completed && !notes.trim()) {
+      toast.error("Please add notes for incomplete calls");
+      return;
+    }
+    
+    if (completed && qualified && !status) {
+      toast.error("Please select a status for qualified calls");
+      return;
+    }
+    
+    if (status === "NEED_FOLLOW_UP" && (!followUpAt || !product.trim())) {
+      toast.error("Please fill in follow-up details");
+      return;
+    }
+
+    // Log the call to the API
+    logCallToAPI();
+    
     const payload: any = { completed, qualified, status, notes };
     if (status === "NEED_FOLLOW_UP" && followUpAt) payload.followUp = { dueAt: followUpAt, product, name: "" };
+    if (status && stageNotes) payload.stageNotes = stageNotes;
+    
+    // Show success message
+    toast.success("Call outcome logged successfully!");
+    
+    // Submit the form data
     onSubmit(payload);
-  }, [completed, qualified, status, notes, followUpAt, product, onSubmit]);
+    
+    // Close the modal
+    onCloseModal();
+  }, [completed, qualified, status, notes, followUpAt, product, onSubmit, stageNotes, onCloseModal]);
+
+  const logCallToAPI = async () => {
+    try {
+      const currentUser = localStorage.getItem('user');
+      if (!currentUser) return;
+      
+      const user = JSON.parse(currentUser);
+      
+      // Always log the call first (this creates a CALL_LOGGED event)
+      const callData = {
+        leadPhone: leadPhone,
+        phone: phone,
+        callCompleted: completed ? 'yes' : 'no',
+        callType: 'followup',
+        callStatus: status || (completed ? 'COMPLETED' : 'INCOMPLETE'),
+        notes: notes,
+        ogaName: user.name,
+        currentStage: '', // Will be fetched from lead if needed
+        stageChanged: false, // Don't change stage in this call log
+        leadStage: '', // No stage change in call log
+        stageNotes: '' // No stage notes in call log
+      };
+
+      console.log('Logging call data:', callData);
+      const callResponse = await fetch('/api/calls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(callData)
+      });
+      
+      if (callResponse.ok) {
+        console.log('Call logged successfully');
+      } else {
+        console.error('Failed to log call:', await callResponse.text());
+      }
+
+      // If there's a status change, log it separately as a stage change
+      if (status && stageNotes) {
+        const stageChangeData = {
+          leadPhone: leadPhone,
+          phone: phone,
+          callCompleted: 'yes',
+          callType: 'followup',
+          callStatus: 'STAGE_UPDATE', // Special status for stage changes
+          notes: stageNotes, // Use stage notes as the call notes
+          ogaName: user.name,
+          currentStage: '', // Will be fetched from lead if needed
+          stageChanged: true, // This will trigger stage change
+          leadStage: status, // Use selected status as new stage
+          stageNotes: stageNotes
+        };
+
+        console.log('Logging stage change data:', stageChangeData);
+        const stageResponse = await fetch('/api/calls', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(stageChangeData)
+        });
+        
+        if (stageResponse.ok) {
+          console.log('Stage change logged successfully');
+        } else {
+          console.error('Failed to log stage change:', await stageResponse.text());
+        }
+      }
+    } catch (error) {
+      console.error('Failed to log call:', error);
+      // Don't show error to user as this is background logging
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1330,6 +1439,21 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
               </div>
             )}
 
+            {/* Stage Change Remarks - shown when status is selected */}
+            {status && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3">Stage Change Remarks</label>
+                <textarea 
+                  value={stageNotes || ""} 
+                  onChange={(e) => setStageNotes(e.target.value)} 
+                  className="w-full text-blue-600 border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                  rows={4}
+                  placeholder="Write your remarks here..."
+                />
+                <p className="text-xs text-gray-500 mt-1">This will be used to update the lead stage and add context to the timeline.</p>
+              </div>
+            )}
+
             {completed && qualified && status === "NEED_FOLLOW_UP" && (
               <div className="bg-blue-50 rounded-lg p-4 space-y-4">
                 <h4 className="font-semibold text-blue-900 flex items-center gap-2">
@@ -1373,7 +1497,7 @@ function OutcomeDialog({ durationMs, leadPhone, phone, onClose, onSubmit }: { du
           {/* Footer */}
           <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 mt-6">
             <button 
-              onClick={onClose} 
+              onClick={onCloseModal} 
               className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
             >
               Cancel

@@ -16,6 +16,8 @@ if (!clientPromise) {
 
 export async function POST(request) {
   const data = await request.json();
+  console.log('Received call data:', data);
+  
   const { tenantSubdomain, tenantId } = await getTenantContextFromRequest(request);
   const client = await clientPromise;
   const mongoDb = client.db();
@@ -23,12 +25,32 @@ export async function POST(request) {
   data.createdAt = new Date();
   if (tenantSubdomain) data.tenantSubdomain = tenantSubdomain;
   await calls.insertOne(data);
+  
   try {
     const now = new Date();
     const actor = data?.ogaName || null;
     const phone = data?.leadPhone || data?.phone || null;
+    
     if (phone) {
       const p = String(phone);
+      
+      // Get current lead stage if not provided
+      let currentStage = data?.currentStage;
+      if (!currentStage) {
+        try {
+          const whereBase = tenantId ? and(eq(leads.phone, p), eq(leads.tenantId, tenantId)) : eq(leads.phone, p);
+          const currentLead = await db_pg.select({ stage: leads.stage }).from(leads).where(whereBase).limit(1);
+          if (currentLead[0]) {
+            currentStage = currentLead[0].stage;
+          }
+        } catch (error) {
+          console.error('Failed to fetch current stage:', error);
+          currentStage = 'Unknown';
+        }
+      }
+      
+      console.log('Processing lead:', p, 'Current stage:', currentStage);
+      
       // attempt updates with a few normalizations for robustness
       const whereBase = tenantId ? and(eq(leads.phone, p), eq(leads.tenantId, tenantId)) : eq(leads.phone, p);
       await db_pg.update(leads).set({ lastActivityAt: now, updatedAt: now }).where(whereBase);
@@ -39,21 +61,146 @@ export async function POST(request) {
       } else {
         await db_pg.update(leads).set({ lastActivityAt: now, updatedAt: now }).where(tenantId ? and(eq(leads.phone, `+${p}`), eq(leads.tenantId, tenantId)) : eq(leads.phone, `+${p}`));
       }
-      await db_pg.insert(leadEvents).values({ leadPhone: p, type: 'CALL_LOGGED', data: { status: data?.callStatus, notes: data?.notes }, actorId: actor, tenantId: tenantId || null });
+      
+      // Always log the call event
+      console.log('Creating CALL_LOGGED event for:', p);
+      await db_pg.insert(leadEvents).values({ 
+        leadPhone: p, 
+        type: 'CALL_LOGGED', 
+        data: { 
+          status: data?.callStatus, 
+          notes: data?.notes,
+          callType: data?.callType,
+          callCompleted: data?.callCompleted
+        }, 
+        actorId: actor, 
+        tenantId: tenantId || null 
+      });
+      console.log('CALL_LOGGED event created successfully');
 
-      // If the salesperson marks NOT_INTERESTED here, reflect it in lead stage and timeline
-      if (String(data?.callStatus || '').toUpperCase() === 'NOT_INTERESTED') {
-        await db_pg.update(leads).set({ stage: 'NOT_INTERESTED', updatedAt: now, lastActivityAt: now }).where(tenantId ? and(eq(leads.phone, p), eq(leads.tenantId, tenantId)) : eq(leads.phone, p));
+      // Handle stage changes from the call form
+      if (data?.stageChanged && data?.leadStage && currentStage && data.leadStage !== currentStage) {
+        console.log('Processing stage change from', currentStage, 'to', data.leadStage);
+        
+        // Update lead stage
+        await db_pg.update(leads).set({ 
+          stage: data.leadStage, 
+          updatedAt: now, 
+          lastActivityAt: now 
+        }).where(whereBase);
+        
+        // Update phone variants
+        if (noSpace !== p) await db_pg.update(leads).set({ 
+          stage: data.leadStage, 
+          updatedAt: now, 
+          lastActivityAt: now 
+        }).where(tenantId ? and(eq(leads.phone, noSpace), eq(leads.tenantId, tenantId)) : eq(leads.phone, noSpace));
+        if (p.startsWith('+')) {
+          await db_pg.update(leads).set({ 
+            stage: data.leadStage, 
+            updatedAt: now, 
+            lastActivityAt: now 
+          }).where(tenantId ? and(eq(leads.phone, p.slice(1)), eq(leads.tenantId, tenantId)) : eq(leads.phone, p.slice(1)));
+        } else {
+          await db_pg.update(leads).set({ 
+            stage: data.leadStage, 
+            updatedAt: now, 
+            lastActivityAt: now 
+          }).where(tenantId ? and(eq(leads.phone, `+${p}`), eq(leads.tenantId, tenantId)) : eq(leads.phone, `+${p}`));
+        }
+        
+        // Log stage change event
+        console.log('Creating STAGE_CHANGE event');
+        await db_pg.insert(leadEvents).values({ 
+          leadPhone: p, 
+          type: 'STAGE_CHANGE', 
+          data: { 
+            from: currentStage, 
+            to: data.leadStage,
+            reason: 'Call outcome',
+            callStatus: data?.callStatus,
+            stageNotes: data?.stageNotes || null,
+            actorId: actor
+          }, 
+          actorId: actor, 
+          tenantId: tenantId || null 
+        });
+        console.log('STAGE_CHANGE event created successfully');
+      }
+
+      // Handle STAGE_UPDATE status (special case for stage-only updates)
+      if (data?.callStatus === 'STAGE_UPDATE' && data?.stageChanged) {
+        // Update lead stage
+        await db_pg.update(leads).set({ 
+          stage: data.leadStage, 
+          updatedAt: now, 
+          lastActivityAt: now 
+        }).where(whereBase);
+        
+        // Update phone variants
+        if (noSpace !== p) await db_pg.update(leads).set({ 
+          stage: data.leadStage, 
+          updatedAt: now, 
+          lastActivityAt: now 
+        }).where(tenantId ? and(eq(leads.phone, noSpace), eq(leads.tenantId, tenantId)) : eq(leads.phone, noSpace));
+        if (p.startsWith('+')) {
+          await db_pg.update(leads).set({ 
+            stage: data.leadStage, 
+            updatedAt: now, 
+            lastActivityAt: now 
+          }).where(tenantId ? and(eq(leads.phone, p.slice(1)), eq(leads.tenantId, tenantId)) : eq(leads.phone, p.slice(1)));
+        } else {
+          await db_pg.update(leads).set({ 
+            stage: data.leadStage, 
+            updatedAt: now, 
+            lastActivityAt: now 
+          }).where(tenantId ? and(eq(leads.phone, `+${p}`), eq(leads.tenantId, tenantId)) : eq(leads.phone, `+${p}`));
+        }
+        
+        // Log stage change event
+        await db_pg.insert(leadEvents).values({ 
+          leadPhone: p, 
+          type: 'STAGE_CHANGE', 
+          data: { 
+            from: data.currentStage || 'Unknown', 
+            to: data.leadStage,
+            reason: 'Stage update from call outcome',
+            callStatus: 'STAGE_UPDATE',
+            stageNotes: data?.stageNotes || null,
+            actorId: actor
+          }, 
+          actorId: actor, 
+          tenantId: tenantId || null 
+        });
+      }
+
+      // Legacy handling for NOT_INTERESTED status (keep for backward compatibility)
+      if (String(data?.callStatus || '').toUpperCase() === 'NOT_INTERESTED' && !data?.stageChanged) {
+        await db_pg.update(leads).set({ stage: 'NOT_INTERESTED', updatedAt: now, lastActivityAt: now }).where(whereBase);
         if (noSpace !== p) await db_pg.update(leads).set({ stage: 'NOT_INTERESTED', updatedAt: now, lastActivityAt: now }).where(tenantId ? and(eq(leads.phone, noSpace), eq(leads.tenantId, tenantId)) : eq(leads.phone, noSpace));
         if (p.startsWith('+')) {
           await db_pg.update(leads).set({ stage: 'NOT_INTERESTED', updatedAt: now, lastActivityAt: now }).where(tenantId ? and(eq(leads.phone, p.slice(1)), eq(leads.tenantId, tenantId)) : eq(leads.phone, p.slice(1)));
         } else {
           await db_pg.update(leads).set({ stage: 'NOT_INTERESTED', updatedAt: now, lastActivityAt: now }).where(tenantId ? and(eq(leads.phone, `+${p}`), eq(leads.tenantId, tenantId)) : eq(leads.phone, `+${p}`));
         }
-        await db_pg.insert(leadEvents).values({ leadPhone: p, type: 'STAGE_CHANGE', data: { stage: 'NOT_INTERESTED' }, actorId: actor, tenantId: tenantId || null });
+        await db_pg.insert(leadEvents).values({ 
+          leadPhone: p, 
+          type: 'STAGE_CHANGE', 
+          data: { 
+            from: data?.currentStage || 'Unknown', 
+            to: 'NOT_INTERESTED',
+            reason: 'Call outcome - NOT_INTERESTED',
+            callStatus: data?.callStatus
+          }, 
+          actorId: actor, 
+          tenantId: tenantId || null 
+        });
       }
     }
-  } catch {}
+  } catch (error) {
+    console.error('Error updating lead data:', error);
+  }
+  
   return NextResponse.json({ success: true });
 }
 

@@ -16,81 +16,6 @@ interface Lead {
   createdAt: string | null;
 }
 
-const getEventIcon = (type: string) => {
-  switch (type) {
-    case "ASSIGNED":
-      return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      );
-    case "STAGE_CHANGE":
-      return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
-      );
-    case "created":
-      return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
-      );
-    case "NOTE_ADDED":
-      return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      );
-    default:
-      return (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      );
-  }
-};
-
-const getEventColor = (type: string) => {
-  switch (type) {
-    case "ASSIGNED":
-      return {
-        bg: "bg-blue-500",
-        ring: "ring-blue-100",
-        text: "text-blue-700",
-        bgLight: "bg-blue-50"
-      };
-    case "STAGE_CHANGE":
-      return {
-        bg: "bg-green-500",
-        ring: "ring-green-100",
-        text: "text-green-700",
-        bgLight: "bg-green-50"
-      };
-    case "created":
-      return {
-        bg: "bg-purple-500",
-        ring: "ring-purple-100",
-        text: "text-purple-700",
-        bgLight: "bg-purple-50"
-      };
-    case "NOTE_ADDED":
-      return {
-        bg: "bg-amber-500",
-        ring: "ring-amber-100",
-        text: "text-amber-700",
-        bgLight: "bg-amber-50"
-      };
-    default:
-      return {
-        bg: "bg-gray-500",
-        ring: "ring-gray-100",
-        text: "text-gray-700",
-        bgLight: "bg-gray-50"
-      };
-  }
-};
-
 export default function LeadDetailPage() {
   const routeParams = useParams<{ phone: string }>();
   const phone = decodeURIComponent(String(routeParams.phone));
@@ -108,6 +33,12 @@ export default function LeadDetailPage() {
   const [reassigning, setReassigning] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
+  const [selectedStage, setSelectedStage] = useState<string>("");
+  const [stageChangeNotes, setStageChangeNotes] = useState<string>("");
+  const [updatingStage, setUpdatingStage] = useState(false);
+  const [callStatus, setCallStatus] = useState<string>("");
+  const [callNotes, setCallNotes] = useState<string>("");
+  const [loggingCall, setLoggingCall] = useState(false);
 
   // Function to fetch user names from API
   const fetchUserNames = async () => {
@@ -144,7 +75,6 @@ export default function LeadDetailPage() {
 
   // Function to resolve actor ID to user name
   const resolveActorName = (actorId: string) => {
-    if (!actorId || actorId === "system") return "System";
     return userNames.get(actorId) || actorId;
   };
 
@@ -219,20 +149,34 @@ export default function LeadDetailPage() {
   }, [lead?.ownerId]);
 
   const timeline = (() => {
-    const items: Array<{ id: string | number; label: string; at?: string; meta?: string; type: string; data?: any }> = [];
+    const items: Array<{ id: string | number; label: string; at?: string; meta?: string; type: string; data?: any; icon: string; color: string }> = [];
+    
     if (lead) {
       items.push({
         id: "created",
-        label: "Prospect Created",
+        label: "Lead Created",
         at: lead.createdAt || undefined,
         meta: `Source: ${lead.source || "—"}`,
         type: "created",
+        icon: "🎯",
+        color: "emerald"
       });
     }
+    
+    // Filter and process only business-relevant events
     for (const e of events.slice().sort((a, b) => new Date(a.at || 0).getTime() - new Date(b.at || 0).getTime())) {
       const type = String(e.type || "Event");
+      
+      // Skip technical backend events
+      if (["CALL_STARTED", "CALL_ENDED"].includes(type)) {
+        continue;
+      }
+      
       let label = type;
       let meta: string | undefined = undefined;
+      let icon = "📝";
+      let color = "blue";
+      
       if (type === "ASSIGNED") {
         const fromOwnerCode = e.data?.from || "unassigned";
         const toOwnerCode = e.data?.to || "";
@@ -248,29 +192,126 @@ export default function LeadDetailPage() {
           label = "Lead Reassigned";
           meta = `${fromOwnerName} → ${toOwnerName}`;
         }
+        icon = "🔄";
+        color = "blue";
       }
+      
       if (type === "STAGE_CHANGE") {
-        label = "Stage Updated";
         const fromStage = e.data?.from || "Unknown";
         const toStage = e.data?.to || "Unknown";
         const actorId = e.data?.actorId || e.actorId || "system";
+        const reason = e.data?.reason || "";
+        const stageNotes = e.data?.stageNotes || "";
+        const callStatus = e.data?.callStatus || "";
         
-        // Create a more user-friendly message
         if (actorId && actorId !== "system") {
           const actorName = resolveActorName(actorId);
-          label = `${actorName} updated stage`;
+          label = `${actorName} changed stage`;
           meta = `${fromStage} → ${toStage}`;
+          
+          // Add additional context if available
+          if (reason) {
+            meta += ` (${reason})`;
+          }
+          if (callStatus) {
+            meta += ` - Call: ${callStatus}`;
+          }
+          if (stageNotes) {
+            meta += ` - ${stageNotes}`;
+          }
         } else {
-          label = "Stage changed";
+          label = "Stage Changed";
           meta = `${fromStage} → ${toStage}`;
+          if (reason) {
+            meta += ` (${reason})`;
+          }
         }
+        icon = "📊";
+        color = "purple";
       }
+      
       if (type === "NOTE_ADDED") {
         label = "Note Added";
         meta = e.data?.note || "Note content";
+        icon = "📝";
+        color = "amber";
       }
-      items.push({ id: e.id, label, at: e.at, meta, type, data: e.data });
+      
+      if (type === "CALL_LOGGED") {
+        const status = e.data?.status || "Call completed";
+        const note = e.data?.notes || e.data?.note || "";
+        const callType = e.data?.callType || "";
+        const callCompleted = e.data?.callCompleted || "";
+        const actorId = e.actorId || "system";
+        
+        if (actorId && actorId !== "system") {
+          const actorName = resolveActorName(actorId);
+          label = `${actorName} logged call`;
+          
+          // Build comprehensive call metadata
+          const callMeta = [];
+          if (status) callMeta.push(`Status: ${status}`);
+          if (callType) callMeta.push(`Type: ${callType}`);
+          if (callCompleted) callMeta.push(`Completed: ${callCompleted}`);
+          if (note) callMeta.push(`Notes: ${note}`);
+          
+          meta = callMeta.join(" • ");
+        } else {
+          label = "Call Logged";
+          const callMeta = [];
+          if (status) callMeta.push(`Status: ${status}`);
+          if (callType) callMeta.push(`Type: ${callType}`);
+          if (callCompleted) callMeta.push(`Completed: ${callCompleted}`);
+          if (note) callMeta.push(`Notes: ${note}`);
+          
+          meta = callMeta.join(" • ");
+        }
+        icon = "📞";
+        color = "green";
+      }
+      
+      if (type === "CALL_OUTCOME" || type === "CALL_LOGGED") {
+        // Skip duplicate CALL_LOGGED events since we handle them above
+        if (type === "CALL_LOGGED") continue;
+        
+        const status = e.data?.status || "Call completed";
+        const note = e.data?.notes || e.data?.note || "";
+        const actorId = e.actorId || "system";
+        
+        if (actorId && actorId !== "system") {
+          const actorName = resolveActorName(actorId);
+          label = `${actorName} logged call`;
+          meta = `${status}${note ? ` - ${note}` : ""}`;
+        } else {
+          label = "Call Logged";
+          meta = `${status}${note ? ` - ${note}` : ""}`;
+        }
+        icon = "📞";
+        color = "green";
+      }
+      
+      if (type === "LEAD_STATUS_CHANGED") {
+        const stage = e.data?.stage || "updated";
+        const actorId = e.actorId || "system";
+        
+        if (actorId && actorId !== "system") {
+          const actorName = resolveActorName(actorId);
+          label = `${actorName} updated status`;
+          meta = `Stage: ${stage}`;
+        } else {
+          label = "Status Updated";
+          meta = `Stage: ${stage}`;
+        }
+        icon = "📈";
+        color = "cyan";
+      }
+      
+      // Only add events that have meaningful business value
+      if (["ASSIGNED", "STAGE_CHANGE", "NOTE_ADDED", "CALL_LOGGED", "CALL_OUTCOME", "LEAD_STATUS_CHANGED"].includes(type)) {
+        items.push({ id: e.id, label, at: e.at, meta, type, data: e.data, icon, color });
+      }
     }
+    
     return items.reverse(); // Show latest first
   })();
 
@@ -307,40 +348,104 @@ export default function LeadDetailPage() {
             <div className="flow-root">
               <ul className="-mb-8">
                 {timeline.map((item, idx) => {
-                  const colors = getEventColor(item.type);
                   const isLast = idx === timeline.length - 1;
+                  
+                  // Define color schemes for different event types
+                  const getColorScheme = (color: string) => {
+                    switch (color) {
+                      case "emerald":
+                        return {
+                          bg: "bg-emerald-500",
+                          ring: "ring-emerald-100",
+                          text: "text-emerald-700",
+                          bgLight: "bg-emerald-50"
+                        };
+                      case "blue":
+                        return {
+                          bg: "bg-blue-500",
+                          ring: "ring-blue-100",
+                          text: "text-blue-700",
+                          bgLight: "bg-blue-50"
+                        };
+                      case "purple":
+                        return {
+                          bg: "bg-purple-500",
+                          ring: "ring-purple-100",
+                          text: "text-purple-700",
+                          bgLight: "bg-purple-50"
+                        };
+                      case "amber":
+                        return {
+                          bg: "bg-amber-500",
+                          ring: "ring-amber-100",
+                          text: "text-amber-700",
+                          bgLight: "bg-amber-50"
+                        };
+                      case "green":
+                        return {
+                          bg: "bg-green-500",
+                          ring: "ring-green-100",
+                          text: "text-green-700",
+                          bgLight: "bg-green-50"
+                        };
+                      case "cyan":
+                        return {
+                          bg: "bg-cyan-500",
+                          ring: "ring-cyan-100",
+                          text: "text-cyan-700",
+                          bgLight: "bg-cyan-50"
+                        };
+                      default:
+                        return {
+                          bg: "bg-slate-500",
+                          ring: "ring-slate-100",
+                          text: "text-slate-700",
+                          bgLight: "bg-slate-50"
+                        };
+                    }
+                  };
+                  
+                  const colors = getColorScheme(item.color);
                   
                   return (
                     <li key={`${item.id}-${idx}`}>
                       <div className="relative pb-8">
                         {!isLast && (
-                          <span className="absolute top-5 left-5 -ml-px h-full w-0.5 bg-slate-200" aria-hidden="true" />
+                          <span className="absolute top-6 left-6 -ml-px h-full w-0.5 bg-slate-200" aria-hidden="true" />
                         )}
-                        <div className="relative flex items-start space-x-3">
-                          <div className={`relative px-1 ${colors.bgLight} rounded-lg`}>
-                            <div className={`h-8 w-8 rounded-lg ${colors.bg} flex items-center justify-center ring-8 ${colors.ring}`}>
-                              <div className="text-white">
-                                {getEventIcon(item.type)}
-                              </div>
+                        <div className="relative flex items-start space-x-4">
+                          {/* Event Icon */}
+                          <div className={`relative flex-shrink-0 ${colors.bgLight} rounded-full p-1`}>
+                            <div className={`h-12 w-12 rounded-full ${colors.bg} flex items-center justify-center ring-4 ${colors.ring} shadow-sm`}>
+                              <span className="text-lg">{item.icon}</span>
                             </div>
                           </div>
+                          
+                          {/* Event Content */}
                           <div className="flex-1 min-w-0">
-                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                              <div className="flex items-center justify-between">
-                                <p className="text-sm font-semibold text-slate-900">{item.label}</p>
+                            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h3 className="text-sm font-semibold text-slate-900 leading-5">{item.label}</h3>
+                                  {item.meta && (
+                                    <div className="mt-2">
+                                      <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${colors.text} ${colors.bgLight} border border-current/20`}>
+                                        {item.meta}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                                 {item.at && (
-                                  <time className="text-xs text-slate-500 font-medium">
-                                    {new Date(item.at).toLocaleDateString()} at {new Date(item.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  <time className="flex-shrink-0 ml-4 text-xs text-slate-500 font-medium bg-slate-50 px-2 py-1 rounded-md">
+                                    {new Date(item.at).toLocaleDateString('en-US', { 
+                                      month: 'short', 
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
                                   </time>
                                 )}
                               </div>
-                              {item.meta && (
-                                <div className="mt-2">
-                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors.text} ${colors.bgLight} border`}>
-                                    {item.meta}
-                                  </span>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -354,11 +459,22 @@ export default function LeadDetailPage() {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
-            </svg>
-            <h2 className="text-lg font-semibold text-slate-900">Lead Details</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+              </svg>
+              <h2 className="text-lg font-semibold text-slate-900">Lead Details</h2>
+            </div>
+            <Link
+              href={`/call-form?leadPhone=${encodeURIComponent(lead.phone)}`}
+              className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              </svg>
+              Log Call
+            </Link>
           </div>
           
           <div className="space-y-4">
@@ -414,6 +530,98 @@ export default function LeadDetailPage() {
                       <span>{reassigning ? "Reassigning..." : "Reassign Lead"}</span>
                     </button>
                   )}
+                </dd>
+              </div>
+              
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Quick Stage Change</dt>
+                <dd className="mt-1 space-y-2">
+                  <select
+                    value={selectedStage || ""}
+                    onChange={(e) => setSelectedStage(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select New Stage</option>
+                    <option value="NEW">NEW</option>
+                    <option value="CONTACTED">CONTACTED</option>
+                    <option value="INTERESTED">INTERESTED</option>
+                    <option value="QUALIFIED">QUALIFIED</option>
+                    <option value="PROSPECT">PROSPECT</option>
+                    <option value="FOLLOW_UP">FOLLOW_UP</option>
+                    <option value="PAYMENT_INITIAL">PAYMENT_INITIAL</option>
+                    <option value="PAYMENT_DONE">PAYMENT_DONE</option>
+                    <option value="CONVERTED">CONVERTED</option>
+                    <option value="CUSTOMER">CUSTOMER</option>
+                    <option value="SALES_CLOSED">SALES_CLOSED</option>
+                    <option value="NOT_INTERESTED">NOT_INTERESTED</option>
+                    <option value="DNP">DNP</option>
+                    <option value="DNC">DNC</option>
+                    <option value="DISQUALIFIED">DISQUALIFIED</option>
+                    <option value="NIFC">NIFC</option>
+                    <option value="NOT_CONTACTED">NOT_CONTACTED</option>
+                  </select>
+                  <textarea
+                    placeholder="Stage change reason/notes..."
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    rows={2}
+                    value={stageChangeNotes}
+                    onChange={(e) => setStageChangeNotes(e.target.value)}
+                  />
+                  <button
+                    className="w-full bg-purple-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                    onClick={async () => {
+                      if (!selectedStage) {
+                        toast.error("Please select a new stage.");
+                        return;
+                      }
+                      if (!stageChangeNotes.trim()) {
+                        toast.error("Please provide a reason for the stage change.");
+                        return;
+                      }
+
+                      try {
+                        setUpdatingStage(true);
+                        const toastId = toast.loading("Updating stage...");
+                        const currentUser = getCurrentUser();
+                        const actorId = currentUser?.code || "system";
+
+                        const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            stage: selectedStage,
+                            stageNotes: stageChangeNotes.trim(),
+                            actorId: actorId
+                          })
+                        });
+
+                        if (res.ok) {
+                          toast.success("Stage updated successfully", { id: toastId });
+                          // Refresh lead data
+                          const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
+                          setLead(d.lead || null);
+                          setEvents(d.events || []);
+                          setTasks(d.tasks || []);
+                          setSelectedStage("");
+                          setStageChangeNotes("");
+                        } else {
+                          toast.error("Failed to update stage", { id: toastId });
+                        }
+                      } catch (error) {
+                        console.error("Failed to update stage:", error);
+                        toast.error("Failed to update stage");
+                      } finally {
+                        setUpdatingStage(false);
+                      }
+                    }}
+                    disabled={!selectedStage || !stageChangeNotes.trim() || updatingStage}
+                  >
+                    {updatingStage ? (
+                      <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
+                    ) : (
+                      <span>Update Stage</span>
+                    )}
+                  </button>
                 </dd>
               </div>
               <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
@@ -483,6 +691,90 @@ export default function LeadDetailPage() {
                   )}
                   <span>{addingNote ? "Adding..." : "Add Note"}</span>
                 </button>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-200">
+              <div className="flex items-center gap-2 mb-3">
+                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                <h3 className="text-sm font-medium text-slate-700">Quick Call Log</h3>
+              </div>
+              <div className="space-y-3">
+                <select
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={callStatus || lead.ownerId || ""}
+                  onChange={(e) => setCallStatus(e.target.value)}
+                >
+                  <option value="">Select Call Status</option>
+                  <option value="QUALIFIED">QUALIFIED</option>
+                  <option value="CONNECTED_TO_WHATSAPP">CONNECTED TO WHATSAPP</option>
+                  <option value="DNP">DNP</option>
+                  <option value="POSITIVE">POSITIVE</option>
+                  <option value="NATC">NATC</option>
+                  <option value="NOT_INTERESTED">NOT INTERESTED</option>
+                </select>
+                <textarea
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  rows={3}
+                  placeholder="Call notes..."
+                  value={callNotes}
+                  onChange={(e) => setCallNotes(e.target.value)}
+                />
+                <button
+                  className="w-full rounded-lg bg-green-600 text-white px-4 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
+                  disabled={!callStatus || !callNotes.trim() || loggingCall}
+                  onClick={async () => {
+                    try {
+                      setLoggingCall(true);
+                      const toastId = toast.loading("Logging call...");
+                      const currentUser = getCurrentUser();
+                      const actorId = currentUser?.code || "system";
+                      
+                      const res = await fetch("/api/calls", { 
+                        method: "POST", 
+                        headers: { "Content-Type": "application/json" }, 
+                        body: JSON.stringify({ 
+                          leadPhone: lead.phone,
+                          callStatus: callStatus,
+                          notes: callNotes.trim(),
+                          callType: "followup",
+                          callCompleted: "yes",
+                          ogaName: currentUser?.name || "system",
+                          currentStage: lead.stage,
+                          stageChanged: false
+                        }) 
+                      });
+                      if (res.ok) {
+                        toast.success("Call logged successfully", { id: toastId });
+                        setCallStatus("");
+                        setCallNotes("");
+                        // Refresh events to show the new call
+                        const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
+                        setEvents(d.events || []);
+                      } else {
+                        toast.error("Failed to log call", { id: toastId });
+                      }
+                    } finally {
+                      setLoggingCall(false);
+                    }
+                  }}
+                >
+                  {loggingCall && (
+                    <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
+                  )}
+                  <span>{loggingCall ? "Logging..." : "Log Call"}</span>
+                </button>
+                
+                <div className="text-center">
+                  <Link
+                    href={`/call-form?leadPhone=${encodeURIComponent(lead.phone)}`}
+                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    Use full call form with stage changes →
+                  </Link>
+                </div>
               </div>
             </div>
 

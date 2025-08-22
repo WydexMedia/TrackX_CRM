@@ -75,11 +75,11 @@ export default function AdminLayout({
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                    className="w-full text-black px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
                     placeholder="Enter password"
                     required
                   />
-                  <Lock className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2" />
+                  <Lock className="w-5 h-5  text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2" />
                 </div>
               </div>
 
@@ -99,9 +99,7 @@ export default function AdminLayout({
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-500">
-                Default password: <code className="bg-gray-100 px-2 py-1 rounded">admin123</code>
-              </p>
+              
               <p className="text-xs text-gray-400 mt-2">
                 Change this in your environment variables
               </p>

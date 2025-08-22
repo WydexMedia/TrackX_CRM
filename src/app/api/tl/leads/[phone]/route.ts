@@ -59,7 +59,7 @@ export async function PUT(_req: Request, { params }: any) {
     const tenantId = await requireTenantIdFromRequest(_req).catch(() => undefined);
     const phone = decodeURIComponent(await params.phone);
     const body = await _req.json();
-    const { stage, score, ownerId, source, actorId } = body || {};
+    const { stage, score, ownerId, source, actorId, stageNotes } = body || {};
     
     // Get current lead to capture previous values
     const currentLead = await db.select().from(leads).where(tenantId ? and(eq(leads.phone, phone), eq(leads.tenantId, tenantId)) : eq(leads.phone, phone)).limit(1);
@@ -87,7 +87,9 @@ export async function PUT(_req: Request, { params }: any) {
           from: currentLead[0].stage, 
           to: stage,
           actorId: actorId || currentLead[0].ownerId || "system",
-          message: `Stage changed from ${currentLead[0].stage} to ${stage}`
+          message: `Stage changed from ${currentLead[0].stage} to ${stage}`,
+          stageNotes: stageNotes || null,
+          reason: stageNotes ? "Manual stage update" : "Stage update"
         },
         actorId: actorId || currentLead[0].ownerId || "system",
         at: new Date()
