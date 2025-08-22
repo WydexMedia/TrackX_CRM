@@ -23,10 +23,41 @@ import {
 export default function HomePage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeCard, setActiveCard] = useState<number | null>(null);
+  const [isMainDomain, setIsMainDomain] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Detect if we're on the main domain or a subdomain
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname.toLowerCase();
+      
+      // Handle IPs
+      if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+        setIsMainDomain(true);
+        return;
+      }
+      
+      // Handle localhost and *.localhost during development
+      if (hostname === "localhost") {
+        setIsMainDomain(true);
+        return;
+      }
+      if (hostname.endsWith(".localhost")) {
+        const left = hostname.slice(0, -".localhost".length);
+        const label = left.split(".")[0];
+        setIsMainDomain(!label);
+        return;
+      }
+      
+      // Check if we have a subdomain (more than 2 parts)
+      const parts = hostname.split(".");
+      const hasSubdomain = parts.length > 2;
+      setIsMainDomain(!hasSubdomain);
+    }
   }, []);
 
   const navigationItems = [
@@ -80,11 +111,6 @@ export default function HomePage() {
     },
   ];
 
-  const quickStats = [
-    { label: "Today's Sales", value: "12", icon: <TrendingUp className="w-5 h-5" />, color: "text-green-600" },
-    { label: "Calls Made", value: "28", icon: <Phone className="w-5 h-5" />, color: "text-blue-600" },
-    { label: "Target Progress", value: "78%", icon: <Target className="w-5 h-5" />, color: "text-purple-600" }
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -114,18 +140,22 @@ export default function HomePage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Link
-                href="/admin/tenants"
-                className="px-4 py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all font-medium text-sm"
-              >
-                Admin
-              </Link>
-              <Link
-                href="/onboarding"
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all font-medium text-sm"
-              >
-                Get Your CRM
-              </Link>
+              {isMainDomain && (
+                <>
+                  <Link
+                    href="/admin/tenants"
+                    className="px-4 py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all font-medium text-sm"
+                  >
+                    Admin
+                  </Link>
+                  <Link
+                    href="/onboarding"
+                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all font-medium text-sm"
+                  >
+                    Get Your CRM
+                  </Link>
+                </>
+              )}
               <button className="p-2 bg-white/50 rounded-xl hover:bg-white/80 transition-all">
                 <Bell className="w-5 h-5 text-slate-600" />
               </button>
@@ -135,46 +165,11 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            {quickStats.map((stat, index) => (
-              <div key={index} className="bg-white/60 backdrop-blur-sm rounded-2xl p-3 border border-white/30">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className={stat.color}>
-                    {stat.icon}
-                  </div>
-                </div>
-                <p className="text-xl font-bold text-slate-800">{stat.value}</p>
-                <p className="text-xs text-slate-600">{stat.label}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 p-6 space-y-6">
-        {/* Onboarding CTA */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl shadow-xl border border-white/20 p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold mb-2">Ready to Get Your Own CRM?</h2>
-              <p className="text-blue-100 mb-4">Get a completely isolated CRM environment for your team</p>
-              <Link
-                href="/onboarding"
-                className="inline-flex items-center gap-2 bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition-all duration-300"
-              >
-                Get Started Free
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-            </div>
-            <div className="hidden md:block">
-              <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center">
-                <User className="w-12 h-12 text-white" />
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Quick Actions */}
         <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6">
