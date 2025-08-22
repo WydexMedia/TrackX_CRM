@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Proskill leaderboard",
-  description: "Proskill leaderboard to display sales performance.",
+  title: "Trackx CRM",
+  description: "Customer relationship management platform designed to streamline sales, automate workflows, and enhance customer engagement",
 };
 
 export default function RootLayout({
