@@ -243,19 +243,6 @@ export default function HomePage() {
             </Link>
           ))}
         </div>
-
-        {/* Achievement Card */}
-        <div className="bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 rounded-3xl p-6 text-white shadow-xl">
-          <div className="flex items-center gap-3 mb-3">
-            <Award className="w-6 h-6" />
-            <h3 className="font-bold text-lg">Today's Achievement</h3>
-          </div>
-          <p className="text-amber-100 mb-4">You're on fire! 🔥 Keep up the excellent work!</p>
-          <div className="bg-white/20 rounded-full h-2 mb-2">
-            <div className="bg-white rounded-full h-2 w-3/4 transition-all duration-1000 ease-out"></div>
-          </div>
-          <p className="text-xs text-amber-100">78% to your daily goal</p>
-        </div>
       </main>
 
       {/* Bottom Navigation */}
