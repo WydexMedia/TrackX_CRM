@@ -148,8 +148,17 @@ export default function LeadDetailPage() {
       .catch(() => {});
   }, [lead?.ownerId]);
 
+  // Monitor events state changes
+  useEffect(() => {
+    console.log('Events state changed - new count:', events.length);
+    console.log('Events types in state:', events.map(e => e.type));
+  }, [events]);
+
   const timeline = (() => {
     const items: Array<{ id: string | number; label: string; at?: string; meta?: string; type: string; data?: any; icon: string; color: string }> = [];
+    
+    console.log('Timeline generation - Total events:', events.length);
+    console.log('Events types found:', events.map(e => e.type));
     
     if (lead) {
       items.push({
@@ -177,26 +186,8 @@ export default function LeadDetailPage() {
       let icon = "📝";
       let color = "blue";
       
-      if (type === "ASSIGNED") {
-        const fromOwnerCode = e.data?.from || "unassigned";
-        const toOwnerCode = e.data?.to || "";
-        const fromOwnerName = fromOwnerCode === "unassigned" ? "Unassigned" : (salesByCode[fromOwnerCode]?.name || fromOwnerCode);
-        const toOwnerName = salesByCode[toOwnerCode]?.name || toOwnerCode;
-        const actorId = e.data?.actorId || e.actorId || "system";
-        
-        if (actorId && actorId !== "system") {
-          const actorName = resolveActorName(actorId);
-          label = `${actorName} reassigned lead`;
-          meta = `${fromOwnerName} → ${toOwnerName}`;
-        } else {
-          label = "Lead Reassigned";
-          meta = `${fromOwnerName} → ${toOwnerName}`;
-        }
-        icon = "🔄";
-        color = "blue";
-      }
-      
       if (type === "STAGE_CHANGE") {
+        console.log('Processing STAGE_CHANGE event:', e);
         const fromStage = e.data?.from || "Unknown";
         const toStage = e.data?.to || "Unknown";
         const actorId = e.data?.actorId || e.actorId || "system";
@@ -228,6 +219,26 @@ export default function LeadDetailPage() {
         }
         icon = "📊";
         color = "purple";
+        console.log('STAGE_CHANGE processed - label:', label, 'meta:', meta);
+      }
+      
+      if (type === "ASSIGNED") {
+        const fromOwnerCode = e.data?.from || "unassigned";
+        const toOwnerCode = e.data?.to || "";
+        const fromOwnerName = fromOwnerCode === "unassigned" ? "Unassigned" : (salesByCode[fromOwnerCode]?.name || fromOwnerCode);
+        const toOwnerName = salesByCode[toOwnerCode]?.name || toOwnerCode;
+        const actorId = e.data?.actorId || e.actorId || "system";
+        
+        if (actorId && actorId !== "system") {
+          const actorName = resolveActorName(actorId);
+          label = `${actorName} reassigned lead`;
+          meta = `${fromOwnerName} → ${toOwnerName}`;
+        } else {
+          label = "Lead Reassigned";
+          meta = `${fromOwnerName} → ${toOwnerName}`;
+        }
+        icon = "🔄";
+        color = "blue";
       }
       
       if (type === "NOTE_ADDED") {
@@ -308,9 +319,13 @@ export default function LeadDetailPage() {
       
       // Only add events that have meaningful business value
       if (["ASSIGNED", "STAGE_CHANGE", "NOTE_ADDED", "CALL_LOGGED", "CALL_OUTCOME", "LEAD_STATUS_CHANGED"].includes(type)) {
+        console.log('Adding event to timeline:', type, { label, meta, icon, color });
         items.push({ id: e.id, label, at: e.at, meta, type, data: e.data, icon, color });
       }
     }
+    
+    console.log('Timeline generation complete - Final items count:', items.length);
+    console.log('Timeline items:', items.map(item => ({ type: item.type, label: item.label, meta: item.meta })));
     
     return items.reverse(); // Show latest first
   })();
@@ -597,13 +612,26 @@ export default function LeadDetailPage() {
 
                         if (res.ok) {
                           toast.success("Stage updated successfully", { id: toastId });
+                          
                           // Refresh lead data
+                          console.log('Refreshing data after stage update...');
                           const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
+                          console.log('Quick stage change - refreshed data:', d);
+                          console.log('Events count after refresh:', d.events?.length || 0);
+                          console.log('Latest events:', d.events?.slice(0, 3));
+                          
+                          // Check if the new STAGE_CHANGE event is in the refreshed data
+                          const stageChangeEvents = d.events?.filter((e: any) => e.type === 'STAGE_CHANGE') || [];
+                          console.log('STAGE_CHANGE events found:', stageChangeEvents);
+                          
                           setLead(d.lead || null);
                           setEvents(d.events || []);
                           setTasks(d.tasks || []);
                           setSelectedStage("");
                           setStageChangeNotes("");
+                          
+                          console.log('State updated - events count:', d.events?.length || 0);
+                          console.log('New events array set to state');
                         } else {
                           toast.error("Failed to update stage", { id: toastId });
                         }

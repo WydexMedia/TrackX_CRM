@@ -32,16 +32,23 @@ export async function GET(_req: Request, { params }: any) {
       variantsSet.add(base);
       const noSpace = base.replace(/\s+/g, "");
       variantsSet.add(noSpace);
-      if (base.startsWith("+")) variantsSet.add(base.slice(1));
+      if (base.startsWith('+')) variantsSet.add(base.slice(1));
       else variantsSet.add(`+${base}`);
     }
     const variants = Array.from(variantsSet);
+    
+    console.log('Phone variants for events query:', variants);
+    console.log('Lead phone:', lead.phone);
 
     const events = await db
       .select()
       .from(leadEvents)
       .where(tenantId ? and(inArray(leadEvents.leadPhone, variants), eq(leadEvents.tenantId, tenantId)) : inArray(leadEvents.leadPhone, variants))
       .orderBy(desc(leadEvents.at));
+    
+    console.log('Events found:', events.length);
+    console.log('Event types:', events.map(e => e.type));
+    console.log('Event lead phones:', events.map(e => e.leadPhone));
     // Select only columns that are guaranteed to exist to avoid errors if migrations haven't been applied
     const openTasks = await db
       .select({ id: tasks.id, leadPhone: tasks.leadPhone, title: tasks.title, status: tasks.status, dueAt: tasks.dueAt, createdAt: tasks.createdAt })
@@ -61,11 +68,18 @@ export async function PUT(_req: Request, { params }: any) {
     const body = await _req.json();
     const { stage, score, ownerId, source, actorId, stageNotes } = body || {};
     
+    console.log('Team Leader API - PUT request for phone:', phone);
+    console.log('Request body:', { stage, score, ownerId, source, actorId, stageNotes });
+    
     // Get current lead to capture previous values
     const currentLead = await db.select().from(leads).where(tenantId ? and(eq(leads.phone, phone), eq(leads.tenantId, tenantId)) : eq(leads.phone, phone)).limit(1);
     if (!currentLead[0]) {
+      console.log('Lead not found for phone:', phone);
       return new Response(JSON.stringify({ success: false, error: "Lead not found" }), { status: 404 });
     }
+
+    console.log('Current lead found:', currentLead[0]);
+    console.log('Current stage:', currentLead[0].stage, 'New stage:', stage);
 
     const updateData: any = {};
     if (stage !== undefined) updateData.stage = stage;
@@ -80,7 +94,9 @@ export async function PUT(_req: Request, { params }: any) {
 
     // Log stage change event if stage was updated
     if (stage !== undefined && stage !== currentLead[0].stage) {
-      await db.insert(leadEvents).values({
+      console.log('Creating STAGE_CHANGE event from', currentLead[0].stage, 'to', stage);
+      
+      const eventData = {
         leadPhone: phone,
         type: "STAGE_CHANGE",
         data: { 
@@ -92,8 +108,19 @@ export async function PUT(_req: Request, { params }: any) {
           reason: stageNotes ? "Manual stage update" : "Stage update"
         },
         actorId: actorId || currentLead[0].ownerId || "system",
-        at: new Date()
-      } as any);
+        at: new Date(),
+        tenantId: tenantId || null
+      };
+      
+      console.log('Inserting STAGE_CHANGE event:', eventData);
+      try {
+        await db.insert(leadEvents).values(eventData as any);
+        console.log('STAGE_CHANGE event created successfully');
+      } catch (error) {
+        console.error('Failed to create STAGE_CHANGE event:', error);
+      }
+    } else {
+      console.log('No stage change detected or stage is the same');
     }
 
     // Log assignment change event if ownerId was updated
