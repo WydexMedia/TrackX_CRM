@@ -25,10 +25,41 @@ export default function OnboardingPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file size (2MB max)
+      if (file.size > 2 * 1024 * 1024) {
+        setMessage({ type: "error", text: "Logo file size must be less than 2MB" });
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setMessage({ type: "error", text: "Please select a valid image file" });
+        return;
+      }
+
+      setLogoFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setLogoPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      
+      // Clear any previous error messages
+      setMessage(null);
+    }
   };
 
   const validateSubdomain = (subdomain: string) => {
@@ -47,21 +78,27 @@ export default function OnboardingPage() {
     setMessage(null);
 
     try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('subdomain', form.subdomain);
+      formData.append('name', form.companyName);
+      formData.append('metadata', JSON.stringify({
+        contactName: form.contactName,
+        email: form.email,
+        phone: form.phone,
+        expectedUsers: form.expectedUsers,
+        industry: form.industry,
+        onboardingDate: new Date().toISOString(),
+      }));
+      
+      // Add logo file if selected
+      if (logoFile) {
+        formData.append('logo', logoFile);
+      }
+
       const response = await fetch("/api/tenants", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subdomain: form.subdomain,
-          name: form.companyName,
-          metadata: {
-            contactName: form.contactName,
-            email: form.email,
-            phone: form.phone,
-            expectedUsers: form.expectedUsers,
-            industry: form.industry,
-            onboardingDate: new Date().toISOString(),
-          },
-        }),
+        body: formData, // Use FormData instead of JSON
       });
 
       const data = await response.json();
@@ -80,6 +117,8 @@ export default function OnboardingPage() {
           expectedUsers: "1-10",
           industry: "",
         });
+        setLogoFile(null);
+        setLogoPreview(null);
       } else {
         setMessage({ type: "error", text: data.error || "Failed to create tenant" });
       }
@@ -207,6 +246,42 @@ export default function OnboardingPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     Only lowercase letters, numbers, and hyphens. 3-63 characters.
                   </p>
+                </div>
+              </div>
+
+              {/* Company Logo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Logo
+                </label>
+                <div className="flex items-center space-x-4">
+                  <div className="flex-shrink-0">
+                    {logoPreview ? (
+                      <img 
+                        src={logoPreview} 
+                        alt="Logo preview" 
+                        className="w-16 h-16 object-contain border border-gray-300 rounded-lg bg-white"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      name="logo"
+                      accept="image/*"
+                      onChange={handleLogoChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Recommended: 200x200px, PNG or JPG. Max 2MB.
+                    </p>
+                  </div>
                 </div>
               </div>
 

@@ -4,6 +4,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from "react-hot-toast";
 import Link from "next/link";
+import TenantLogo from "@/components/TenantLogo";
+import { useTenant } from "@/hooks/useTenant";
 
 interface Sale {
   _id?: string;
@@ -110,8 +112,9 @@ function StatCard({
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [sales, setSales] = useState<Sale[]>([]);
+  const { subdomain } = useTenant();
   const [user, setUser] = useState<User | null>(null);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{
@@ -259,26 +262,39 @@ export default function DashboardPage() {
         {/* ---------- header ---------- */}
         <header className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-4 sm:p-6 mb-4 sm:mb-8 border border-white/50">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                Welcome back, {user.name}
-              </h1>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-slate-700">
-                <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs sm:text-sm">
-                  {/* badge icon */}
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M10 6H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-5" />
-                    <path d="M10 6V5a2 2 0 1 1 4 0v1" />
-                  </svg>
-                  {user.code}
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs sm:text-sm">
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M3 8l7.89 4.26a2 2 0 0 0 2.22 0L21 8" />
-                    <path d="M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
-                  </svg>
-                  {user.email}
-                </span>
+            <div className="flex items-center gap-4">
+              {/* Tenant Logo */}
+              {subdomain && (
+                <div className="flex-shrink-0">
+                  <TenantLogo 
+                    subdomain={subdomain} 
+                    className="w-12 h-12 rounded-lg shadow-sm"
+                    fallbackText={subdomain.toUpperCase().slice(0, 2)}
+                  />
+                </div>
+              )}
+              
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                  Welcome back, {user.name}
+                </h1>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-slate-700">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs sm:text-sm">
+                    {/* badge icon */}
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M10 6H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-5" />
+                      <path d="M10 6V5a2 2 0 1 1 4 0v1" />
+                    </svg>
+                    {user.code}
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs sm:text-sm">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 8l7.89 4.26a2 2 0 0 0 2.22 0L21 8" />
+                      <path d="M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
+                    </svg>
+                    {user.email}
+                  </span>
+                </div>
               </div>
             </div>
             <button

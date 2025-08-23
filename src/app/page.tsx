@@ -17,13 +17,20 @@ import {
   ArrowRight,
   Zap,
   Award,
-  Activity
+  Activity,
+  BarChart3,
+  Users,
+  Shield,
+  Globe
 } from "lucide-react";
+import TenantLogo from "@/components/TenantLogo";
+import { useTenant } from "@/hooks/useTenant";
 
 export default function HomePage() {
+  const { subdomain } = useTenant();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeCard, setActiveCard] = useState<number | null>(null);
-  const [isMainDomain, setIsMainDomain] = useState(true);
+  const [isMainDomain, setIsMainDomain] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -124,20 +131,33 @@ export default function HomePage() {
       <header className="relative bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-lg">
         <div className="px-6 py-6">
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Sales Portal
-              </h1>
-              <p className="text-sm text-slate-600">
-                {currentTime.toLocaleString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </p>
+            <div className="flex items-center gap-4">
+              {/* Tenant Logo */}
+              {subdomain && (
+                <div className="flex-shrink-0">
+                  <TenantLogo 
+                    subdomain={subdomain} 
+                    className="w-12 h-12 rounded-xl shadow-sm"
+                    fallbackText={subdomain.toUpperCase().slice(0, 2)}
+                  />
+                </div>
+              )}
+              
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Sales Portal
+                </h1>
+                <p className="text-sm text-slate-600">
+                  {currentTime.toLocaleString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               {isMainDomain && (
