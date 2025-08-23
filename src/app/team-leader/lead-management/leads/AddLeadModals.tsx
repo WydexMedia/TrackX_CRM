@@ -40,265 +40,498 @@ export function AddLeadModal({ open, onClose, onCreated }: { open: boolean; onCl
   );
 }
 
+// Available form fields for mapping
+const FORM_FIELDS = [
+  { key: 'phone', label: 'Phone Number', required: true, description: 'Primary identifier for the lead' },
+  { key: 'name', label: 'Full Name', required: false, description: 'Lead\'s full name' },
+  { key: 'email', label: 'Email Address', required: false, description: 'Lead\'s email address' },
+  { key: 'source', label: 'Lead Source', required: false, description: 'Where the lead came from' },
+  { key: 'stage', label: 'Lead Stage', required: false, description: 'Current stage in sales process' },
+  { key: 'score', label: 'Lead Score', required: false, description: 'Numerical score for lead quality' },
+  { key: 'consent', label: 'Marketing Consent', required: false, description: 'Whether lead consented to marketing' },
+  { key: 'utm', label: 'UTM Parameters', required: false, description: 'Campaign tracking parameters' }
+];
+
 export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean; onClose: () => void; onImported: () => void }) {
-  const [rows, setRows] = useState<any[]>([]);
+  const [step, setStep] = useState<'upload' | 'mapping' | 'preview'>('upload');
+  const [fileData, setFileData] = useState<any[]>([]);
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [mappedData, setMappedData] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   
   if (!open) return null;
-  
-  const validateRows = (data: any[]) => {
-    const errors: string[] = [];
-    
-    console.log("Validating rows:", data.length, "rows");
-    
-    if (data.length === 0) {
-      errors.push("File is empty or contains no valid data");
-      console.log("Validation error: File is empty");
-      return errors;
-    }
-    
-    // Check if any row has phone-like columns
-    const hasPhoneColumn = data.some(row => 
-      row.hasOwnProperty('phone') || 
-      row.hasOwnProperty('Phone') || 
-      row.hasOwnProperty('PHONE')
-    );
-    
-    console.log("Has phone column:", hasPhoneColumn);
-    
-    if (!hasPhoneColumn) {
-      errors.push("Required column 'phone' not found in the file. Please ensure your CSV has a column named 'phone', 'Phone', or 'PHONE'.");
-    }
-    
-    // Get all phone numbers (including empty ones for validation)
-    const phoneData = data.map(row => ({
-      phone: String(row.phone || row.Phone || row.PHONE || "").trim(),
-      originalRow: row
-    }));
-    
-    // Check for rows with phone numbers
-    const rowsWithPhone = phoneData.filter(item => item.phone);
-    const rowsWithoutPhone = phoneData.filter(item => !item.phone);
-    
-    console.log("Rows with phone:", rowsWithPhone.length, "Rows without phone:", rowsWithoutPhone.length);
-    
-    if (rowsWithPhone.length === 0) {
-      errors.push("No valid phone numbers found in the file");
-    }
-    
-    if (rowsWithoutPhone.length > 0) {
-      errors.push(`${rowsWithoutPhone.length} rows are missing phone numbers`);
-    }
-    
-    // Check for duplicate phone numbers (only among valid phones)
-    if (rowsWithPhone.length > 0) {
-      const phones = rowsWithPhone.map(item => item.phone);
-      const uniquePhones = new Set(phones);
-      if (phones.length !== uniquePhones.size) {
-        const duplicateCount = phones.length - uniquePhones.size;
-        errors.push(`${duplicateCount} duplicate phone numbers found in the file`);
-      }
-      
-      // Check for invalid phone numbers (too short)
-      const invalidPhones = phones.filter(phone => phone.length < 10);
-      if (invalidPhones.length > 0) {
-        errors.push(`${invalidPhones.length} phone numbers are too short (minimum 10 digits required)`);
-      }
-    }
-    
-    // Check for invalid email formats
-    const invalidEmails = data.filter(row => {
-      const email = String(row.email || row.Email || row.EMAIL || "").trim();
-      if (!email) return false; // Empty email is fine
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return !emailRegex.test(email);
-    });
-    if (invalidEmails.length > 0) {
-      errors.push(`${invalidEmails.length} email addresses have invalid format`);
-    }
-    
-    console.log("Final validation errors:", errors);
-    return errors;
-  };
-  
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    console.log("File upload started:", file.name);
-    
-    try {
-      setError("");
-      setValidationErrors([]);
-      setRows([]);
-      
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(ws, { defval: "" });
-      
-      console.log("Parsed JSON data:", json);
-      
-      if (!Array.isArray(json) || json.length === 0) {
-        console.log("Setting error: Invalid file format or empty file");
-        setError("Invalid file format or empty file");
-        return;
-      }
-      
-      // Normalize to { phone, name, email, source, stage, score }
-      const normalized = (json as any[]).map((r) => ({
-        phone: String(r.phone || r.Phone || r.PHONE || "").trim(),
-        name: r.name || r.Name || r.NAME || "",
-        email: r.email || r.Email || r.EMAIL || "",
-        source: r.source || r.Source || r.SOURCE || "",
-        stage: r.stage || r.Stage || r.STAGE || "",
-        score: Number(r.score || r.Score || r.SCORE || 0) || 0,
-      }));
-      
-      console.log("Normalized data:", normalized);
-      
-      // Validate the data BEFORE filtering
-      const errors = validateRows(normalized);
-      console.log("Validation errors:", errors);
-      
-      if (errors.length > 0) {
-        console.log("Setting validation errors:", errors);
-        setValidationErrors(errors);
-        setError("File validation failed");
-        setRows([]); // Clear rows on validation failure
-        return;
-      }
-      
-      // Only keep rows with valid phone numbers after validation passes
-      const validRows = normalized.filter((r) => r.phone);
-      
-      console.log("Valid rows after filtering:", validRows);
-      
-      if (validRows.length === 0) {
-        console.log("No valid rows found");
-        setError("No valid rows found in the file");
-        setValidationErrors(["All rows are missing phone numbers or have invalid data"]);
-        return;
-      }
-      
-      setRows(validRows);
-      setError("");
-      setValidationErrors([]);
-      
-    } catch (error) {
-      console.error("File upload error:", error);
-      setError("Failed to read file. Please ensure it's a valid CSV or Excel file.");
-      setValidationErrors([]);
-      setRows([]);
-    }
-  };
-  
+
   const resetForm = () => {
-    setRows([]);
+    setStep('upload');
+    setFileData([]);
+    setColumnMapping({});
+    setMappedData([]);
     setError("");
     setValidationErrors([]);
     if (fileRef.current) {
       fileRef.current.value = "";
     }
   };
-  
+
   const handleClose = () => {
     resetForm();
     onClose();
   };
-  
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl w-full max-w-lg p-5">
-        <div className="text-lg font-semibold mb-4">Import Leads (CSV/Excel)</div>
-        
-        {/* Error Display */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border-2 border-red-300 rounded-lg shadow-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs font-bold">!</span>
-              </div>
-              <div className="text-red-800 font-semibold text-sm">{error}</div>
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      setError("");
+      setValidationErrors([]);
+      
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      
+      if (!Array.isArray(json) || json.length === 0) {
+        setError("Invalid file format or empty file");
+        return;
+      }
+
+      setFileData(json);
+      setStep('mapping');
+      
+    } catch (error) {
+      console.error("File upload error:", error);
+      setError("Failed to read file. Please ensure it's a valid CSV or Excel file.");
+    }
+  };
+
+  const getAvailableColumns = () => {
+    if (fileData.length === 0) return [];
+    return Object.keys(fileData[0]);
+  };
+
+  const handleMappingChange = (formField: string, csvColumn: string) => {
+    setColumnMapping(prev => ({
+      ...prev,
+      [formField]: csvColumn
+    }));
+  };
+
+  const autoMapColumns = () => {
+    const availableColumns = getAvailableColumns();
+    const mapping: Record<string, string> = {};
+    
+    availableColumns.forEach(csvCol => {
+      const csvColLower = csvCol.toLowerCase();
+      
+      // Try to find exact matches first
+      FORM_FIELDS.forEach(field => {
+        if (csvColLower === field.key.toLowerCase() || 
+            csvColLower.includes(field.key.toLowerCase()) ||
+            field.key.toLowerCase().includes(csvColLower)) {
+          mapping[field.key] = csvCol;
+        }
+      });
+      
+      // Handle common variations
+      if (csvColLower.includes('phone') || csvColLower.includes('mobile') || csvColLower.includes('cell')) {
+        mapping['phone'] = csvCol;
+      }
+      if (csvColLower.includes('first') || csvColLower.includes('last') || csvColLower.includes('full')) {
+        mapping['name'] = csvCol;
+      }
+      if (csvColLower.includes('mail')) {
+        mapping['email'] = csvCol;
+      }
+      if (csvColLower.includes('source') || csvColLower.includes('origin') || csvColLower.includes('campaign')) {
+        mapping['source'] = csvCol;
+      }
+      if (csvColLower.includes('stage') || csvColLower.includes('status') || csvColLower.includes('phase')) {
+        mapping['stage'] = csvCol;
+      }
+      if (csvColLower.includes('score') || csvColLower.includes('rating') || csvColLower.includes('priority')) {
+        mapping['score'] = csvCol;
+      }
+    });
+    
+    setColumnMapping(mapping);
+  };
+
+  const validateMapping = () => {
+    const errors: string[] = [];
+    
+    if (!columnMapping.phone) {
+      errors.push("Phone number column mapping is required");
+    }
+    
+    return errors;
+  };
+
+  const proceedToPreview = () => {
+    const errors = validateMapping();
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+    
+    // Map the data according to the column mapping
+    const mapped = fileData.map(row => {
+      const mappedRow: any = {};
+      
+      Object.entries(columnMapping).forEach(([formField, csvColumn]) => {
+        if (csvColumn && row[csvColumn] !== undefined) {
+          let value = row[csvColumn];
+          
+          // Handle special cases
+          if (formField === 'phone') {
+            value = String(value).trim();
+          } else if (formField === 'score') {
+            value = Number(value) || 0;
+          } else if (formField === 'consent') {
+            value = Boolean(value);
+          } else if (formField === 'utm') {
+            // Try to parse UTM as JSON or create from individual columns
+            try {
+              value = typeof value === 'string' ? JSON.parse(value) : value;
+            } catch {
+              value = null;
+            }
+          }
+          
+          mappedRow[formField] = value;
+        }
+      });
+      
+      return mappedRow;
+    });
+    
+    setMappedData(mapped);
+    setValidationErrors([]);
+    setStep('preview');
+  };
+
+  const validateMappedData = (data: any[]) => {
+    const errors: string[] = [];
+    
+    if (data.length === 0) {
+      errors.push("No data to import");
+      return errors;
+    }
+    
+    // Check for required phone numbers
+    const rowsWithPhone = data.filter(row => row.phone && String(row.phone).trim());
+    if (rowsWithPhone.length === 0) {
+      errors.push("No valid phone numbers found after mapping");
+    }
+    
+    // Check for duplicate phone numbers
+    const phones = rowsWithPhone.map(row => String(row.phone).trim());
+    const uniquePhones = new Set(phones);
+    if (phones.length !== uniquePhones.size) {
+      const duplicateCount = phones.length - uniquePhones.size;
+      errors.push(`${duplicateCount} duplicate phone numbers found`);
+    }
+    
+    // Check for invalid phone numbers
+    const invalidPhones = phones.filter(phone => phone.length < 10);
+    if (invalidPhones.length > 0) {
+      errors.push(`${invalidPhones.length} phone numbers are too short (minimum 10 digits)`);
+    }
+    
+    // Check for invalid email formats
+    const invalidEmails = data.filter(row => {
+      const email = row.email;
+      if (!email) return false;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return !emailRegex.test(String(email));
+    });
+    
+    if (invalidEmails.length > 0) {
+      errors.push(`${invalidEmails.length} email addresses have invalid format`);
+    }
+    
+    return errors;
+  };
+
+  const handleImport = async () => {
+    const errors = validateMappedData(mappedData);
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      const res = await fetch("/api/tl/leads/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: mappedData }),
+      });
+      
+      if (res.ok) {
+        toast.success("Leads imported successfully");
+        onImported();
+        handleClose();
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || "Import failed");
+      }
+    } catch (error) {
+      toast.error("Import failed due to network error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const renderUploadStep = () => (
+    <div className="space-y-4">
+      <div className="text-center">
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+          <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900">Upload Your File</h3>
+        <p className="text-sm text-gray-600">Choose a CSV or Excel file to import your leads</p>
+      </div>
+      
+      <input 
+        ref={fileRef} 
+        type="file" 
+        accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+        onChange={handleFileUpload}
+        className="w-full border-2 border-dashed border-gray-300 rounded-lg px-4 py-6 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-colors"
+      />
+      
+      <div className="text-xs text-gray-500 text-center">
+        <p>Supported formats: CSV, XLSX, XLS</p>
+        <p>Maximum file size: 10MB</p>
+      </div>
+    </div>
+  );
+
+  const renderMappingStep = () => (
+    <div className="space-y-4">
+      <div className="text-center mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Map Your Columns</h3>
+        <p className="text-sm text-gray-600">Match your file columns to our form fields</p>
+      </div>
+      
+      {validationErrors.length > 0 && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          {validationErrors.map((err, index) => (
+            <div key={index} className="text-red-700 text-sm flex items-center gap-2">
+              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+              {err}
             </div>
-            {validationErrors.length > 0 && (
-              <ul className="mt-3 space-y-2">
-                {validationErrors.map((err, index) => (
-                  <li key={index} className="text-red-700 text-sm flex items-start gap-2">
-                    <span className="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></span>
-                    <span>{err}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-        
-        {/* Debug Info - Remove this after testing */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mb-2 p-2 bg-gray-100 rounded text-xs">
-            <div>Error: "{error}"</div>
-            <div>Validation Errors: {validationErrors.length}</div>
-            <div>Rows: {rows.length}</div>
-          </div>
-        )}
-        
-        <input 
-          ref={fileRef} 
-          type="file" 
-          accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
-          onChange={handleFileUpload}
-          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100"
-        />
-        
-        <div className="mt-3 text-xs text-slate-500">Required column: phone. Optional: name, email, source, stage, score.</div>
-        
-        {/* Preview of valid rows */}
-        {rows.length > 0 && !error && (
-          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div className="text-green-800 font-medium text-sm">✓ {rows.length} rows ready for import</div>
-            <div className="text-green-700 text-xs mt-1">File validation passed successfully</div>
-          </div>
-        )}
-        
-        <div className="mt-4 flex justify-between text-sm">
-          <div className={`${error ? 'text-red-600' : 'text-slate-600'}`}>
-            {error ? 'Validation failed' : `${rows.length} rows ready`}
-          </div>
-          <div className="flex gap-2">
-            <button className="px-4 py-2 text-slate-600 hover:text-slate-800" onClick={handleClose}>Cancel</button>
-            <button
-              className="rounded-xl bg-slate-800 text-white px-4 py-2 hover:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={uploading || rows.length === 0 || !!error}
-              onClick={async () => {
-                setUploading(true);
-                try {
-                  const res = await fetch("/api/tl/leads/import", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ rows }),
-                  });
-                  if (res.ok) {
-                    toast.success("Leads imported successfully");
-                    onImported();
-                    handleClose();
-                  } else {
-                    const errorData = await res.json();
-                    toast.error(errorData.error || "Import failed");
-                  }
-                } catch (error) {
-                  toast.error("Import failed due to network error");
-                } finally {
-                  setUploading(false);
-                }
-              }}
+          ))}
+        </div>
+      )}
+      
+      <div className="flex justify-between items-center mb-4">
+        <span className="text-sm text-gray-600">Found {getAvailableColumns().length} columns in your file</span>
+        <button
+          onClick={autoMapColumns}
+          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+        >
+          Auto-map columns
+        </button>
+      </div>
+      
+      <div className="space-y-3 max-h-96 overflow-y-auto">
+        {FORM_FIELDS.map(field => (
+          <div key={field.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm">{field.label}</span>
+                {field.required && <span className="text-red-500 text-xs">*</span>}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">{field.description}</p>
+            </div>
+            <select
+              value={columnMapping[field.key] || ""}
+              onChange={(e) => handleMappingChange(field.key, e.target.value)}
+              className="ml-4 border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[150px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              {uploading ? "Importing..." : "Import"}
+              <option value="">-- Select Column --</option>
+              {getAvailableColumns().map(col => (
+                <option key={col} value={col}>
+                  {col} {columnMapping[field.key] === col ? '✓' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+      </div>
+      
+      <div className="flex justify-between pt-4">
+        <button
+          onClick={() => setStep('upload')}
+          className="px-4 py-2 text-gray-600 hover:text-gray-800"
+        >
+          ← Back
+        </button>
+        <button
+          onClick={proceedToPreview}
+          disabled={!columnMapping.phone}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Continue to Preview →
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderPreviewStep = () => (
+    <div className="space-y-4">
+      <div className="text-center mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Preview & Import</h3>
+        <p className="text-sm text-gray-600">Review your mapped data before importing</p>
+      </div>
+      
+      {validationErrors.length > 0 && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          {validationErrors.map((err, index) => (
+            <div key={index} className="text-red-700 text-sm flex items-center gap-2">
+              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+              {err}
+            </div>
+          ))}
+        </div>
+      )}
+      
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 text-green-800">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <span className="font-medium">Ready to Import</span>
+        </div>
+        <p className="text-green-700 text-sm mt-1">
+          {mappedData.length} leads will be imported with the following mapping:
+        </p>
+      </div>
+      
+      <div className="bg-gray-50 rounded-lg p-3">
+        <div className="text-xs text-gray-600 mb-2">Column Mapping Summary:</div>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {Object.entries(columnMapping).map(([formField, csvColumn]) => (
+            <div key={formField} className="flex justify-between">
+              <span className="font-medium">{FORM_FIELDS.find(f => f.key === formField)?.label}:</span>
+              <span className="text-gray-600">{csvColumn}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
+        <table className="w-full text-xs">
+          <thead className="bg-gray-50 sticky top-0">
+            <tr>
+              {Object.keys(columnMapping).map(field => (
+                <th key={field} className="px-3 py-2 text-left font-medium text-gray-700">
+                  {FORM_FIELDS.find(f => f.key === field)?.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {mappedData.slice(0, 5).map((row, index) => (
+              <tr key={index} className="border-t border-gray-100">
+                {Object.keys(columnMapping).map(field => (
+                  <td key={field} className="px-3 py-2 text-gray-600">
+                    {String(row[field] || '').substring(0, 30)}
+                    {String(row[field] || '').length > 30 ? '...' : ''}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {mappedData.length > 5 && (
+          <div className="p-2 text-center text-xs text-gray-500 bg-gray-50">
+            Showing first 5 rows of {mappedData.length} total rows
+          </div>
+        )}
+      </div>
+      
+      <div className="flex justify-between pt-4">
+        <button
+          onClick={() => setStep('mapping')}
+          className="px-4 py-2 text-gray-600 hover:text-gray-800"
+        >
+          ← Back to Mapping
+        </button>
+        <button
+          onClick={handleImport}
+          disabled={uploading || validationErrors.length > 0}
+          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {uploading ? "Importing..." : `Import ${mappedData.length} Leads`}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900">Import Leads</h2>
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
+          
+          {/* Progress Steps */}
+          <div className="flex items-center justify-center mt-4">
+            <div className="flex items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                step === 'upload' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                1
+              </div>
+              <div className={`w-12 h-1 mx-2 ${
+                step === 'mapping' || step === 'preview' ? 'bg-blue-600' : 'bg-gray-200'
+              }`}></div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                step === 'mapping' ? 'bg-blue-600 text-white' : step === 'preview' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                2
+              </div>
+              <div className={`w-12 h-1 mx-2 ${
+                step === 'preview' ? 'bg-blue-600' : 'bg-gray-200'
+              }`}></div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                step === 'preview' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                3
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-center mt-2">
+            <span className="text-sm text-gray-600">
+              {step === 'upload' && 'Upload File'}
+              {step === 'mapping' && 'Map Columns'}
+              {step === 'preview' && 'Preview & Import'}
+            </span>
+          </div>
+        </div>
+        
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+          {step === 'upload' && renderUploadStep()}
+          {step === 'mapping' && renderMappingStep()}
+          {step === 'preview' && renderPreviewStep()}
         </div>
       </div>
     </div>
