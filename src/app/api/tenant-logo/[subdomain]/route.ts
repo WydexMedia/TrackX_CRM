@@ -3,10 +3,10 @@ import { getTenantLogo } from "@/lib/tenant";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { subdomain: string } }
+  { params }: { params: Promise<{ subdomain: string }> }
 ) {
   try {
-    const subdomain = decodeURIComponent(params.subdomain);
+    const { subdomain } = await params;
     const logoPath = await getTenantLogo(subdomain);
     
     if (logoPath) {
