@@ -70,7 +70,13 @@ export async function GET(request) {
   const lastMonth = getLastMonthDate();
 
   const analytics = allUsers.map(user => {
-    const userSales = allSales.filter(sale => sale.ogaName === user.name);
+    const userSales = allSales.filter(sale => {
+      const exactMatch = sale.ogaName === user.name;
+      const caseInsensitiveMatch = sale.ogaName.toLowerCase() === user.name.toLowerCase();
+      const partialMatch = sale.ogaName.toLowerCase().includes(user.name.toLowerCase()) || 
+                         user.name.toLowerCase().includes(sale.ogaName.toLowerCase());
+      return exactMatch || caseInsensitiveMatch || partialMatch;
+    });
     const todaySales = filterSalesByDate(userSales, today);
     const thisMonthSales = filterSalesByMonth(userSales, today);
     const lastMonthSales = filterSalesByMonth(userSales, lastMonth);

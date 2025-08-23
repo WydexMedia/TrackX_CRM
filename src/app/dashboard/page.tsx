@@ -149,7 +149,16 @@ export default function DashboardPage() {
 
     const loadSales = fetch("/api/sales")
       .then((res) => res.json())
-      .then((data: Sale[]) => setSales(data.filter((s) => s.ogaName === u.name)))
+      .then((data: Sale[]) => {
+        const filteredSales = data.filter((s) => {
+          const exactMatch = s.ogaName === u.name;
+          const caseInsensitiveMatch = s.ogaName.toLowerCase() === u.name.toLowerCase();
+          const partialMatch = s.ogaName.toLowerCase().includes(u.name.toLowerCase()) || 
+                             u.name.toLowerCase().includes(s.ogaName.toLowerCase());
+          return exactMatch || caseInsensitiveMatch || partialMatch;
+        });
+        setSales(filteredSales);
+      })
       .catch(() => toast.error("Failed to load sales"));
 
     Promise.all([loadUser, loadSales]).finally(() => setIsLoading(false));
@@ -191,7 +200,16 @@ export default function DashboardPage() {
     if (!user) return;
     fetch("/api/sales")
       .then((res) => res.json())
-      .then((data: Sale[]) => setSales(data.filter((s) => s.ogaName === user.name)))
+      .then((data: Sale[]) => {
+        const filteredSales = data.filter((s) => {
+          const exactMatch = s.ogaName === user.name;
+          const caseInsensitiveMatch = s.ogaName.toLowerCase() === user.name.toLowerCase();
+          const partialMatch = s.ogaName.toLowerCase().includes(user.name.toLowerCase()) || 
+                             user.name.toLowerCase().includes(s.ogaName.toLowerCase());
+          return exactMatch || caseInsensitiveMatch || partialMatch;
+        });
+        setSales(filteredSales);
+      })
       .catch(() => toast.error("Failed to refresh sales"));
   };
 

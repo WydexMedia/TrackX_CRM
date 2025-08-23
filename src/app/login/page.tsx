@@ -105,7 +105,34 @@ export default function LoginAndDashboard() {
     if (!user) return;
     fetch("/api/sales")
       .then(res => res.json())
-      .then(data => setSales(data.filter((s: any) => s.ogaName === user.name)));
+      .then(data => {
+        console.log('All sales data:', data);
+        console.log('Current user:', user);
+        console.log('User name:', user.name);
+        console.log('Filtering by ogaName === user.name');
+        
+        const filteredSales = data.filter((s: any) => {
+          // Try exact match first
+          const exactMatch = s.ogaName === user.name;
+          
+          // Try case-insensitive match
+          const caseInsensitiveMatch = s.ogaName.toLowerCase() === user.name.toLowerCase();
+          
+          // Try partial match (in case there are extra spaces or slight differences)
+          const partialMatch = s.ogaName.toLowerCase().includes(user.name.toLowerCase()) || 
+                             user.name.toLowerCase().includes(s.ogaName.toLowerCase());
+          
+          const matches = exactMatch || caseInsensitiveMatch || partialMatch;
+          
+          console.log(`Sale: ${s.customerName}, ogaName: "${s.ogaName}", user.name: "${user.name}"`);
+          console.log(`  Exact match: ${exactMatch}, Case-insensitive: ${caseInsensitiveMatch}, Partial: ${partialMatch}, Final: ${matches}`);
+          
+          return matches;
+        });
+        
+        console.log('Filtered sales:', filteredSales);
+        setSales(filteredSales);
+      });
   }, [user]);
 
   if (!user) {
@@ -287,7 +314,16 @@ const daysPending = lastDayOfMonth.getDate() - today.getDate();
     // Refresh sales
     fetch("/api/sales")
       .then(res => res.json())
-      .then(data => setSales(data.filter((s: any) => s.ogaName === user.name)));
+      .then(data => {
+        const filteredSales = data.filter((s: any) => {
+          const exactMatch = s.ogaName === user.name;
+          const caseInsensitiveMatch = s.ogaName.toLowerCase() === user.name.toLowerCase();
+          const partialMatch = s.ogaName.toLowerCase().includes(user.name.toLowerCase()) || 
+                             user.name.toLowerCase().includes(s.ogaName.toLowerCase());
+          return exactMatch || caseInsensitiveMatch || partialMatch;
+        });
+        setSales(filteredSales);
+      });
   };
 
   const handleEdit = (sale: any) => {
@@ -312,7 +348,16 @@ const daysPending = lastDayOfMonth.getDate() - today.getDate();
     // Refresh sales
     fetch("/api/sales")
       .then(res => res.json())
-      .then(data => setSales(data.filter((s: any) => s.ogaName === user.name)));
+      .then(data => {
+        const filteredSales = data.filter((s: any) => {
+          const exactMatch = s.ogaName === user.name;
+          const caseInsensitiveMatch = s.ogaName.toLowerCase() === user.name.toLowerCase();
+          const partialMatch = s.ogaName.toLowerCase().includes(user.name.toLowerCase()) || 
+                             user.name.toLowerCase().includes(s.ogaName.toLowerCase());
+          return exactMatch || caseInsensitiveMatch || partialMatch;
+        });
+        setSales(filteredSales);
+      });
   };
 
   return (
