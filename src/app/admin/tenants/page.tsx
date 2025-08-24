@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Users, Globe, Calendar, CheckCircle, XCircle, ExternalLink } from "lucide-react";
+import { Users, Globe, Calendar, CheckCircle, XCircle, ExternalLink, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 interface Tenant {
   id: number;
@@ -20,6 +21,8 @@ export default function AdminTenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingTenant, setDeletingTenant] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
 
   useEffect(() => {
     fetchTenants();
@@ -39,6 +42,39 @@ export default function AdminTenantsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteTenant = async (tenantId: number) => {
+    try {
+      setDeletingTenant(tenantId);
+      const toastId = toast.loading("Deleting tenant...");
+
+      const response = await fetch(`/api/admin/tenants/${tenantId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        toast.success("Tenant deleted successfully", { id: toastId });
+        // Remove tenant from local state
+        setTenants(prev => prev.filter(t => t.id !== tenantId));
+        setShowDeleteConfirm(null);
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to delete tenant", { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Network error while deleting tenant");
+    } finally {
+      setDeletingTenant(null);
+    }
+  };
+
+  const confirmDelete = (tenantId: number) => {
+    setShowDeleteConfirm(tenantId);
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -238,6 +274,14 @@ export default function AdminTenantsPage() {
                             <ExternalLink className="w-4 h-4" />
                             Visit
                           </a>
+                          <button
+                            onClick={() => confirmDelete(tenant.id)}
+                            className="inline-flex items-center gap-2 text-red-600 hover:text-red-900 transition-colors cursor-pointer"
+                            disabled={deletingTenant === tenant.id}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </motion.tr>
@@ -256,6 +300,41 @@ export default function AdminTenantsPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Deletion</h3>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete tenant "{tenants.find(t => t.id === showDeleteConfirm)?.name}"?
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={cancelDelete}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteTenant(showDeleteConfirm)}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                disabled={deletingTenant === showDeleteConfirm}
+              >
+                {deletingTenant === showDeleteConfirm ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>
+                ) : (
+                  "Delete"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notifications */}
+      <div id="toast-container" />
     </div>
   );
 }

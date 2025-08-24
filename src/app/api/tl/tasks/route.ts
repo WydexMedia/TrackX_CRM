@@ -8,13 +8,23 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const ownerId = searchParams.get('ownerId');
     
-    let query = db.select().from(tasks).orderBy(desc(tasks.createdAt));
+    let rows;
     
     if (ownerId) {
-      query = query.where(eq(tasks.ownerId, ownerId));
+      rows = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.ownerId, ownerId))
+        .orderBy(desc(tasks.createdAt))
+        .limit(100);
+    } else {
+      rows = await db
+        .select()
+        .from(tasks)
+        .orderBy(desc(tasks.createdAt))
+        .limit(100);
     }
     
-    const rows = await query.limit(100);
     return new Response(JSON.stringify({ success: true, rows }), { status: 200 });
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to fetch tasks" }), { status: 500 });
