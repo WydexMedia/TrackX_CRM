@@ -22,6 +22,7 @@ import {
   Webhook,
   FileUp,
   Plus,
+  Archive,
 } from "lucide-react";
 
 export const Icons = {
@@ -48,6 +49,7 @@ export const Icons = {
   Webhook,
   FileUp,
   Plus,
+  Archive,
 };
 
 

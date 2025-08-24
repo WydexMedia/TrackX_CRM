@@ -5,7 +5,7 @@ export default function AuditPage() {
       <p className="text-sm text-slate-500 mb-4">Changes, merges, exports</p>
 
       <div className="bg-white border border-slate-200 rounded-2xl p-5 text-sm text-slate-500">
-        Audit feed coming soon.
+        Buckets coming soon to add filtered list of leads to the list.
       </div>
     </div>
   );
