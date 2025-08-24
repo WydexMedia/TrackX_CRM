@@ -58,11 +58,18 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     }
     if (action === "bulkTask") {
-      const { phones, title, dueAt } = body as { phones: string[]; title: string; dueAt?: string };
+      const { phones, title, dueAt, ownerId } = body as { phones: string[]; title: string; dueAt?: string; ownerId?: string };
       if (!Array.isArray(phones) || !title) {
         return new Response(JSON.stringify({ success: false, error: "phones[] and title required" }), { status: 400 });
       }
-      const values = phones.map((p) => ({ leadPhone: p, title, status: "OPEN", dueAt: dueAt ? new Date(dueAt) : null, tenantId: tenantId || null }));
+      const values = phones.map((p) => ({ 
+        leadPhone: p, 
+        title, 
+        status: "OPEN", 
+        dueAt: dueAt ? new Date(dueAt) : null, 
+        ownerId: ownerId || null,
+        tenantId: tenantId || null 
+      }));
       await db.insert(tasks).values(values as any);
       return new Response(JSON.stringify({ success: true }), { status: 201 });
     }

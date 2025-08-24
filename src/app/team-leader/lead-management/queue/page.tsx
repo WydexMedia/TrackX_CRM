@@ -114,11 +114,42 @@ export default function QueuePage() {
           onClick={async () => {
             const title = prompt("Task title:") || "Follow up";
             const dueAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-            const res = await fetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "bulkTask", phones, title, dueAt }) });
-            if (res.ok) toast.success("Tasks created"); else toast.error("Failed to create tasks");
+            
+            // Show assignee selection
+            const assigneeOptions = sales.map(s => `${s.name} (${s.code})`).join('\n');
+            const assigneePrompt = `Select assignee (enter number 1-${sales.length}):\n${sales.map((s, i) => `${i + 1}. ${s.name} (${s.code})`).join('\n')}`;
+            const assigneeIndex = prompt(assigneePrompt);
+            
+            if (!assigneeIndex || isNaN(Number(assigneeIndex))) {
+              toast.error("Please select a valid assignee");
+              return;
+            }
+            
+            const selectedIndex = Number(assigneeIndex) - 1;
+            if (selectedIndex < 0 || selectedIndex >= sales.length) {
+              toast.error("Invalid assignee selection");
+              return;
+            }
+            
+            const selectedAssignee = sales[selectedIndex];
+            
+            const res = await fetch("/api/tl/queue", { 
+              method: "POST", 
+              headers: { "Content-Type": "application/json" }, 
+              body: JSON.stringify({ 
+                action: "bulkTask", 
+                phones, 
+                title, 
+                dueAt,
+                ownerId: selectedAssignee.code 
+              }) 
+            });
+            if (res.ok) toast.success(`Tasks created and assigned to ${selectedAssignee.name}`); 
+            else toast.error("Failed to create tasks");
             setSelected({});
           }}
         >Create Tasks</button>
+
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

@@ -35,6 +35,7 @@ export const tasks = pgTable(
     // CALL | FOLLOW_UP | OTHER
     type: varchar("type", { length: 24 }).default("OTHER"),
     ownerId: varchar("owner_id", { length: 64 }),
+    priority: varchar("priority", { length: 16 }).default("MEDIUM"), // LOW | MEDIUM | HIGH
     dueAt: timestamp("due_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     tenantId: integer("tenant_id"),
