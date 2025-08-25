@@ -48,6 +48,9 @@ export default function LoginAndDashboard() {
   const [editData, setEditData] = useState<{ customerName: string; amount: number; newAdmission: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showCeoSetup, setShowCeoSetup] = useState(false);
+  const [selectedPortal, setSelectedPortal] = useState<string>("");
+
   const router = useRouter();
 
   // Login handler
@@ -69,7 +72,41 @@ export default function LoginAndDashboard() {
       localStorage.setItem("user", JSON.stringify(user));
       setUser(user);
       
+      // If CEO, check if setup is required
+      if (user.role === 'CEO') {
+        console.log('CEO login detected, checking setup status...');
+        try {
+          const settingsRes = await fetch('/api/ceo/settings');
+          const settings = await settingsRes.json();
+          console.log('CEO settings response:', settings);
+          const needsSetup = !settings?.portalType;
+          console.log('CEO needs setup:', needsSetup);
+          if (needsSetup) {
+            console.log('Showing CEO setup modal');
+            setShowCeoSetup(true);
+            return; // pause navigation until setup done
+          }
+          console.log('CEO setup complete, redirecting to /ceo');
+          console.log('CEO setup complete, using window.location redirect');
+          window.location.href = '/ceo';
+          setIsLoading(false);
+          return;
+        } catch (error) {
+          console.log('CEO settings fetch error:', error);
+          router.push('/ceo');
+          console.log('CEO error fallback redirect to /ceo');
+          setIsLoading(false);
+          window.location.href = '/ceo';
+          return;
+        }
+      }
+
       // Redirect based on role
+      if (user.role === 'CEO') {
+        console.log('CEO fallback redirect to /ceo');
+        window.location.href = '/ceo';
+        return;
+      }
       if (user.role === 'teamleader') {
         router.push('/team-leader');
       } else if (user.role === 'jl') {
@@ -84,6 +121,25 @@ export default function LoginAndDashboard() {
     }
   };
 
+  const handleCeoSetupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPortal) return;
+    try {
+      const host = typeof window !== 'undefined' ? window.location.hostname : '';
+      const parts = host.split('.');
+      const inferredSub = parts.length > 2 ? parts[0] : '';
+      const res = await fetch('/api/ceo/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ portalType: selectedPortal, subdomain: inferredSub })
+      });
+      if (res.ok) {
+        setShowCeoSetup(false);
+        router.push('/ceo');
+      }
+    } catch {}
+  };
+
   // Load user from localStorage
   useEffect(() => {
     const u = typeof window !== 'undefined' ? localStorage.getItem("user") : null;
@@ -92,8 +148,12 @@ export default function LoginAndDashboard() {
       setUser(userData);
       
       // Redirect based on role if user is already logged in
-      if (userData.role === 'teamleader') {
+      if (userData.role === 'CEO') {
+        window.location.href = '/ceo';
+      } else if (userData.role === 'teamleader') {
         router.push('/team-leader');
+      } else if (userData.role === 'jl') {
+        router.push('/junior-leader');
       } else {
         router.push('/dashboard');
       }
@@ -626,6 +686,69 @@ const daysPending = lastDayOfMonth.getDate() - today.getDate();
           </div>
         </div>
       </div>
+
+      {showCeoSetup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6">
+            <h2 className="text-xl font-bold mb-4">Choose your portal</h2>
+            <p className="text-slate-600 mb-4">Select one option to configure your CEO portal.</p>
+            <form onSubmit={handleCeoSetupSubmit} className="space-y-3">
+              <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-slate-50">
+                <input
+                  type="radio"
+                  name="portalType"
+                  value="edTech"
+                  checked={selectedPortal === 'edTech'}
+                  onChange={(e) => setSelectedPortal(e.target.value)}
+                />
+                <span className="font-medium text-black">edTech</span>
+                <span className="text-xs text-slate-500 ml-2">Courses, admissions</span>
+              </label>
+              <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-slate-50">
+                <input
+                  type="radio"
+                  name="portalType"
+                  value="sales"
+                  checked={selectedPortal === 'sales'}
+                  onChange={(e) => setSelectedPortal(e.target.value)}
+                />
+                <span className="font-medium text-black">Sales</span>
+                <span className="text-xs text-slate-500 ml-2">CRM focused</span>
+              </label>
+              <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-slate-50">
+                <input
+                  type="radio"
+                  name="portalType"
+                  value="operations"
+                  checked={selectedPortal === 'operations'}
+                  onChange={(e) => setSelectedPortal(e.target.value)}
+                />
+                <span className="font-medium text-black">Operations</span>
+                <span className="text-xs text-slate-500 ml-2">Back-office workflows</span>
+              </label>
+              <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-slate-50">
+                <input
+                  type="radio"
+                  name="portalType"
+                  value="operations+sales"
+                  checked={selectedPortal === 'operations+sales'}
+                  onChange={(e) => setSelectedPortal(e.target.value)}
+                />
+                <span className="font-medium text-black">Operations + Sales</span>
+                <span className="text-xs text-slate-500 ml-2">Hybrid portal</span>
+              </label>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setShowCeoSetup(false)} className="px-4 py-2 rounded-lg bg-slate-200 text-slate-800 font-semibold">
+                  Cancel
+                </button>
+                <button type="submit" disabled={!selectedPortal} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold disabled:opacity-50">
+                  Save & Continue
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .table-input {

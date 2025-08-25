@@ -9,7 +9,15 @@ import {
   ArrowLeft, 
   Calendar,
   CheckCircle2,
-  ListTodo
+  ListTodo,
+  X,
+  Edit3,
+  Save,
+  Phone,
+  Mail,
+  MapPin,
+  Target,
+  Activity
 } from "lucide-react";
 
 function getUser() {
@@ -21,6 +29,257 @@ function getUser() {
 type Lead = { phone: string; name?: string | null; source?: string | null; stage?: string | null };
 type TaskRow = { id: number; leadPhone: string; title: string; status: string; type?: string | null; dueAt?: string | null; priority?: string | null; ownerId?: string | null };
 
+// Lead details modal component
+function LeadDetailsModal({ 
+  lead, 
+  isOpen, 
+  onClose, 
+  onStatusUpdate 
+}: { 
+  lead: Lead | null; 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onStatusUpdate: () => void; 
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [stage, setStage] = useState(lead?.stage || "");
+  const [stageNotes, setStageNotes] = useState("");
+  const [leadDetails, setLeadDetails] = useState<any>(null);
+  const [events, setEvents] = useState<any[]>([]);
+
+  // Available stages - customized for business needs
+  const availableStages = [
+    "DNP",
+    "DNC",
+    "Asked to callback",
+    "Interested",
+    "Qualified",
+    "NIFC",
+    "Disqualified",
+    "Prospect",
+    "Payment initiated",
+    "Payment done",
+    "Sales closed",
+    "Customer",
+    "Not contacted"
+  ];
+
+  useEffect(() => {
+    if (lead && isOpen) {
+      setStage(lead.stage || "");
+      fetchLeadDetails();
+    }
+  }, [lead, isOpen]);
+
+  const fetchLeadDetails = async () => {
+    if (!lead?.phone) return;
+    
+    try {
+      const response = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setLeadDetails(data.lead);
+        setEvents(data.events || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch lead details:", error);
+    }
+  };
+
+  const handleStatusUpdate = async () => {
+    if (!lead?.phone || !stage) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stage,
+          stageNotes: stageNotes.trim() || undefined,
+          actorId: getUser()?.code || "system"
+        })
+      });
+
+      if (response.ok) {
+        toast.success("Lead status updated successfully!");
+        onStatusUpdate(); // Refresh the parent component
+        onClose();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to update lead status");
+      }
+    } catch (error) {
+      toast.error("Failed to update lead status");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen || !lead) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900">Lead Details</h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Lead Information */}
+        <div className="p-6 space-y-6">
+          {/* Basic Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Name</label>
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                <UserPlus size={16} className="text-gray-500" />
+                <span className="text-gray-900">{lead.name || "Not provided"}</span>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Phone</label>
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                <Phone size={16} className="text-gray-500" />
+                <span className="text-gray-900 font-mono">{lead.phone}</span>
+              </div>
+            </div>
+
+            {leadDetails?.email && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Email</label>
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <Mail size={16} className="text-gray-500" />
+                  <span className="text-gray-900">{leadDetails.email}</span>
+                </div>
+              </div>
+            )}
+
+            {lead.source && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Source</label>
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <MapPin size={16} className="text-gray-500" />
+                  <span className="text-gray-900">{lead.source}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Status Update Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Edit3 size={20} className="text-blue-600" />
+              Update Status
+            </h3>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Current Stage
+                </label>
+                <select
+                  value={stage}
+                  onChange={(e) => setStage(e.target.value)}
+                  className="w-full p-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select a stage</option>
+                  {availableStages.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={stageNotes}
+                  onChange={(e) => setStageNotes(e.target.value)}
+                  placeholder="Add notes about this status change..."
+                  rows={3}
+                  className="w-full text-black p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleStatusUpdate}
+              disabled={!stage || isLoading}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Update Status
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Activity Timeline */}
+          {events.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Activity size={20} className="text-green-600" />
+                Activity Timeline
+              </h3>
+              
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {events.map((event, index) => (
+                  <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-medium text-gray-900">
+                          {event.type === "STAGE_CHANGE" && "Stage Changed"}
+                          {event.type === "ASSIGNED" && "Lead Assigned"}
+                          {event.type === "CREATED" && "Lead Created"}
+                          {event.type === "CALL_COMPLETED" && "Call Completed"}
+                          {event.type === "NOTE_ADDED" && "Note Added"}
+                          {!["STAGE_CHANGE", "ASSIGNED", "CREATED", "CALL_COMPLETED", "NOTE_ADDED"].includes(event.type) && event.type}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(event.at).toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      {event.data?.message && (
+                        <p className="text-sm text-gray-600">{event.data.message}</p>
+                      )}
+                      
+                      {event.data?.stageNotes && (
+                        <p className="text-sm text-gray-500 italic mt-1">
+                          "{event.data.stageNotes}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TasksPage() {
   const [user, setUser] = useState<any>(null);
   const [dueCalls, setDueCalls] = useState<Array<{ task: TaskRow; lead: Lead }>>([]);
@@ -28,6 +287,10 @@ export default function TasksPage() {
   const [newLeads, setNewLeads] = useState<Lead[]>([]);
   const [specialTasks, setSpecialTasks] = useState<TaskRow[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Modal state
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const u = getUser();
@@ -71,6 +334,16 @@ export default function TasksPage() {
   }, [ownerId, ownerName]);
 
   useEffect(() => { load(); }, [load]);
+
+  const openLeadModal = (lead: Lead) => {
+    setSelectedLead(lead);
+    setIsModalOpen(true);
+  };
+
+  const closeLeadModal = () => {
+    setIsModalOpen(false);
+    setSelectedLead(null);
+  };
 
   if (!user) return null;
 
@@ -246,19 +519,59 @@ export default function TasksPage() {
           <SectionHeader icon={Clock} title="Due Calls (Yesterday)" count={dueCalls.length} color="blue" />
           <div className="space-y-4">
             {loading ? (
-              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-gray-500">Loading due calls...</p>
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-red-200 p-8 text-center shadow-lg">
+                <div className="animate-spin w-10 h-10 border-4 border-red-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-red-700 font-semibold">Loading due calls...</p>
+                <p className="text-red-600/80 text-sm mt-2">Checking overdue items</p>
               </div>
             ) : dueCalls.length === 0 ? (
-              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                <CheckCircle2 size={48} className="text-emerald-500 mx-auto mb-4" />
-                <p className="text-gray-500 font-medium">No due calls</p>
-                <p className="text-sm text-gray-400">Great job staying on top of your tasks!</p>
+              <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-emerald-200 p-12 text-center shadow-lg">
+                <div className="bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-inner">
+                  <CheckCircle2 size={32} className="text-emerald-700" />
+                </div>
+                <h3 className="text-gray-800 font-bold text-lg mb-2">All caught up!</h3>
+                <p className="text-gray-600">Great job staying on top of your calls</p>
               </div>
             ) : (
-              <div className="text-center text-gray-500">
-                Due calls functionality will be implemented here
+              <div className="space-y-3">
+                {dueCalls.map(({ task, lead }) => (
+                  <div key={task.id} className="group bg-white/95 backdrop-blur-sm rounded-2xl border border-red-100 p-6 shadow-lg hover:shadow-xl hover:border-red-300 transition-all duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-gradient-to-br from-red-100 to-red-200 rounded-full w-12 h-12 flex items-center justify-center shadow-sm">
+                          <Clock size={20} className="text-red-700" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-lg mb-1">{task.title || 'Call'}</h4>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <button
+                              onClick={() => openLeadModal(lead)}
+                              className="text-left"
+                            >
+                              <span className="font-medium hover:text-red-700 transition-colors cursor-pointer">
+                                {lead?.name || lead?.phone || 'Lead'}
+                              </span>
+                            </button>
+                            {lead?.phone && (
+                              <a href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
+                                 className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium">
+                                📞 {lead.phone}
+                              </a>
+                            )}
+                          </div>
+                          {task.dueAt && (
+                            <p className="text-xs text-red-600 font-medium mt-1">
+                              ⏰ Due: {new Date(task.dueAt).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-xs text-red-600 bg-red-100 px-3 py-1.5 rounded-full font-bold border border-red-200">
+                        Overdue
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -269,19 +582,59 @@ export default function TasksPage() {
           <SectionHeader icon={Calendar} title="Today's Follow-ups" count={followUps.length} color="amber" />
           <div className="space-y-4">
             {loading ? (
-              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                <div className="animate-spin w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-gray-500">Loading follow-ups...</p>
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-amber-200 p-8 text-center shadow-lg">
+                <div className="animate-spin w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-amber-700 font-semibold">Loading follow-ups...</p>
+                <p className="text-amber-600/80 text-sm mt-2">Checking today's schedule</p>
               </div>
             ) : followUps.length === 0 ? (
-              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                <Calendar size={48} className="text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 font-medium">No follow-ups scheduled</p>
-                <p className="text-sm text-gray-400">Check back later for new tasks</p>
+              <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-200 p-12 text-center shadow-lg">
+                <div className="bg-gradient-to-br from-amber-100 to-amber-200 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-inner">
+                  <Calendar size={32} className="text-amber-700" />
+                </div>
+                <h3 className="text-gray-800 font-bold text-lg mb-2">No follow-ups scheduled</h3>
+                <p className="text-gray-600">Your schedule is clear for today</p>
               </div>
             ) : (
-              <div className="text-center text-gray-500">
-                Follow-ups functionality will be implemented here
+              <div className="space-y-3">
+                {followUps.map(({ task, lead }) => (
+                  <div key={task.id} className="group bg-white/95 backdrop-blur-sm rounded-2xl border border-amber-100 p-6 shadow-lg hover:shadow-xl hover:border-amber-300 transition-all duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-gradient-to-br from-amber-100 to-amber-200 rounded-full w-12 h-12 flex items-center justify-center shadow-sm">
+                          <Calendar size={20} className="text-amber-700" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-lg mb-1">{task.title || 'Follow-up'}</h4>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <button
+                              onClick={() => openLeadModal(lead)}
+                              className="text-left"
+                            >
+                              <span className="font-medium hover:text-amber-700 transition-colors cursor-pointer">
+                                {lead?.name || lead?.phone || 'Lead'}
+                              </span>
+                            </button>
+                            {lead?.phone && (
+                              <a href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
+                                 className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium">
+                                📞 {lead.phone}
+                              </a>
+                            )}
+                          </div>
+                          {task.dueAt && (
+                            <p className="text-xs text-amber-600 font-medium mt-1">
+                              📅 Due: {new Date(task.dueAt).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-xs text-amber-600 bg-amber-100 px-3 py-1.5 rounded-full font-bold border border-amber-200">
+                        Today
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -292,24 +645,76 @@ export default function TasksPage() {
           <SectionHeader icon={UserPlus} title="New Leads" count={newLeads.length} color="emerald" />
           <div className="space-y-4">
             {loading ? (
-              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                <div className="animate-spin w-6 h-8 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-gray-500">Loading new leads...</p>
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-emerald-200 p-8 text-center shadow-lg">
+                <div className="animate-spin w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-emerald-700 font-semibold">Loading new leads...</p>
+                <p className="text-emerald-600/80 text-sm mt-2">Fetching your assigned opportunities</p>
               </div>
             ) : newLeads.length === 0 ? (
-              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                <UserPlus size={48} className="text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 font-medium">No new leads</p>
-                <p className="text-sm text-gray-400">New opportunities will appear here</p>
+              <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-200 p-12 text-center shadow-lg">
+                <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-inner">
+                  <UserPlus size={32} className="text-gray-700" />
+                </div>
+                <h3 className="text-gray-800 font-bold text-lg mb-2">No leads assigned yet</h3>
+                <p className="text-gray-600">New opportunities will appear here when assigned</p>
               </div>
             ) : (
-              <div className="text-center text-gray-500">
-                New leads functionality will be implemented here
+              <div className="space-y-3">
+                {newLeads.map((lead) => (
+                  <div key={lead.phone} className="group bg-white/95 backdrop-blur-sm rounded-2xl border border-emerald-100 p-6 shadow-lg hover:shadow-xl hover:border-emerald-300 transition-all duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-full w-12 h-12 flex items-center justify-center shadow-sm">
+                          <UserPlus size={20} className="text-emerald-700" />
+                        </div>
+                        <div>
+                          <button
+                            onClick={() => openLeadModal(lead)}
+                            className="text-left"
+                          >
+                            <h4 className="font-bold text-gray-900 text-lg mb-1 hover:text-emerald-700 transition-colors cursor-pointer">
+                              {lead.name || lead.phone}
+                            </h4>
+                          </button>
+                          <div className="flex items-center gap-3 text-sm text-gray-600">
+                            {lead.phone && (
+                              <a href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
+                                 className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium">
+                                📞 {lead.phone}
+                              </a>
+                            )}
+                            {lead.source && (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">
+                                📍 {lead.source}
+                              </span>
+                            )}
+                            {lead.stage && (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full font-medium">
+                                🎯 {lead.stage}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs text-emerald-600 bg-emerald-100 px-3 py-1.5 rounded-full font-bold border border-emerald-200">
+                        New
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         </section>
       </div>
+
+      {/* Lead Details Modal */}
+      <LeadDetailsModal
+        lead={selectedLead}
+        isOpen={isModalOpen}
+        onClose={closeLeadModal}
+        onStatusUpdate={load}
+      />
     </div>
   );
 }

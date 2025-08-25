@@ -540,110 +540,108 @@ export default function TeamLeaderPage() {
     <div className="min-h-screen bg-gray-50">
       <Toaster position="top-right" />
 
-    {/* Header */}
-    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 shadow-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Top Bar */}
-          <div className="flex justify-between items-center py-4 border-b border-slate-700">
-            <div className="flex items-center space-x-4">
-              {/* Tenant Logo */}
+    {/* Standard Header */}
+    <div className="bg-white shadow-lg border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Top Navigation Bar */}
+        <div className="flex justify-between items-center py-4">
+          <div className="flex items-center space-x-4">
+            {/* Logo Section */}
+            <div className="flex items-center space-x-3">
               {subdomain && (
-                <div className="flex-shrink-0">
-                  <TenantLogo 
-                    subdomain={subdomain} 
-                    className="w-10 h-10 rounded-xl shadow-sm"
-                    fallbackText={subdomain.toUpperCase().slice(0, 2)}
-                  />
-                </div>
+                <TenantLogo 
+                  subdomain={subdomain} 
+                  className="w-10 h-10 rounded-lg shadow-sm"
+                  fallbackText={subdomain.toUpperCase().slice(0, 2)}
+                />
               )}
               
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">Team Analytics Dashboard</h1>
-                <p className="text-slate-300 text-sm">Welcome back, <span className="text-blue-400 font-medium">{teamLeader.name}</span></p>
-              </div>
             </div>
             
-            {/* User Actions */}
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setShowCredentials(true)}
-                className="text-slate-300 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition-colors"
-                title="View Credentials"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setShowAddUser(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm font-medium"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Add Sales Person
-              </button>
-              <button
-                onClick={handleLogout}
-                className="text-slate-300 hover:text-red-400 p-2 rounded-lg hover:bg-slate-700 transition-colors"
-                title="Logout"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </button>
+            {/* Title Section */}
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Team Analytics Dashboard
+              </h1>
+              <p className="text-gray-600 text-sm">
+                Welcome back, <span className="font-semibold text-blue-600">{teamLeader.name}</span>
+              </p>
             </div>
           </div>
-
-          {/* Enhanced Navigation */}
-          <div className="py-8">
-            <nav className="flex justify-center items-center">
-              <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
-                <Link href="/leaderboard">
-                  <button className="group relative bg-gradient-to-br from-yellow-500 via-orange-500 to-red-500 text-white px-8 py-4 rounded-2xl hover:from-yellow-400 hover:via-orange-400 hover:to-red-400 font-bold flex items-center justify-center gap-3 text-lg transition-all duration-300 shadow-2xl hover:shadow-yellow-500/25 transform hover:-translate-y-1 hover:scale-105 min-w-[220px]">
-                    <div className="absolute inset-0 bg-gradient-to-br from-yellow-600 to-red-600 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
-                    <div className="relative flex items-center gap-3">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                      <span>Sales Leaderboard</span>
-                    </div>
-                  </button>
-                </Link>
-                
-                <Link href="/team-leader/lead-management">
-                  <button className="group relative bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 text-white px-8 py-4 rounded-2xl hover:from-pink-400 hover:via-purple-400 hover:to-indigo-500 font-bold flex items-center justify-center gap-3 text-lg transition-all duration-300 shadow-2xl hover:shadow-purple-500/25 transform hover:-translate-y-1 hover:scale-105 min-w-[220px]">
-                    <div className="absolute inset-0 bg-gradient-to-br from-pink-600 to-indigo-700 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
-                    <div className="relative flex items-center gap-3">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm6 0a10 10 0 11-20 0 10 10 0 0120 0z" />
-                      </svg>
-                      <span>Lead Management</span>
-                    </div>
-                  </button>
-                </Link>
-
-                <Link href="/team-leader/team-management">
-                  <button className="group relative bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-white px-8 py-4 rounded-2xl hover:from-emerald-400 hover:via-teal-400 hover:to-cyan-500 font-bold flex items-center justify-center gap-3 text-lg transition-all duration-300 shadow-2xl hover:shadow-teal-500/25 transform hover:-translate-y-1 hover:scale-105 min-w-[220px]">
-                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-cyan-700 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
-                    <div className="relative flex items-center gap-3">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                      <span>Team Management</span>
-                    </div>
-                  </button>
-                </Link>
-              </div>
-            </nav>
+          
+          {/* Action Buttons */}
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowCredentials(true)}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2"
+              title="View Credentials"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+              <span className="text-sm font-medium">Credentials</span>
+            </button>
+            
+            <button
+              onClick={() => setShowAddUser(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              <span className="text-sm font-medium">Add Member</span>
+            </button>
+            
+            <button
+              onClick={handleLogout}
+              className="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded-lg transition-colors duration-200"
+              title="Logout"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
           </div>
         </div>
+
+        {/* Navigation Tabs */}
+        <div className="border-t border-gray-200 pt-4 pb-6">
+          <nav className="flex space-x-8">
+            <Link href="/leaderboard">
+              <div className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Sales Leaderboard
+              </div>
+            </Link>
+            
+            <Link href="/team-leader/lead-management">
+              <div className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm6 0a10 10 0 11-20 0 10 10 0 0120 0z" />
+                </svg>
+                Lead Management
+              </div>
+            </Link>
+
+            <Link href="/team-leader/team-management">
+              <div className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Team Management
+              </div>
+            </Link>
+          </nav>
+        </div>
       </div>
+    </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Top Performers Stage */}
@@ -835,9 +833,9 @@ export default function TeamLeaderPage() {
             </div>
           </div>
 
-          {/* Summary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          {/* Standard Analytics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -853,7 +851,7 @@ export default function TeamLeaderPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
@@ -869,7 +867,7 @@ export default function TeamLeaderPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -885,7 +883,7 @@ export default function TeamLeaderPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -901,7 +899,7 @@ export default function TeamLeaderPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
@@ -918,7 +916,7 @@ export default function TeamLeaderPage() {
           </div>
         </div>
 
-        {/* Search and Filters */}
+        {/* Standard Search and Filters */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="flex-1 max-w-md">
@@ -943,8 +941,12 @@ export default function TeamLeaderPage() {
           </div>
         </div>
 
-        {/* Analytics Table */}
+        {/* Standard Analytics Table */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Team Performance Analytics</h3>
+            <p className="text-sm text-gray-500 mt-1">Overview of your sales team's performance</p>
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
