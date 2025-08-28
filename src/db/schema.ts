@@ -10,7 +10,7 @@ export const leads = pgTable(
     email: varchar("email", { length: 256 }),
     source: varchar("source", { length: 64 }),
     utm: jsonb("utm"),
-    stage: varchar("stage", { length: 48 }).notNull().default("NEW"),
+    stage: varchar("stage", { length: 48 }).notNull().default("Not contacted"), // Updated default from "NEW" to "Not contacted"
     ownerId: varchar("owner_id", { length: 64 }),
     score: integer("score").default(0),
     lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),

@@ -292,6 +292,55 @@ export default function TasksPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Filter state for leads
+  const [leadStatusFilter, setLeadStatusFilter] = useState<string>("all");
+
+  // Pagination state for leads
+  const [currentPage, setCurrentPage] = useState(1);
+  const [leadsPerPage] = useState(10);
+
+  // Helper function to format status text properly
+  const formatStatusText = (status: string) => {
+    if (!status) return "";
+    
+    // Handle special cases
+    const statusMap: Record<string, string> = {
+      "DNP": "DNP",
+      "DNC": "DNC", 
+      "NIFC": "NIFC",
+      "Asked to callback": "Asked to Callback",
+      "Payment initiated": "Payment Initiated",
+      "Payment done": "Payment Done",
+      "Sales closed": "Sales Closed",
+      "Not contacted": "Not Contacted"
+    };
+    
+    return statusMap[status] || status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+  };
+
+  // Get filtered and paginated leads
+  const getFilteredLeads = () => {
+    const filtered = newLeads.filter(lead => 
+      leadStatusFilter === "all" || lead.stage === leadStatusFilter
+    );
+    return filtered;
+  };
+
+  const getPaginatedLeads = () => {
+    const filtered = getFilteredLeads();
+    const startIndex = (currentPage - 1) * leadsPerPage;
+    const endIndex = startIndex + leadsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  };
+
+  const totalFilteredLeads = getFilteredLeads().length;
+  const totalPages = Math.ceil(totalFilteredLeads / leadsPerPage);
+
+  // Reset to first page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [leadStatusFilter]);
+
   useEffect(() => {
     const u = getUser();
     if (!u) {
@@ -555,13 +604,15 @@ export default function TasksPage() {
                             {lead?.phone && (
                               <a href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
                                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium">
-                                📞 {lead.phone}
+                                <Phone size={12} />
+                                {lead.phone}
                               </a>
                             )}
                           </div>
                           {task.dueAt && (
-                            <p className="text-xs text-red-600 font-medium mt-1">
-                              ⏰ Due: {new Date(task.dueAt).toLocaleString()}
+                            <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
+                              <Clock size={12} />
+                              Due: {new Date(task.dueAt).toLocaleString()}
                             </p>
                           )}
                         </div>
@@ -618,13 +669,15 @@ export default function TasksPage() {
                             {lead?.phone && (
                               <a href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
                                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium">
-                                📞 {lead.phone}
+                                <Phone size={12} />
+                                {lead.phone}
                               </a>
                             )}
                           </div>
                           {task.dueAt && (
-                            <p className="text-xs text-amber-600 font-medium mt-1">
-                              📅 Due: {new Date(task.dueAt).toLocaleString()}
+                            <p className="text-xs text-amber-600 font-medium mt-1 flex items-center gap-1">
+                              <Calendar size={12} />
+                              Due: {new Date(task.dueAt).toLocaleString()}
                             </p>
                           )}
                         </div>
@@ -643,6 +696,39 @@ export default function TasksPage() {
         {/* New Leads Section */}
         <section className="mb-8">
           <SectionHeader icon={UserPlus} title="New Leads" count={newLeads.length} color="emerald" />
+          
+          {/* Filter Controls */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                <label className="text-sm font-medium text-gray-700">Filter by Status:</label>
+                <select
+                  value={leadStatusFilter}
+                  onChange={(e) => setLeadStatusFilter(e.target.value)}
+                  className="px-3 py-2 text-black border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-full sm:w-auto"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Not contacted">Not Contacted</option>
+                  <option value="Interested">Interested</option>
+                  <option value="Qualified">Qualified</option>
+                  <option value="Prospect">Prospect</option>
+                  <option value="Payment initiated">Payment Initiated</option>
+                  <option value="Payment done">Payment Done</option>
+                  <option value="Sales closed">Sales Closed</option>
+                  <option value="Customer">Customer</option>
+                  <option value="DNP">DNP</option>
+                  <option value="DNC">DNC</option>
+                  <option value="Asked to callback">Asked to Callback</option>
+                  <option value="NIFC">NIFC</option>
+                  <option value="Disqualified">Disqualified</option>
+                </select>
+              </div>
+              <div className="text-sm text-gray-600 text-center sm:text-right">
+                Showing {totalFilteredLeads} of {newLeads.length} leads
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-4">
             {loading ? (
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-emerald-200 p-8 text-center shadow-lg">
@@ -650,7 +736,7 @@ export default function TasksPage() {
                 <p className="text-emerald-700 font-semibold">Loading new leads...</p>
                 <p className="text-emerald-600/80 text-sm mt-2">Fetching your assigned opportunities</p>
               </div>
-            ) : newLeads.length === 0 ? (
+            ) : getPaginatedLeads().length === 0 ? (
               <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-200 p-12 text-center shadow-lg">
                 <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-inner">
                   <UserPlus size={32} className="text-gray-700" />
@@ -660,48 +746,138 @@ export default function TasksPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {newLeads.map((lead) => (
-                  <div key={lead.phone} className="group bg-white/95 backdrop-blur-sm rounded-2xl border border-emerald-100 p-6 shadow-lg hover:shadow-xl hover:border-emerald-300 transition-all duration-300">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-full w-12 h-12 flex items-center justify-center shadow-sm">
-                          <UserPlus size={20} className="text-emerald-700" />
+                {getPaginatedLeads().map((lead) => (
+                  <div key={lead.phone} className="group bg-white/95 backdrop-blur-sm rounded-2xl border border-emerald-100 p-4 sm:p-6 shadow-lg hover:shadow-xl hover:border-emerald-300 transition-all duration-300">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                      <div className="flex items-start space-x-3 sm:space-x-4">
+                        <div className="bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center shadow-sm flex-shrink-0">
+                          <UserPlus size={16} className="text-emerald-700 sm:w-5 sm:h-5" />
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <button
                             onClick={() => openLeadModal(lead)}
-                            className="text-left"
+                            className="text-left w-full"
                           >
-                            <h4 className="font-bold text-gray-900 text-lg mb-1 hover:text-emerald-700 transition-colors cursor-pointer">
+                            <h4 className="font-bold text-gray-900 text-base sm:text-lg mb-2 sm:mb-1 hover:text-emerald-700 transition-colors cursor-pointer break-words">
                               {lead.name || lead.phone}
                             </h4>
                           </button>
-                          <div className="flex items-center gap-3 text-sm text-gray-600">
+                          <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600">
                             {lead.phone && (
                               <a href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
-                                 className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium">
-                                📞 {lead.phone}
+                                 className="inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium text-xs">
+                                <Phone size={12} />
+                                {lead.phone}
                               </a>
                             )}
                             {lead.source && (
-                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">
-                                📍 {lead.source}
+                              <span className="inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1 bg-purple-100 text-purple-700 rounded-full font-medium text-xs">
+                                <MapPin size={12} />
+                                {lead.source}
                               </span>
                             )}
                             {lead.stage && (
-                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full font-medium">
-                                🎯 {lead.stage}
+                              <span className="inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1 bg-cyan-100 text-cyan-700 rounded-full font-medium text-xs">
+                                <Target size={12} />
+                                {formatStatusText(lead.stage)}
                               </span>
                             )}
                           </div>
                         </div>
                       </div>
-                      <span className="text-xs text-emerald-600 bg-emerald-100 px-3 py-1.5 rounded-full font-bold border border-emerald-200">
-                        New
-                      </span>
+                      <div className="flex justify-center sm:justify-end">
+                        <span className={`text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-bold border ${
+                          !lead.stage || lead.stage === "Not contacted" 
+                            ? "text-gray-600 bg-gray-100 border-gray-200"
+                            : lead.stage === "Interested" || lead.stage === "Qualified" || lead.stage === "Prospect"
+                            ? "text-blue-600 bg-blue-100 border-blue-200"
+                            : lead.stage === "Payment initiated" || lead.stage === "Payment done" || lead.stage === "Sales closed" || lead.stage === "Customer"
+                            ? "text-green-600 bg-green-100 border-green-200"
+                            : lead.stage === "DNP" || lead.stage === "DNC" || lead.stage === "Disqualified"
+                            ? "text-red-600 bg-red-100 border-red-200"
+                            : "text-amber-600 bg-amber-100 border-amber-200"
+                        }`}>
+                          {!lead.stage || lead.stage === "Not contacted" ? "Not Contacted" : formatStatusText(lead.stage)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
+                
+                {/* No results message when filter returns empty */}
+                {getFilteredLeads().length === 0 && leadStatusFilter !== "all" && (
+                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-200 p-8 text-center shadow-lg">
+                    <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                      <Target size={24} className="text-gray-600" />
+                    </div>
+                    <h3 className="text-gray-800 font-bold text-lg mb-2">No leads found</h3>
+                    <p className="text-gray-600">No leads match the selected status filter</p>
+                    <button
+                      onClick={() => setLeadStatusFilter("all")}
+                      className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
+                    >
+                      Show All Leads
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="bg-white rounded-xl border border-gray-200 p-4 mt-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="text-sm text-gray-600 text-center sm:text-left">
+                    Page {currentPage} of {totalPages} • Showing {((currentPage - 1) * leadsPerPage) + 1} to {Math.min(currentPage * leadsPerPage, totalFilteredLeads)} of {totalFilteredLeads} leads
+                  </div>
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="px-2 py-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Previous
+                    </button>
+                    
+                    {/* Page Numbers */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`px-2 py-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
+                              currentPage === pageNum
+                                ? "bg-emerald-600 text-white"
+                                : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-700"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="px-2 py-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

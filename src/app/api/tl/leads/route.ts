@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
       name: name ?? null,
       email: email ?? null,
       source: source ?? null,
-      stage: stage ?? undefined,
+      stage: stage ?? "Not contacted",
       score: typeof score === "number" ? score : undefined,
       tenantId: tenantId || null,
     } as any;

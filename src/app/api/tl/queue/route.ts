@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     let where: any = undefined;
     if (tab === "unassigned") where = isNull(leads.ownerId);
     if (tab === "aging") where = undefined; // handled by order
-    if (tab === "hot") where = eq(leads.stage, "NEW");
+    if (tab === "hot") where = eq(leads.stage, "Not contacted");
 
     const order = tab === "aging" ? asc(leads.createdAt) : desc(leads.createdAt);
 

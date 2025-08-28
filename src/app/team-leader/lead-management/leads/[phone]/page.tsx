@@ -376,7 +376,7 @@ export default function LeadDetailPage() {
         <div>
           <div className="text-sm text-slate-500"><Link href="/team-leader/lead-management/leads" className="hover:underline">Leads</Link> / {lead?.phone}</div>
           <h1 className="text-2xl font-semibold">{lead?.name || lead?.phone}</h1>
-          <div className="text-sm text-slate-600">{lead?.email || "—"} • Source: {lead?.source || "—"} • Stage: {lead?.stage || "NEW"}</div>
+          <div className="text-sm text-slate-600">{lead?.email || "—"} • Source: {lead?.source || "—"} • Stage: {lead?.stage || "Not contacted"}</div>
         </div>
       </div>
 
@@ -564,7 +564,7 @@ export default function LeadDetailPage() {
                     lead.stage === 'NIFC' || lead.stage === 'NOT_CONTACTED' ? 'text-gray-800 bg-gray-100 border border-gray-200' :
                     'text-slate-800 bg-slate-100 border border-slate-200'
                   }`}>
-                    {lead.stage || "NEW"}
+                    {lead.stage || "Not contacted"}
                   </span>
                 </dd>
               </div>

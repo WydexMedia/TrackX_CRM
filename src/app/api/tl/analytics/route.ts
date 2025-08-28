@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     // Calculate funnel data
     const totalLeads = leadsData.length;
     const qualifiedLeads = leadsData.filter(lead => 
-      !["NEW", "NOT_CONTACTED", "DNP", "DNC", "NIFC", "DISQUALIFIED", "NOT_INTERESTED"].includes(lead.stage)
+      !["Not contacted", "NOT_CONTACTED", "DNP", "DNC", "NIFC", "DISQUALIFIED", "NOT_INTERESTED"].includes(lead.stage)
     ).length;
     const interestedLeads = leadsData.filter(lead => 
       ["INTERESTED", "QUALIFIED", "PROSPECT", "PAYMENT_INITIAL", "PAYMENT_DONE", "SALES_CLOSED", "CUSTOMER", "CONVERTED"].includes(lead.stage)
