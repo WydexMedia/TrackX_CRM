@@ -137,16 +137,16 @@ function LeadDetailsModal({
   if (!isOpen || !lead) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center p-4 z-50">
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200/50">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-white/50">
           <h2 className="text-xl font-bold text-gray-900">Lead Details</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-105"
           >
-            <X size={20} />
+            <X size={20} className="text-red-500 hover:text-red-600" />
           </button>
         </div>
 
@@ -156,7 +156,7 @@ function LeadDetailsModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Name</label>
-              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 bg-gray-50/70 backdrop-blur-sm rounded-lg border border-gray-200/30 hover:bg-gray-50/90 transition-all duration-200">
                 <UserPlus size={16} className="text-gray-500" />
                 <span className="text-gray-900">{lead.name || "Not provided"}</span>
               </div>
@@ -164,7 +164,7 @@ function LeadDetailsModal({
             
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Phone</label>
-              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 bg-gray-50/70 backdrop-blur-sm rounded-lg border border-gray-200/30 hover:bg-gray-50/90 transition-all duration-200">
                 <Phone size={16} className="text-gray-500" />
                 <a 
                   href={`tel:${lead.phone}`}
@@ -180,20 +180,20 @@ function LeadDetailsModal({
             {leadDetails?.email && (
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Email</label>
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <Mail size={16} className="text-gray-500" />
-                  <span className="text-gray-900">{leadDetails.email}</span>
-                </div>
+                              <div className="flex items-center gap-2 p-3 bg-gray-50/70 backdrop-blur-sm rounded-lg border border-gray-200/30 hover:bg-gray-50/90 transition-all duration-200">
+                <Mail size={16} className="text-gray-500" />
+                <span className="text-gray-900">{leadDetails.email}</span>
+              </div>
               </div>
             )}
 
             {lead.source && (
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Source</label>
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                  <MapPin size={16} className="text-gray-500" />
-                  <span className="text-gray-900">{lead.source}</span>
-                </div>
+                              <div className="flex items-center gap-2 p-3 bg-gray-50/70 backdrop-blur-sm rounded-lg border border-gray-200/30 hover:bg-gray-50/90 transition-all duration-200">
+                <MapPin size={16} className="text-gray-500" />
+                <span className="text-gray-900">{lead.source}</span>
+              </div>
               </div>
             )}
           </div>
@@ -213,7 +213,7 @@ function LeadDetailsModal({
                 <select
                   value={stage}
                   onChange={(e) => setStage(e.target.value)}
-                  className="w-full p-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-3 text-black border border-gray-300/50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:border-gray-400/70"
                 >
                   <option value="">Select a stage</option>
                   {availableStages.map((s) => (
@@ -231,7 +231,7 @@ function LeadDetailsModal({
                 <select
                   value={needFollowup}
                   onChange={(e) => setNeedFollowup(e.target.value)}
-                  className="w-full p-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-3 text-black border border-gray-300/50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:border-gray-400/70"
                 >
                   <option value="no">No</option>
                   <option value="yes">Yes</option>
@@ -247,7 +247,7 @@ function LeadDetailsModal({
                     type="date"
                     value={followupDate}
                     onChange={(e) => setFollowupDate(e.target.value)}
-                    className="w-full p-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 text-black border border-gray-300/50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:border-gray-400/70"
                   />
                 </div>
               )}
@@ -261,7 +261,7 @@ function LeadDetailsModal({
                   onChange={(e) => setStageNotes(e.target.value)}
                   placeholder="Add notes about this status change..."
                   rows={3}
-                  className="w-full text-black p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full text-black p-3 border border-gray-300/50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:border-gray-400/70 resize-none"
                 />
               </div>
 
@@ -270,7 +270,7 @@ function LeadDetailsModal({
             <button
               onClick={handleStatusUpdate}
               disabled={!stage || isLoading || (needFollowup === "yes" && !followupDate)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
             >
               {isLoading ? (
                 <>
@@ -287,7 +287,7 @@ function LeadDetailsModal({
           </div>
 
           {/* Activity Timeline */}
-          {events.length > 0 && (
+          {/* {events.length > 0 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <Activity size={20} className="text-green-600" />
@@ -296,8 +296,8 @@ function LeadDetailsModal({
               
               <div className="space-y-3 max-h-60 overflow-y-auto">
                 {events.map((event, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+                  <div key={index} className="flex items-start gap-3 p-3 bg-gray-50/70 backdrop-blur-sm rounded-lg border border-gray-200/30 hover:bg-gray-50/90 transition-all duration-200">
+                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full mt-2 flex-shrink-0 shadow-sm" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-medium text-gray-900">
@@ -327,7 +327,7 @@ function LeadDetailsModal({
                 ))}
               </div>
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </div>
