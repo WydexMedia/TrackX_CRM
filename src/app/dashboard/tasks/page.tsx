@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
 import { 
   Clock, 
@@ -333,6 +333,11 @@ export default function TasksPage() {
   const [specialTasks, setSpecialTasks] = useState<TaskRow[]>([]);
   const [loading, setLoading] = useState(false);
   
+  // Refs for scrolling to different sections
+  const leadsSectionRef = useRef<HTMLDivElement>(null);
+  const followUpsSectionRef = useRef<HTMLDivElement>(null);
+  const specialTasksSectionRef = useRef<HTMLDivElement>(null);
+  
   // Modal state
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -400,6 +405,72 @@ export default function TasksPage() {
 
   const ownerId = user?.code || "";
   const ownerName = user?.name || "";
+
+  // Function to scroll to leads section
+  const scrollToLeadsSection = () => {
+    leadsSectionRef.current?.scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'start'
+    });
+    
+    // Add a subtle highlight effect
+    if (leadsSectionRef.current) {
+      leadsSectionRef.current.style.transition = 'all 0.3s ease';
+      leadsSectionRef.current.style.transform = 'scale(1.02)';
+      leadsSectionRef.current.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+      
+      setTimeout(() => {
+        if (leadsSectionRef.current) {
+          leadsSectionRef.current.style.transform = 'scale(1)';
+          leadsSectionRef.current.style.boxShadow = '';
+        }
+      }, 300);
+    }
+  };
+
+  // Function to scroll to follow-ups section
+  const scrollToFollowUpsSection = () => {
+    followUpsSectionRef.current?.scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'start'
+    });
+    
+    // Add a subtle highlight effect
+    if (followUpsSectionRef.current) {
+      followUpsSectionRef.current.style.transition = 'all 0.3s ease';
+      followUpsSectionRef.current.style.transform = 'scale(1.02)';
+      followUpsSectionRef.current.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+      
+      setTimeout(() => {
+        if (followUpsSectionRef.current) {
+          followUpsSectionRef.current.style.transform = 'scale(1)';
+          followUpsSectionRef.current.style.boxShadow = '';
+        }
+      }, 300);
+    }
+  };
+
+  // Function to scroll to special tasks section
+  const scrollToSpecialTasksSection = () => {
+    specialTasksSectionRef.current?.scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'start'
+    });
+    
+    // Add a subtle highlight effect
+    if (specialTasksSectionRef.current) {
+      specialTasksSectionRef.current.style.transition = 'all 0.3s ease';
+      specialTasksSectionRef.current.style.transform = 'scale(1.02)';
+      specialTasksSectionRef.current.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+      
+      setTimeout(() => {
+        if (specialTasksSectionRef.current) {
+          specialTasksSectionRef.current.style.transform = 'scale(1)';
+          specialTasksSectionRef.current.style.boxShadow = '';
+        }
+      }, 300);
+    }
+  };
 
   const load = useCallback(async () => {
     if (!ownerId) return;
@@ -490,7 +561,16 @@ export default function TasksPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Special Tasks</p>
-                <p className="text-3xl font-bold text-blue-600">{specialTasks.length}</p>
+                <p 
+                  className="text-3xl font-bold text-blue-600 cursor-pointer hover:text-blue-700 transition-colors"
+                  onClick={() => {
+                    setLeadStatusFilter("all");
+                    scrollToSpecialTasksSection();
+                  }}
+                  title="Click to show all leads and scroll to special tasks section"
+                >
+                  {specialTasks.length}
+                </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                 <ListTodo size={24} className="text-blue-600" />
@@ -502,7 +582,16 @@ export default function TasksPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Not Contacted</p>
-                <p className="text-3xl font-bold text-red-600">{newLeads.filter(lead => lead.stage === "Not contacted").length}</p>
+                <p 
+                  className="text-3xl font-bold text-red-600 cursor-pointer hover:text-red-700 transition-colors"
+                  onClick={() => {
+                    setLeadStatusFilter("Not contacted");
+                    scrollToLeadsSection();
+                  }}
+                  title="Click to show Not contacted leads and scroll to leads section"
+                >
+                  {newLeads.filter(lead => lead.stage === "Not contacted").length}
+                </p>
               </div>
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
                 <UserPlus size={24} className="text-red-600" />
@@ -514,7 +603,16 @@ export default function TasksPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Follow-ups</p>
-                <p className="text-3xl font-bold text-amber-600">{followUps.length}</p>
+                <p 
+                  className="text-3xl font-bold text-amber-600 cursor-pointer hover:text-amber-700 transition-colors"
+                  onClick={() => {
+                    setLeadStatusFilter("all");
+                    scrollToFollowUpsSection();
+                  }}
+                  title="Click to show all leads and scroll to follow-ups section"
+                >
+                  {followUps.length}
+                </p>
               </div>
               <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
                 <Users size={24} className="text-amber-600" />
@@ -526,7 +624,16 @@ export default function TasksPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">New Leads</p>
-                <p className="text-3xl font-bold text-emerald-600">{newLeads.length}</p>
+                <p 
+                  className="text-3xl font-bold text-emerald-600 cursor-pointer hover:text-emerald-700 transition-colors"
+                  onClick={() => {
+                    setLeadStatusFilter("all");
+                    scrollToLeadsSection();
+                  }}
+                  title="Click to show all leads and scroll to leads section"
+                >
+                  {newLeads.length}
+                </p>
               </div>
               <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
                 <UserPlus size={24} className="text-emerald-600" />
@@ -536,7 +643,7 @@ export default function TasksPage() {
         </div>
 
         {/* Special Tasks Section */}
-        <section className="mb-8">
+        <section className="mb-8" ref={specialTasksSectionRef}>
           <SectionHeader icon={ListTodo} title="Special Tasks" count={specialTasks.length} color="blue" />
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
@@ -677,7 +784,7 @@ export default function TasksPage() {
         </section> */}
 
         {/* Follow-ups Section */}
-        <section className="mb-8">
+        <section className="mb-8" ref={followUpsSectionRef}>
           <SectionHeader icon={Calendar} title="Today's Follow-ups" count={followUps.length} color="amber" />
           <div className="space-y-4">
             {loading ? (
@@ -742,7 +849,7 @@ export default function TasksPage() {
         </section>
 
         {/* New Leads Section */}
-        <section className="mb-8">
+        <section className="mb-8" ref={leadsSectionRef}>
           <SectionHeader icon={UserPlus} title="New Leads" count={newLeads.length} color="emerald" />
           
           {/* Filter Controls */}
@@ -756,6 +863,7 @@ export default function TasksPage() {
                   className="px-3 py-2 text-black border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-full sm:w-auto"
                 >
                   <option value="all">All Statuses</option>
+                  <option value="Not contacted">Not Contacted</option>
                   <option value="Attempt to contact">Attempt to Contact</option>
                   <option value="Qualified">Qualified</option>
                   <option value="Not interested">Not Interested</option>
