@@ -64,6 +64,23 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
   
   if (!open) return null;
 
+  // Normalize phone: extract first numeric sequence with >=10 digits, strip non-digits, cap to 15 digits
+  const normalizePhone = (value: any): string | null => {
+    if (value === null || value === undefined) return null;
+    const raw = String(value);
+    // Replace non-ASCII spaces and weird unicode chars
+    const cleaned = raw.replace(/[\u00A0\u2000-\u200F\u2028-\u202F\u205F\u3000]/g, ' ');
+    // If multiple numbers separated by non-digits/commas etc, find the first run of digits with length >= 10
+    const digitRuns = cleaned.match(/\d{10,}/g);
+    if (!digitRuns || digitRuns.length === 0) return null;
+    let digits = digitRuns[0];
+    // Cap overly long sequences to last 15 digits to fit typical E.164 max length and DB limits
+    if (digits.length > 15) {
+      digits = digits.slice(-15);
+    }
+    return digits;
+  };
+
   const resetForm = () => {
     setStep('upload');
     setFileData([]);
@@ -209,7 +226,9 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
     });
     
     setMappedData(mapped);
-    setValidationErrors([]);
+    // Run data validation now so we can show errors and disable Import button
+    const dataErrors = validateMappedData(mapped);
+    setValidationErrors(dataErrors);
     setStep('preview');
   };
 
@@ -227,18 +246,19 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
       errors.push("No valid phone numbers found after mapping");
     }
     
-    // Check for duplicate phone numbers
-    const phones = rowsWithPhone.map(row => String(row.phone).trim());
-    const uniquePhones = new Set(phones);
-    if (phones.length !== uniquePhones.size) {
-      const duplicateCount = phones.length - uniquePhones.size;
+    // Normalize all phones for validation
+    const normalized = rowsWithPhone.map(row => normalizePhone(row.phone)).filter(Boolean) as string[];
+    // Check for duplicate phone numbers after normalization
+    const uniquePhones = new Set(normalized);
+    if (normalized.length !== uniquePhones.size) {
+      const duplicateCount = normalized.length - uniquePhones.size;
       errors.push(`${duplicateCount} duplicate phone numbers found`);
     }
     
-    // Check for invalid phone numbers
-    const invalidPhones = phones.filter(phone => phone.length < 10);
-    if (invalidPhones.length > 0) {
-      errors.push(`${invalidPhones.length} phone numbers are too short (minimum 10 digits)`);
+    // Check for invalid phone numbers (after normalization)
+    const invalidCount = normalized.filter(p => p.length < 10).length + (rowsWithPhone.length - normalized.length);
+    if (invalidCount > 0) {
+      errors.push(`${invalidCount} phone numbers are too short (minimum 10 digits)`);
     }
     
     // Check for invalid email formats
@@ -465,13 +485,65 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
         >
           ← Back to Mapping
         </button>
-        <button
-          onClick={handleImport}
-          disabled={uploading || validationErrors.length > 0}
-          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {uploading ? "Importing..." : `Import ${mappedData.length} Leads`}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleImport}
+            disabled={uploading || validationErrors.length > 0}
+            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {uploading ? "Importing..." : `Import ${mappedData.length} Leads`}
+          </button>
+          {/* Import unique-only helper button */}
+          {(() => {
+            const uniqueValidRows = (() => {
+              const seen = new Set<string>();
+              const result: any[] = [];
+              for (const row of mappedData) {
+                const normalized = normalizePhone(row.phone);
+                if (!normalized) continue;
+                if (normalized.length < 10) continue;
+                if (seen.has(normalized)) continue;
+                seen.add(normalized);
+                result.push({ ...row, phone: normalized });
+              }
+              return result;
+            })();
+            const hasIssues = validationErrors.length > 0;
+            const canImportUnique = uniqueValidRows.length > 0 && uniqueValidRows.length <= mappedData.length - 1; // only show if dedup reduces count
+            const handleImportUnique = async () => {
+              setUploading(true);
+              try {
+                const res = await fetch("/api/tl/leads/import", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ rows: uniqueValidRows }),
+                });
+                if (res.ok) {
+                  toast.success("Unique leads imported successfully");
+                  onImported();
+                  handleClose();
+                } else {
+                  const errorData = await res.json();
+                  toast.error(errorData.error || "Import failed");
+                }
+              } catch (error) {
+                toast.error("Import failed due to network error");
+              } finally {
+                setUploading(false);
+              }
+            };
+            return hasIssues && canImportUnique ? (
+              <button
+                onClick={handleImportUnique}
+                disabled={uploading}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Imports only unique, valid phone numbers"
+              >
+                {uploading ? "Importing..." : `Import Unique (${uniqueValidRows.length})`}
+              </button>
+            ) : null;
+          })()}
+        </div>
       </div>
     </div>
   );
