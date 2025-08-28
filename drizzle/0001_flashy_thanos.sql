@@ -1,3 +1,5 @@
+-- Ensure the existing primary key is dropped before adding a new one
+ALTER TABLE "leads" DROP CONSTRAINT IF EXISTS "leads_pkey";--> statement-breakpoint
 /* 
     Unfortunately in current drizzle-kit version we can't automatically get name for primary key.
     We are working on making it available!
