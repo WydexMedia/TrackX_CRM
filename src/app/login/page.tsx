@@ -65,7 +65,13 @@ export default function LoginAndDashboard() {
         body: JSON.stringify({ code, password }),
       });
       if (!res.ok) {
-        setError("Invalid employee code or password");
+        if (res.status === 409) {
+          setError("Active session detected. Please log out from the other device or contact admin.");
+        } else if (res.status === 401) {
+          setError("Invalid employee code or password");
+        } else {
+          setError("Login failed. Please try again.");
+        }
         return;
       }
       const user = await res.json();
@@ -172,19 +178,23 @@ export default function LoginAndDashboard() {
         console.log('Filtering by ogaName === user.name');
         
         const filteredSales = data.filter((s: any) => {
+          // Normalize names to avoid crashes when fields are missing
+          const saleOga = (s.ogaName ?? '').toString();
+          const userName = (user.name ?? '').toString();
+
           // Try exact match first
-          const exactMatch = s.ogaName === user.name;
+          const exactMatch = saleOga === userName;
           
           // Try case-insensitive match
-          const caseInsensitiveMatch = s.ogaName.toLowerCase() === user.name.toLowerCase();
+          const caseInsensitiveMatch = saleOga.toLowerCase() === userName.toLowerCase();
           
           // Try partial match (in case there are extra spaces or slight differences)
-          const partialMatch = s.ogaName.toLowerCase().includes(user.name.toLowerCase()) || 
-                             user.name.toLowerCase().includes(s.ogaName.toLowerCase());
+          const partialMatch = saleOga.toLowerCase().includes(userName.toLowerCase()) || 
+                             userName.toLowerCase().includes(saleOga.toLowerCase());
           
           const matches = exactMatch || caseInsensitiveMatch || partialMatch;
           
-          console.log(`Sale: ${s.customerName}, ogaName: "${s.ogaName}", user.name: "${user.name}"`);
+          console.log(`Sale: ${s.customerName}, ogaName: "${saleOga}", user.name: "${userName}"`);
           console.log(`  Exact match: ${exactMatch}, Case-insensitive: ${caseInsensitiveMatch}, Partial: ${partialMatch}, Final: ${matches}`);
           
           return matches;
@@ -337,6 +347,18 @@ export default function LoginAndDashboard() {
 
   // Logout handler
   const handleLogout = () => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      const parsed = stored ? JSON.parse(stored) : null;
+      const sessionId = parsed?.sessionId;
+      if (sessionId) {
+        fetch('/api/users/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId })
+        }).catch(() => {});
+      }
+    } catch {}
     localStorage.removeItem("user");
     setUser(null);
     setCode("");
@@ -376,10 +398,12 @@ const daysPending = lastDayOfMonth.getDate() - today.getDate();
       .then(res => res.json())
       .then(data => {
         const filteredSales = data.filter((s: any) => {
-          const exactMatch = s.ogaName === user.name;
-          const caseInsensitiveMatch = s.ogaName.toLowerCase() === user.name.toLowerCase();
-          const partialMatch = s.ogaName.toLowerCase().includes(user.name.toLowerCase()) || 
-                             user.name.toLowerCase().includes(s.ogaName.toLowerCase());
+          const saleOga = (s.ogaName ?? '').toString();
+          const userName = (user.name ?? '').toString();
+          const exactMatch = saleOga === userName;
+          const caseInsensitiveMatch = saleOga.toLowerCase() === userName.toLowerCase();
+          const partialMatch = saleOga.toLowerCase().includes(userName.toLowerCase()) || 
+                             userName.toLowerCase().includes(saleOga.toLowerCase());
           return exactMatch || caseInsensitiveMatch || partialMatch;
         });
         setSales(filteredSales);
@@ -410,10 +434,12 @@ const daysPending = lastDayOfMonth.getDate() - today.getDate();
       .then(res => res.json())
       .then(data => {
         const filteredSales = data.filter((s: any) => {
-          const exactMatch = s.ogaName === user.name;
-          const caseInsensitiveMatch = s.ogaName.toLowerCase() === user.name.toLowerCase();
-          const partialMatch = s.ogaName.toLowerCase().includes(user.name.toLowerCase()) || 
-                             user.name.toLowerCase().includes(s.ogaName.toLowerCase());
+          const saleOga = (s.ogaName ?? '').toString();
+          const userName = (user.name ?? '').toString();
+          const exactMatch = saleOga === userName;
+          const caseInsensitiveMatch = saleOga.toLowerCase() === userName.toLowerCase();
+          const partialMatch = saleOga.toLowerCase().includes(userName.toLowerCase()) || 
+                             userName.toLowerCase().includes(saleOga.toLowerCase());
           return exactMatch || caseInsensitiveMatch || partialMatch;
         });
         setSales(filteredSales);
