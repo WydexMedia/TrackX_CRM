@@ -27,88 +27,102 @@ export async function GET(request: NextRequest) {
       return new Response(JSON.stringify({ error: "User ID is required" }), { status: 400 });
     }
 
-    console.log("Team management request for userId:", userId);
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Team management request for userId:", userId);
+    }
 
     const db = await getMongoDb();
     const users = db.collection("users");
     
     // Get tenant context using the same method as /api/users
     const { tenantSubdomain } = await getTenantContextFromRequest(request);
-    console.log("Tenant subdomain from context:", tenantSubdomain);
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Tenant subdomain from context:", tenantSubdomain);
+    }
     
     const filter = tenantSubdomain ? { tenantSubdomain } : {};
 
-    // Debug: Check what users exist
-    const allUsersInDb = await users.find(filter).toArray();
-    console.log("All users in database:", allUsersInDb.map((u: any) => ({ 
-      email: u.email, 
-      role: u.role, 
-      tenantSubdomain: u.tenantSubdomain,
-      code: u.code,
-      name: u.name
-    })));
-    
-    // Debug: Check users with specific roles
-    const salesUsers = await users.find({ ...filter, role: "sales" }).toArray();
-    console.log("Users with 'sales' role:", salesUsers.length, salesUsers.map((u: any) => ({ email: u.email, code: u.code })));
-    
-    const jlUsers = await users.find({ ...filter, role: "jl" }).toArray();
-    console.log("Users with 'jl' role:", jlUsers.length, jlUsers.map((u: any) => ({ email: u.email, code: u.code })));
-    
-    const tlUsers = await users.find({ ...filter, role: "teamleader" }).toArray();
-    console.log("Users with 'teamleader' role:", tlUsers.length, tlUsers.map((u: any) => ({ email: u.email, code: u.code })));
-    
-    // Debug: Check users without role field
-    const usersWithoutRole = await users.find({ ...filter, role: { $exists: false } }).toArray();
-    console.log("Users without role field:", usersWithoutRole.length, usersWithoutRole.map((u: any) => ({ email: u.email, code: u.code })));
-    
-    // Debug: Check all possible role values
-    const allRoles = await users.distinct("role", filter);
-    console.log("All unique role values in database:", allRoles);
+    // Debug scans only in non-production
+    if (process.env.NODE_ENV !== "production") {
+      const allUsersInDb = await users.find(filter, { projection: { email: 1, role: 1, tenantSubdomain: 1, code: 1, name: 1 } }).toArray();
+      console.log("All users in database:", allUsersInDb.map((u: any) => ({ 
+        email: u.email, 
+        role: u.role, 
+        tenantSubdomain: u.tenantSubdomain,
+        code: u.code,
+        name: u.name
+      })));
+      
+      const salesUsers = await users.find({ ...filter, role: "sales" }, { projection: { email: 1, code: 1 } }).toArray();
+      console.log("Users with 'sales' role:", salesUsers.length, salesUsers.map((u: any) => ({ email: u.email, code: u.code })));
+      
+      const jlUsers = await users.find({ ...filter, role: "jl" }, { projection: { email: 1, code: 1 } }).toArray();
+      console.log("Users with 'jl' role:", jlUsers.length, jlUsers.map((u: any) => ({ email: u.email, code: u.code })));
+      
+      const tlUsers = await users.find({ ...filter, role: "teamleader" }, { projection: { email: 1, code: 1 } }).toArray();
+      console.log("Users with 'teamleader' role:", tlUsers.length, tlUsers.map((u: any) => ({ email: u.email, code: u.code })));
+      
+      const usersWithoutRole = await users.find({ ...filter, role: { $exists: false } }, { projection: { email: 1, code: 1 } }).toArray();
+      console.log("Users without role field:", usersWithoutRole.length, usersWithoutRole.map((u: any) => ({ email: u.email, code: u.code })));
+      
+      const allRoles = await users.distinct("role", filter);
+      console.log("All unique role values in database:", allRoles);
+    }
 
     // Find current user using the same approach as /api/users
     const currentUser = await users.findOne({ 
       email: userId,
       ...filter
-    }) as User | null;
+    }, { projection: { _id: 0, code: 1, name: 1, email: 1, role: 1, tenantSubdomain: 1 } }) as User | null;
     
-    console.log("User lookup result:", currentUser ? "Found" : "Not found");
+    if (process.env.NODE_ENV !== "production") {
+      console.log("User lookup result:", currentUser ? "Found" : "Not found");
+    }
 
     if (!currentUser) {
-      console.log("User not found in database:", userId);
+      if (process.env.NODE_ENV !== "production") {
+        console.log("User not found in database:", userId);
+      }
       return new Response(JSON.stringify({ 
         error: "User not found",
-        debug: {
+        debug: process.env.NODE_ENV !== "production" ? {
           searchedUserId: userId,
           tenantSubdomain: tenantSubdomain,
-          allUsers: allUsersInDb.map((u: any) => ({ email: u.email, role: u.role })),
           searchQuery: { email: userId, ...filter }
-        }
+        } : undefined
       }), { status: 404 });
     }
 
-    console.log("Found user:", currentUser.name, "Role:", currentUser.role);
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Found user:", currentUser.name, "Role:", currentUser.role);
+    }
 
     // Get all users for this tenant using the same approach as /api/users
     const allUsers = await users.find({
       ...filter,
       role: { $in: ["teamleader", "jl", "sales"] }
-    }).toArray() as User[];
+    }, { projection: { _id: 0, code: 1, name: 1, email: 1, role: 1 } }).toArray() as User[];
 
-    console.log("Found users with filtered roles:", allUsers.length);
-    console.log("Users found:", allUsers.map((u: any) => ({ email: u.email, role: u.role, code: u.code })));
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Found users with filtered roles:", allUsers.length);
+      console.log("Users found:", allUsers.map((u: any) => ({ email: u.email, role: u.role, code: u.code })));
+    }
 
     // Get team assignments for this tenant
     let teamAssignments: TeamAssignment[] = [];
     try {
       const assignmentFilter = tenantSubdomain ? { tenantSubdomain, status: "active" } : { status: "active" };
-      teamAssignments = await db.collection("teamAssignments").find(assignmentFilter).toArray() as TeamAssignment[];
+      teamAssignments = await db.collection("teamAssignments").find(assignmentFilter, { projection: { _id: 0, salespersonId: 1, jlId: 1, status: 1 } }).toArray() as TeamAssignment[];
     } catch (error) {
-      console.log("No teamAssignments collection found, using empty array");
+      if (process.env.NODE_ENV !== "production") {
+        console.log("No teamAssignments collection found, using empty array");
+      }
       teamAssignments = [];
     }
 
-    console.log("Found team assignments:", teamAssignments.length);
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Found team assignments:", teamAssignments.length);
+    }
 
     // Create a map of salesperson to JL assignments
     const salesToJlMap = new Map<string, string>();
@@ -170,7 +184,9 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    console.log("Returning team data for role:", currentUser.role);
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Returning team data for role:", currentUser.role);
+    }
     return new Response(JSON.stringify({ teamData }), { status: 200 });
   } catch (error) {
     console.error("Team management error:", error);
@@ -199,7 +215,7 @@ export async function POST(request: Request) {
     const currentUser = await users.findOne({ 
       email: userId,
       ...filter
-    }) as User | null;
+    }, { projection: { _id: 0, code: 1, name: 1, email: 1, role: 1 } }) as User | null;
 
     if (!currentUser) {
       return new Response(JSON.stringify({ error: "User not found" }), { status: 404 });
@@ -209,7 +225,7 @@ export async function POST(request: Request) {
     const targetUser = await users.findOne({ 
       code: targetUserId,
       ...filter
-    }) as User | null;
+    }, { projection: { _id: 0, code: 1, name: 1, email: 1, role: 1 } }) as User | null;
 
     if (!targetUser) {
       return new Response(JSON.stringify({ error: "Target user not found" }), { status: 404 });
@@ -303,7 +319,7 @@ export async function POST(request: Request) {
         code: jlId,
         role: "jl",
         ...filter
-      }) as User | null;
+      }, { projection: { _id: 0, code: 1, name: 1, email: 1, role: 1 } }) as User | null;
 
       if (!jl) {
         return new Response(JSON.stringify({ error: "JL not found" }), { status: 404 });

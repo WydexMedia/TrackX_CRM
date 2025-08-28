@@ -6,7 +6,7 @@ function normalizePostgresUrl(input?: string): string {
 	if (!input) return "";
 	let s = input.trim();
 	// Handle values like: psql 'postgresql://user:pass@host/db?sslmode=require'
-	const match = s.match(/(postgres(?:ql)?:\/\/[\w\-:@.%\/?,=&+#]+)"?'?/i);
+	const match = s.match(/(postgres(?:ql)?:\/\/[\w\-:@.%\/? ,=&+#]+)"?'?/i);
 	if (s.startsWith("psql ") || match) {
 		if (match && match[1]) return match[1];
 		// fallback: strip leading token and quotes
@@ -61,6 +61,10 @@ if (!isLocal && caPath) {
 const pool = new Pool({
 	connectionString: sanitizeUrl(url),
 	ssl,
+	// Pool tuning for serverless/Node workers
+	max: Number(process.env.PG_MAX_POOL_SIZE || 10),
+	idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS || 10000),
+	connectionTimeoutMillis: Number(process.env.PG_CONNECTION_TIMEOUT_MS || 5000),
 });
 
 export const db = drizzle(pool);

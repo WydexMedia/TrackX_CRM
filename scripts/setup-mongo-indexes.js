@@ -23,6 +23,11 @@ async function main() {
     await Promise.all([
       db.collection("users").createIndex({ tenantSubdomain: 1 }),
       db.collection("users").createIndex({ tenantSubdomain: 1, code: 1 }, { unique: true }),
+      db.collection("users").createIndex({ tenantSubdomain: 1, email: 1 }),
+      db.collection("users").createIndex({ tenantSubdomain: 1, role: 1 }),
+      db.collection("teamAssignments").createIndex({ tenantSubdomain: 1, status: 1 }),
+      db.collection("teamAssignments").createIndex({ tenantSubdomain: 1, salespersonId: 1, status: 1 }),
+      db.collection("teamAssignments").createIndex({ tenantSubdomain: 1, jlId: 1, status: 1 }),
       db.collection("sales").createIndex({ tenantSubdomain: 1, createdAt: -1 }),
       db.collection("calls").createIndex({ tenantSubdomain: 1, createdAt: -1 }),
       db.collection("daily_reports").createIndex({ tenantSubdomain: 1, date: 1 }),
