@@ -501,11 +501,11 @@ export default function TasksPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Due Calls</p>
-                <p className="text-3xl font-bold text-red-600">{dueCalls.length}</p>
+                <p className="text-sm font-medium text-gray-600">Not Contacted</p>
+                <p className="text-3xl font-bold text-red-600">{newLeads.filter(lead => lead.stage === "Not contacted").length}</p>
               </div>
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <Clock size={24} className="text-red-600" />
+                <UserPlus size={24} className="text-red-600" />
               </div>
             </div>
           </div>
@@ -611,7 +611,7 @@ export default function TasksPage() {
           </div>
         </section>
 
-        {/* Due Calls Section */}
+        {/* Due Calls Section
         <section className="mb-8">
           <SectionHeader icon={Clock} title="Due Calls (Yesterday)" count={dueCalls.length} color="blue" />
           <div className="space-y-4">
@@ -674,7 +674,7 @@ export default function TasksPage() {
               </div>
             )}
           </div>
-        </section>
+        </section> */}
 
         {/* Follow-ups Section */}
         <section className="mb-8">
