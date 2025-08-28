@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
             leadPhone: canonicalPhone,
             title: followUp?.product ? `Follow-up: ${followUp.product}` : "Follow-up",
             status: "PENDING",
-            type: "FOLLOW_UP",
+            type: "FOLLOWUP",
             ownerId: (log as any).salespersonId || null,
             dueAt: new Date(followUp.dueAt),
           } as any)
@@ -68,55 +68,58 @@ export async function POST(req: NextRequest) {
     // Map call outcome statuses to lead stages
     switch (status) {
       case "CONVERTED":
-        newStage = "CONVERTED";
+        newStage = "Qualified";
         break;
       case "NEED_FOLLOW_UP":
-        newStage = "FOLLOW_UP";
+        newStage = "To be nurtured";
         break;
       case "SEND_WHATSAPP":
-        newStage = "SEND_WHATSAPP";
+        newStage = "Interested";
         break;
       case "NOT_INTERESTED":
-        newStage = "NOT_INTERESTED";
+        newStage = "Not interested";
         break;
       case "DNP":
-        newStage = "DNP";
+        newStage = "Did not Pickup";
         break;
       case "DNC":
-        newStage = "DNC";
+        newStage = "Did not Connect";
         break;
       case "ASKED_TO_CALL_BACK":
-        newStage = "CALLBACK";
+        newStage = "Ask to call back";
         break;
       case "INTERESTED":
-        newStage = "INTERESTED";
+        newStage = "Interested";
         break;
       case "QUALIFIED":
-        newStage = "QUALIFIED";
+        newStage = "Qualified";
         break;
       case "NIFC":
-        newStage = "NIFC";
+        newStage = "Junk";
         break;
       case "DISQUALIFIED":
-        newStage = "DISQUALIFIED";
+        newStage = "Not interested";
         break;
       case "PROSPECT":
-        newStage = "PROSPECT";
+        newStage = "Qualified";
         break;
       case "PAYMENT_INITIAL":
-        newStage = "PAYMENT_INITIAL";
+        newStage = "Qualified";
         break;
       case "PAYMENT_DONE":
-        newStage = "PAYMENT_DONE";
+        newStage = "Qualified";
         break;
       case "SALES_CLOSED":
-        newStage = "SALES_CLOSED";
+        newStage = "Customer";
         break;
       case "CUSTOMER":
-        newStage = "CUSTOMER";
+        newStage = "Customer";
         break;
       case "NOT_CONTACTED":
-        newStage = "NOT_CONTACTED";
+        newStage = "Attempt to contact";
+        break;
+      case "OTHER_LANGUAGE":
+        newStage = "Other Language";
         break;
     }
 

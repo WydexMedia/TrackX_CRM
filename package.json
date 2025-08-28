@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "mongo:indexes": "node scripts/setup-mongo-indexes.js"
+    "mongo:indexes": "node scripts/setup-mongo-indexes.js",
+    "db:migrate": "drizzle-kit migrate",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",

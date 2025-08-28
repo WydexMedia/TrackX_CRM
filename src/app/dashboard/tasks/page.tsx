@@ -17,7 +17,8 @@ import {
   Mail,
   MapPin,
   Target,
-  Activity
+  Activity,
+  Funnel
 } from "lucide-react";
 
 function getUser() {
@@ -44,29 +45,31 @@ function LeadDetailsModal({
   const [isLoading, setIsLoading] = useState(false);
   const [stage, setStage] = useState(lead?.stage || "");
   const [stageNotes, setStageNotes] = useState("");
+  const [needFollowup, setNeedFollowup] = useState("no");
+  const [followupDate, setFollowupDate] = useState("");
   const [leadDetails, setLeadDetails] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
 
   // Available stages - customized for business needs
   const availableStages = [
-    "DNP",
-    "DNC",
-    "Asked to callback",
-    "Interested",
+    "Attempt to contact",
     "Qualified",
-    "NIFC",
-    "Disqualified",
-    "Prospect",
-    "Payment initiated",
-    "Payment done",
-    "Sales closed",
+    "Not interested",
+    "Interested",
+    "To be nurtured",
+    "Junk",
+    "Ask to call back",
+    "Did not Pickup",
+    "Did not Connect",
     "Customer",
-    "Not contacted"
+    "Other Language"
   ];
 
   useEffect(() => {
     if (lead && isOpen) {
       setStage(lead.stage || "");
+      setNeedFollowup("no");
+      setFollowupDate("");
       fetchLeadDetails();
     }
   }, [lead, isOpen]);
@@ -91,14 +94,27 @@ function LeadDetailsModal({
     
     setIsLoading(true);
     try {
+      const updateData: any = {
+        stage,
+        stageNotes: stageNotes.trim() || undefined,
+        actorId: getUser()?.code || "system"
+      };
+
+      // Add followup information if needed
+      if (needFollowup === "yes" && followupDate) {
+        updateData.needFollowup = true;
+        updateData.followupDate = followupDate;
+        updateData.followupNotes = stageNotes.trim() || undefined;
+      } else {
+        updateData.needFollowup = false;
+        updateData.followupDate = null;
+        updateData.followupNotes = null;
+      }
+
       const response = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stage,
-          stageNotes: stageNotes.trim() || undefined,
-          actorId: getUser()?.code || "system"
-        })
+        body: JSON.stringify(updateData)
       });
 
       if (response.ok) {
@@ -201,7 +217,35 @@ function LeadDetailsModal({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes (Optional)
+                  Need Followup?
+                </label>
+                <select
+                  value={needFollowup}
+                  onChange={(e) => setNeedFollowup(e.target.value)}
+                  className="w-full p-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="no">No</option>
+                  <option value="yes">Yes</option>
+                </select>
+              </div>
+
+              {needFollowup === "yes" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Followup Date
+                  </label>
+                  <input
+                    type="date"
+                    value={followupDate}
+                    onChange={(e) => setFollowupDate(e.target.value)}
+                    className="w-full p-3 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes
                 </label>
                 <textarea
                   value={stageNotes}
@@ -211,11 +255,12 @@ function LeadDetailsModal({
                   className="w-full text-black p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+
             </div>
 
             <button
               onClick={handleStatusUpdate}
-              disabled={!stage || isLoading}
+              disabled={!stage || isLoading || (needFollowup === "yes" && !followupDate)}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? (
@@ -305,14 +350,17 @@ export default function TasksPage() {
     
     // Handle special cases
     const statusMap: Record<string, string> = {
-      "DNP": "DNP",
-      "DNC": "DNC", 
-      "NIFC": "NIFC",
-      "Asked to callback": "Asked to Callback",
-      "Payment initiated": "Payment Initiated",
-      "Payment done": "Payment Done",
-      "Sales closed": "Sales Closed",
-      "Not contacted": "Not Contacted"
+      "Attempt to contact": "Attempt to Contact",
+      "Qualified": "Qualified",
+      "Not interested": "Not Interested",
+      "Interested": "Interested",
+      "To be nurtured": "To be Nurtured",
+      "Junk": "Junk",
+      "Ask to call back": "Ask to Call Back",
+      "Did not Pickup": "Did not Pickup",
+      "Did not Connect": "Did not Connect",
+      "Customer": "Customer",
+      "Other Language": "Other Language"
     };
     
     return statusMap[status] || status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
@@ -708,19 +756,17 @@ export default function TasksPage() {
                   className="px-3 py-2 text-black border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-full sm:w-auto"
                 >
                   <option value="all">All Statuses</option>
-                  <option value="Not contacted">Not Contacted</option>
-                  <option value="Interested">Interested</option>
+                  <option value="Attempt to contact">Attempt to Contact</option>
                   <option value="Qualified">Qualified</option>
-                  <option value="Prospect">Prospect</option>
-                  <option value="Payment initiated">Payment Initiated</option>
-                  <option value="Payment done">Payment Done</option>
-                  <option value="Sales closed">Sales Closed</option>
+                  <option value="Not interested">Not Interested</option>
+                  <option value="Interested">Interested</option>
+                  <option value="To be nurtured">To be Nurtured</option>
+                  <option value="Junk">Junk</option>
+                  <option value="Ask to call back">Ask to Call Back</option>
+                  <option value="Did not Pickup">Did not Pickup</option>
+                  <option value="Did not Connect">Did not Connect</option>
                   <option value="Customer">Customer</option>
-                  <option value="DNP">DNP</option>
-                  <option value="DNC">DNC</option>
-                  <option value="Asked to callback">Asked to Callback</option>
-                  <option value="NIFC">NIFC</option>
-                  <option value="Disqualified">Disqualified</option>
+                  <option value="Other Language">Other Language</option>
                 </select>
               </div>
               <div className="text-sm text-gray-600 text-center sm:text-right">
@@ -772,32 +818,27 @@ export default function TasksPage() {
                             )}
                             {lead.source && (
                               <span className="inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1 bg-purple-100 text-purple-700 rounded-full font-medium text-xs">
-                                <MapPin size={12} />
+                                <Funnel size={12} />
                                 {lead.source}
                               </span>
                             )}
-                            {lead.stage && (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1 bg-cyan-100 text-cyan-700 rounded-full font-medium text-xs">
-                                <Target size={12} />
-                                {formatStatusText(lead.stage)}
-                              </span>
-                            )}
+                            
                           </div>
                         </div>
                       </div>
                       <div className="flex justify-center sm:justify-end">
                         <span className={`text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-bold border ${
-                          !lead.stage || lead.stage === "Not contacted" 
+                          !lead.stage || lead.stage === "Attempt to contact" 
                             ? "text-gray-600 bg-gray-100 border-gray-200"
-                            : lead.stage === "Interested" || lead.stage === "Qualified" || lead.stage === "Prospect"
+                            : lead.stage === "Qualified" || lead.stage === "Interested" || lead.stage === "To be nurtured" || lead.stage === "Ask to call back"
                             ? "text-blue-600 bg-blue-100 border-blue-200"
-                            : lead.stage === "Payment initiated" || lead.stage === "Payment done" || lead.stage === "Sales closed" || lead.stage === "Customer"
+                            : lead.stage === "Customer"
                             ? "text-green-600 bg-green-100 border-green-200"
-                            : lead.stage === "DNP" || lead.stage === "DNC" || lead.stage === "Disqualified"
+                            : lead.stage === "Not interested" || lead.stage === "Junk" || lead.stage === "Did not Pickup" || lead.stage === "Did not Connect" || lead.stage === "Other Language"
                             ? "text-red-600 bg-red-100 border-red-200"
                             : "text-amber-600 bg-amber-100 border-amber-200"
                         }`}>
-                          {!lead.stage || lead.stage === "Not contacted" ? "Not Contacted" : formatStatusText(lead.stage)}
+                          {!lead.stage || lead.stage === "Attempt to contact" ? "Attempt to Contact" : formatStatusText(lead.stage)}
                         </span>
                       </div>
                     </div>

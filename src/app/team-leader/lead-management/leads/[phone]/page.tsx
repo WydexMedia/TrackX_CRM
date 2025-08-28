@@ -376,7 +376,7 @@ export default function LeadDetailPage() {
         <div>
           <div className="text-sm text-slate-500"><Link href="/team-leader/lead-management/leads" className="hover:underline">Leads</Link> / {lead?.phone}</div>
           <h1 className="text-2xl font-semibold">{lead?.name || lead?.phone}</h1>
-          <div className="text-sm text-slate-600">{lead?.email || "—"} • Source: {lead?.source || "—"} • Stage: {lead?.stage || "Not contacted"}</div>
+          <div className="text-sm text-slate-600">{lead?.email || "—"} • Source: {lead?.source || "—"} • Stage: {lead?.stage || "Attempt to contact"}</div>
         </div>
       </div>
 
@@ -556,15 +556,13 @@ export default function LeadDetailPage() {
                 <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Stage</dt>
                 <dd className="mt-1">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    lead.stage === 'CONVERTED' || lead.stage === 'CUSTOMER' || lead.stage === 'SALES_CLOSED' ? 'text-green-800 bg-green-100 border border-green-200' :
-                    lead.stage === 'INTERESTED' || lead.stage === 'QUALIFIED' || lead.stage === 'PROSPECT' ? 'text-blue-800 bg-blue-100 border border-blue-200' :
-                    lead.stage === 'PAYMENT_INITIAL' || lead.stage === 'PAYMENT_DONE' ? 'text-yellow-800 bg-yellow-100 border border-yellow-200' :
-                    lead.stage === 'FOLLOW_UP' ? 'text-purple-800 bg-purple-100 border border-purple-200' :
-                    lead.stage === 'DNP' || lead.stage === 'DNC' || lead.stage === 'DISQUALIFIED' || lead.stage === 'NOT_INTERESTED' ? 'text-red-800 bg-red-100 border border-red-200' :
-                    lead.stage === 'NIFC' || lead.stage === 'NOT_CONTACTED' ? 'text-gray-800 bg-gray-100 border border-gray-200' :
+                    lead.stage === 'Qualified' || lead.stage === 'Interested' || lead.stage === 'Customer' ? 'text-green-800 bg-green-100 border border-green-200' :
+                    lead.stage === 'To be nurtured' || lead.stage === 'Ask to call back' ? 'text-blue-800 bg-blue-100 border border-blue-200' :
+                    lead.stage === 'Not interested' || lead.stage === 'Junk' || lead.stage === 'Did not Pickup' || lead.stage === 'Did not Connect' || lead.stage === 'Other Language' ? 'text-red-800 bg-red-100 border border-red-200' :
+                    lead.stage === 'Attempt to contact' ? 'text-gray-800 bg-gray-100 border border-gray-200' :
                     'text-slate-800 bg-slate-100 border border-slate-200'
                   }`}>
-                    {lead.stage || "Not contacted"}
+                    {lead.stage || "Attempt to contact"}
                   </span>
                 </dd>
               </div>
@@ -607,23 +605,17 @@ export default function LeadDetailPage() {
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select New Stage</option>
-                    <option value="NEW">NEW</option>
-                    <option value="CONTACTED">CONTACTED</option>
-                    <option value="INTERESTED">INTERESTED</option>
-                    <option value="QUALIFIED">QUALIFIED</option>
-                    <option value="PROSPECT">PROSPECT</option>
-                    <option value="FOLLOW_UP">FOLLOW_UP</option>
-                    <option value="PAYMENT_INITIAL">PAYMENT_INITIAL</option>
-                    <option value="PAYMENT_DONE">PAYMENT_DONE</option>
-                    <option value="CONVERTED">CONVERTED</option>
-                    <option value="CUSTOMER">CUSTOMER</option>
-                    <option value="SALES_CLOSED">SALES_CLOSED</option>
-                    <option value="NOT_INTERESTED">NOT_INTERESTED</option>
-                    <option value="DNP">DNP</option>
-                    <option value="DNC">DNC</option>
-                    <option value="DISQUALIFIED">DISQUALIFIED</option>
-                    <option value="NIFC">NIFC</option>
-                    <option value="NOT_CONTACTED">NOT_CONTACTED</option>
+                    <option value="Attempt to contact">Attempt to Contact</option>
+                    <option value="Qualified">Qualified</option>
+                    <option value="Not interested">Not Interested</option>
+                    <option value="Interested">Interested</option>
+                    <option value="To be nurtured">To be Nurtured</option>
+                    <option value="Junk">Junk</option>
+                    <option value="Ask to call back">Ask to Call Back</option>
+                    <option value="Did not Pickup">Did not Pickup</option>
+                    <option value="Did not Connect">Did not Connect</option>
+                    <option value="Customer">Customer</option>
+                    <option value="Other Language">Other Language</option>
                   </select>
                   <textarea
                     placeholder="Stage change reason/notes..."
@@ -734,7 +726,7 @@ export default function LeadDetailPage() {
                   <option value="">Select Call Status</option>
                   <option value="QUALIFIED">QUALIFIED</option>
                   <option value="CONNECTED_TO_WHATSAPP">CONNECTED TO WHATSAPP</option>
-                  <option value="DNP">DNP</option>
+                  <option value="DNP">Did not Pickup</option>
                   <option value="POSITIVE">POSITIVE</option>
                   <option value="NATC">NATC</option>
                   <option value="NOT_INTERESTED">NOT INTERESTED</option>

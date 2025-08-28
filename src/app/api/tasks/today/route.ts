@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
         .where(
           and(
             sql`(lower(${tasks.ownerId}) = lower(${ownerId}) OR lower(${tasks.ownerId}) = lower(${ownerName}))`,
-            eq(tasks.type as any, "FOLLOW_UP" as any),
+            eq(tasks.type as any, "FOLLOWUP" as any),
             isNull(tasks.completedAt),
             sql`${tasks.dueAt} >= ${startOfToday} AND ${tasks.dueAt} <= ${endOfToday}`
           ) as any

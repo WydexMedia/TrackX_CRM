@@ -50,16 +50,16 @@ export async function GET(req: NextRequest) {
     // Calculate funnel data
     const totalLeads = leadsData.length;
     const qualifiedLeads = leadsData.filter(lead => 
-      !["Not contacted", "NOT_CONTACTED", "DNP", "DNC", "NIFC", "DISQUALIFIED", "NOT_INTERESTED"].includes(lead.stage)
+      !["Attempt to contact", "Not interested", "Junk", "Did not Pickup", "Did not Connect", "Other Language"].includes(lead.stage)
     ).length;
     const interestedLeads = leadsData.filter(lead => 
-      ["INTERESTED", "QUALIFIED", "PROSPECT", "PAYMENT_INITIAL", "PAYMENT_DONE", "SALES_CLOSED", "CUSTOMER", "CONVERTED"].includes(lead.stage)
+      ["Interested", "Qualified", "To be nurtured", "Ask to call back"].includes(lead.stage)
     ).length;
     const paymentLeads = leadsData.filter(lead => 
-      ["PAYMENT_INITIAL", "PAYMENT_DONE", "SALES_CLOSED", "CUSTOMER", "CONVERTED"].includes(lead.stage)
+      ["Qualified", "Interested", "Customer"].includes(lead.stage)
     ).length;
     const convertedLeads = leadsData.filter(lead => 
-      ["SALES_CLOSED", "CUSTOMER", "CONVERTED"].includes(lead.stage)
+      ["Qualified", "Interested", "Customer"].includes(lead.stage)
     ).length;
 
     const funnel = [
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
       current.leads += 1;
       
       // Check if lead is converted based on stage
-      if (["SALES_CLOSED", "CUSTOMER", "CONVERTED"].includes(lead.stage)) {
+      if (["Qualified", "Interested", "Customer"].includes(lead.stage)) {
         current.conversions += 1;
         // Estimate revenue based on lead score (higher score = higher potential value)
         current.revenue += (lead.score || 50) * 10; // Rough estimate: score * 10
@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
       qualifiedLeads,
       convertedLeads,
       conversionRate: totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0,
-      avgDealSize: convertedLeads > 0 ? leadsData.filter(lead => ["SALES_CLOSED", "CUSTOMER", "CONVERTED"].includes(lead.stage)).reduce((sum, lead) => sum + (lead.score || 50) * 10, 0) / convertedLeads : 0
+      avgDealSize: convertedLeads > 0 ? leadsData.filter(lead => ["Qualified", "Interested", "Customer"].includes(lead.stage)).reduce((sum, lead) => sum + (lead.score || 50) * 10, 0) / convertedLeads : 0
     };
 
     // Calculate monthly trends (last 6 months)
@@ -117,12 +117,12 @@ export async function GET(req: NextRequest) {
       
       const monthConversions = leadsData.filter(lead => {
         const leadDate = new Date(lead.createdAt || "");
-        return ["SALES_CLOSED", "CUSTOMER", "CONVERTED"].includes(lead.stage) && leadDate >= monthDate && leadDate <= monthEnd;
+        return ["Qualified", "Interested", "Customer"].includes(lead.stage) && leadDate >= monthDate && leadDate <= monthEnd;
       }).length;
       
       const monthRevenue = leadsData.filter(lead => {
         const leadDate = new Date(lead.createdAt || "");
-        return ["SALES_CLOSED", "CUSTOMER", "CONVERTED"].includes(lead.stage) && leadDate >= monthDate && leadDate <= monthEnd;
+        return ["Qualified", "Interested", "Customer"].includes(lead.stage) && leadDate >= monthDate && leadDate <= monthEnd;
       }).reduce((sum, lead) => sum + (lead.score || 50) * 10, 0);
       
       monthlyTrends.push({
@@ -140,7 +140,7 @@ export async function GET(req: NextRequest) {
       if (lead.ownerId) {
         const current = agentMap.get(lead.ownerId) || { leads: 0, conversions: 0, revenue: 0 };
         current.leads += 1;
-        if (["SALES_CLOSED", "CUSTOMER", "CONVERTED"].includes(lead.stage)) {
+        if (["Qualified", "Interested", "Customer"].includes(lead.stage)) {
           current.conversions += 1;
           current.revenue += (lead.score || 50) * 10;
         }

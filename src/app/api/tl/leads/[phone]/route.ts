@@ -66,10 +66,10 @@ export async function PUT(_req: Request, { params }: any) {
     const tenantId = await requireTenantIdFromRequest(_req).catch(() => undefined);
     const phone = decodeURIComponent(await params.phone);
     const body = await _req.json();
-    const { stage, score, ownerId, source, actorId, stageNotes } = body || {};
+    const { stage, score, ownerId, source, actorId, stageNotes, needFollowup, followupDate, followupNotes } = body || {};
     
     console.log('Team Leader API - PUT request for phone:', phone);
-    console.log('Request body:', { stage, score, ownerId, source, actorId, stageNotes });
+    console.log('Request body:', { stage, score, ownerId, source, actorId, stageNotes, needFollowup, followupDate, followupNotes });
     
     // Get current lead to capture previous values
     const currentLead = await db.select().from(leads).where(tenantId ? and(eq(leads.phone, phone), eq(leads.tenantId, tenantId)) : eq(leads.phone, phone)).limit(1);
@@ -86,6 +86,18 @@ export async function PUT(_req: Request, { params }: any) {
     if (score !== undefined) updateData.score = score;
     if (ownerId !== undefined) updateData.ownerId = ownerId;
     if (source !== undefined) updateData.source = source;
+    if (needFollowup !== undefined) updateData.needFollowup = needFollowup;
+    if (followupDate !== undefined) {
+      // Ensure followupDate is properly formatted as a Date object
+      if (typeof followupDate === 'string') {
+        updateData.followupDate = new Date(followupDate);
+      } else if (followupDate instanceof Date) {
+        updateData.followupDate = followupDate;
+      } else {
+        updateData.followupDate = null;
+      }
+    }
+    if (followupNotes !== undefined) updateData.followupNotes = followupNotes;
     updateData.updatedAt = new Date();
     updateData.lastActivityAt = new Date();
 
@@ -121,6 +133,76 @@ export async function PUT(_req: Request, { params }: any) {
       }
     } else {
       console.log('No stage change detected or stage is the same');
+    }
+
+    // Handle followup task creation
+    if (needFollowup === true && followupDate) {
+      console.log('Creating followup task for date:', followupDate);
+      console.log('Followup date type:', typeof followupDate);
+      
+      try {
+        // Validate and format the followup date
+        let formattedDate: Date;
+        if (typeof followupDate === 'string') {
+          formattedDate = new Date(followupDate);
+          if (isNaN(formattedDate.getTime())) {
+            throw new Error('Invalid followup date format');
+          }
+        } else if (followupDate instanceof Date) {
+          formattedDate = followupDate;
+        } else {
+          throw new Error('Followup date must be a string or Date object');
+        }
+        
+        console.log('Formatted followup date:', formattedDate);
+        
+        // Create a followup task
+        await db.insert(tasks).values({
+          leadPhone: phone,
+          title: `Followup: ${stageNotes || 'Status update followup'}`,
+          status: "OPEN",
+          type: "FOLLOWUP",
+          dueAt: formattedDate,
+          ownerId: ownerId || currentLead[0].ownerId,
+          tenantId: tenantId || null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        } as any);
+        
+        console.log('Followup task created successfully');
+        
+        // Log followup event
+        await db.insert(leadEvents).values({
+          leadPhone: phone,
+          type: "FOLLOWUP_SCHEDULED",
+          data: { 
+            followupDate: followupDate,
+            followupNotes: followupNotes || stageNotes || null,
+            actorId: actorId || currentLead[0].ownerId || "system",
+            message: `Followup scheduled for ${followupDate}`,
+            reason: "Manual followup scheduling"
+          },
+          actorId: actorId || currentLead[0].ownerId || "system",
+          at: new Date(),
+          tenantId: tenantId || null
+        } as any);
+        
+        console.log('FOLLOWUP_SCHEDULED event created successfully');
+      } catch (error) {
+        console.error('Failed to create followup task or event:', error);
+      }
+    } else if (needFollowup === false) {
+      // Remove any existing followup tasks for this lead
+      try {
+        await db.delete(tasks).where(
+          tenantId ? 
+            and(eq(tasks.leadPhone, phone), eq(tasks.tenantId, tenantId), eq(tasks.type, "FOLLOWUP")) :
+            and(eq(tasks.leadPhone, phone), eq(tasks.type, "FOLLOWUP"))
+        );
+        console.log('Removed existing followup tasks for this lead');
+      } catch (error) {
+        console.error('Failed to remove existing followup tasks:', error);
+      }
     }
 
     // Log assignment change event if ownerId was updated

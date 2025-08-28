@@ -10,10 +10,13 @@ export const leads = pgTable(
     email: varchar("email", { length: 256 }),
     source: varchar("source", { length: 64 }),
     utm: jsonb("utm"),
-    stage: varchar("stage", { length: 48 }).notNull().default("Not contacted"), // Updated default from "NEW" to "Not contacted"
+    stage: varchar("stage", { length: 48 }).notNull().default("Attempt to contact"), // Updated default from "Not contacted" to "Attempt to contact"
     ownerId: varchar("owner_id", { length: 64 }),
     score: integer("score").default(0),
     lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
+    needFollowup: boolean("need_followup").default(false),
+    followupDate: timestamp("followup_date", { withTimezone: true }),
+    followupNotes: text("followup_notes"),
     tenantId: integer("tenant_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
@@ -32,7 +35,7 @@ export const tasks = pgTable(
     title: varchar("title", { length: 160 }).notNull(),
     // PENDING | DONE | SKIPPED | OPEN (backward compatibility)
     status: varchar("status", { length: 24 }).notNull().default("OPEN"),
-    // CALL | FOLLOW_UP | OTHER
+    // CALL | FOLLOWUP | OTHER
     type: varchar("type", { length: 24 }).default("OTHER"),
     ownerId: varchar("owner_id", { length: 64 }),
     priority: varchar("priority", { length: 16 }).default("MEDIUM"), // LOW | MEDIUM | HIGH
