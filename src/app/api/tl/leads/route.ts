@@ -19,6 +19,11 @@ export async function GET(req: NextRequest) {
     const minScore = newMin ? Number(newMin) : legacyMin ? Number(legacyMin) : undefined;
     const maxScore = newMax ? Number(newMax) : legacyMax ? Number(legacyMax) : undefined;
 
+    // Advanced filters
+    const needFollowupParam = searchParams.get("needFollowup");
+    const hasEmailParam = searchParams.get("hasEmail");
+    const emailDomain = searchParams.get("emailDomain") || undefined; // like gmail.com
+
     // Date filters: explicit from/to or derived from dateRange
     let from = searchParams.get("from") || undefined;
     let to = searchParams.get("to") || undefined;
@@ -89,6 +94,9 @@ export async function GET(req: NextRequest) {
       typeof maxScore === "number" && !Number.isNaN(maxScore) ? lte(leads.score, maxScore) : undefined,
       from ? gte(leads.createdAt, new Date(from)) : undefined,
       to ? lte(leads.createdAt, new Date(to)) : undefined,
+      needFollowupParam === "true" ? eq(leads.needFollowup, true) : needFollowupParam === "false" ? eq(leads.needFollowup, false) : undefined,
+      hasEmailParam === "true" ? (sql`${leads.email} is not null and ${leads.email} <> ''` as any) : hasEmailParam === "false" ? (sql`${leads.email} is null or ${leads.email} = ''` as any) : undefined,
+      emailDomain ? ilike(leads.email, `%@${emailDomain}`) : undefined,
     ].filter(Boolean) as any[];
 
     // Last activity window

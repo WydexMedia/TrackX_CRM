@@ -10,7 +10,6 @@ const items = [
   { href: "/team-leader/lead-management", label: "Overview", icon: Icons.LayoutDashboard, badge: null },
   { href: "/team-leader/lead-management/queue", label: "Queue", icon: Icons.ListChecks, badge: null },
   { href: "/team-leader/lead-management/leads", label: "Leads", icon: Icons.UserSquare2, badge: null },
-  { href: "/team-leader/lead-management/agents", label: "Agents", icon: Icons.Users, badge: null },
   { href: "/team-leader/lead-management/tasks", label: "Tasks", icon: Icons.AlarmClock, badge: null },
   { href: "/team-leader/lead-management/automations", label: "Automations", icon: Icons.Workflow, badge: "automation" },
   { href: "/team-leader/lead-management/analytics", label: "Analytics", icon: Icons.BarChart3, badge: null },
