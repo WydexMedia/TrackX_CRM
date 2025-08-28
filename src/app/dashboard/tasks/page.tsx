@@ -35,12 +35,14 @@ function LeadDetailsModal({
   lead, 
   isOpen, 
   onClose, 
-  onStatusUpdate 
+  onStatusUpdate,
+  onCallInitiated
 }: { 
   lead: Lead | null; 
   isOpen: boolean; 
   onClose: () => void; 
   onStatusUpdate: () => void; 
+  onCallInitiated: (lead: Lead) => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [stage, setStage] = useState(lead?.stage || "");
@@ -164,7 +166,14 @@ function LeadDetailsModal({
               <label className="text-sm font-medium text-gray-700">Phone</label>
               <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                 <Phone size={16} className="text-gray-500" />
-                <span className="text-gray-900 font-mono">{lead.phone}</span>
+                <a 
+                  href={`tel:${lead.phone}`}
+                  onClick={() => onCallInitiated(lead)}
+                  className="text-gray-900 font-mono hover:text-blue-600 cursor-pointer transition-colors"
+                  title="Click to call this number"
+                >
+                  {lead.phone}
+                </a>
               </div>
             </div>
 
@@ -341,6 +350,8 @@ export default function TasksPage() {
   // Modal state
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+
 
   // Filter state for leads
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>("all");
@@ -402,6 +413,55 @@ export default function TasksPage() {
     }
     setUser(u);
   }, []);
+
+  // Listen for page visibility changes to detect when user returns from a call
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // User returned to the page, check if there's a called lead
+        const storedCalledLead = sessionStorage.getItem('calledLead');
+        if (storedCalledLead) {
+          try {
+            const lead = JSON.parse(storedCalledLead);
+            // Show modal after a short delay
+            setTimeout(() => {
+              setSelectedLead(lead);
+              setIsModalOpen(true);
+              // Clear the stored lead after showing modal
+              sessionStorage.removeItem('calledLead');
+            }, 500); // Reduced delay for better responsiveness
+          } catch (error) {
+            console.error('Failed to parse stored called lead:', error);
+            sessionStorage.removeItem('calledLead');
+          }
+        }
+      }
+    };
+
+    // Check if there's a called lead in sessionStorage on page load
+    const storedCalledLead = sessionStorage.getItem('calledLead');
+    if (storedCalledLead) {
+      try {
+        const lead = JSON.parse(storedCalledLead);
+        // Show modal after a delay
+        setTimeout(() => {
+          setSelectedLead(lead);
+          setIsModalOpen(true);
+          // Clear the stored lead after showing modal
+          sessionStorage.removeItem('calledLead');
+        }, 1000); // 1 second delay on page load
+      } catch (error) {
+        console.error('Failed to parse stored called lead:', error);
+        sessionStorage.removeItem('calledLead');
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []); // Remove dependency array to run only once
 
   const ownerId = user?.code || "";
   const ownerName = user?.name || "";
@@ -471,6 +531,14 @@ export default function TasksPage() {
       }, 300);
     }
   };
+
+  // Function to handle call initiation
+  const handleCallInitiated = (lead: Lead) => {
+    // Store the called lead in sessionStorage
+    sessionStorage.setItem('calledLead', JSON.stringify(lead));
+  };
+
+
 
   const load = useCallback(async () => {
     if (!ownerId) return;
@@ -918,8 +986,11 @@ export default function TasksPage() {
                           </button>
                           <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600">
                             {lead.phone && (
-                              <a href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
-                                 className="inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium text-xs">
+                              <a 
+                                href={`tel:${lead.phone}`} 
+                                onClick={() => handleCallInitiated(lead)}
+                                className="inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium text-xs"
+                              >
                                 <Phone size={12} />
                                 {lead.phone}
                               </a>
@@ -1039,6 +1110,7 @@ export default function TasksPage() {
         isOpen={isModalOpen}
         onClose={closeLeadModal}
         onStatusUpdate={load}
+        onCallInitiated={handleCallInitiated}
       />
     </div>
   );
