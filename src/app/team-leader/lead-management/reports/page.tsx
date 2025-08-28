@@ -235,36 +235,36 @@ function LeadsReports() {
         {showAdvanced && (
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Need Follow-up</label>
-              <select className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={needFollowup} onChange={e=>{setOffset(0); setNeedFollowup(e.target.value);}}>
+              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-needFollowup">Need Follow-up</label>
+              <select id="adv-needFollowup" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={needFollowup} onChange={e=>{setOffset(0); setNeedFollowup(e.target.value);}}>
                 <option value="">Any</option>
                 <option value="true">Yes</option>
                 <option value="false">No</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Has Email</label>
-              <select className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={hasEmail} onChange={e=>{setOffset(0); setHasEmail(e.target.value);}}>
+              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-hasEmail">Has Email</label>
+              <select id="adv-hasEmail" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={hasEmail} onChange={e=>{setOffset(0); setHasEmail(e.target.value);}}>
                 <option value="">Any</option>
                 <option value="true">Yes</option>
                 <option value="false">No</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Email Domain</label>
-              <input className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={emailDomain} onChange={e=>{setOffset(0); setEmailDomain(e.target.value);}} placeholder="gmail.com" />
+              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-emailDomain">Email Domain</label>
+              <input id="adv-emailDomain" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={emailDomain} onChange={e=>{setOffset(0); setEmailDomain(e.target.value);}} placeholder="gmail.com" />
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Score Min</label>
-              <input type="number" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={scoreMin} onChange={e=>{setOffset(0); setScoreMin(e.target.value);}} />
+              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-scoreMin">Score Min</label>
+              <input id="adv-scoreMin" type="number" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={scoreMin} onChange={e=>{setOffset(0); setScoreMin(e.target.value);}} />
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Score Max</label>
-              <input type="number" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={scoreMax} onChange={e=>{setOffset(0); setScoreMax(e.target.value);}} />
+              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-scoreMax">Score Max</label>
+              <input id="adv-scoreMax" type="number" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={scoreMax} onChange={e=>{setOffset(0); setScoreMax(e.target.value);}} />
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-1">Last Activity</label>
-              <select className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={lastActivity} onChange={e=>{setOffset(0); setLastActivity(e.target.value);}}>
+              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-lastActivity">Last Activity</label>
+              <select id="adv-lastActivity" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={lastActivity} onChange={e=>{setOffset(0); setLastActivity(e.target.value);}}>
                 <option value="">Any</option>
                 <option value="today">Today</option>
                 <option value="last3days">Last 3 days</option>
