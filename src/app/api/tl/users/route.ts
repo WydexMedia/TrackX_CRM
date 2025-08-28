@@ -1,17 +1,10 @@
 import { NextRequest } from "next/server";
-import { MongoClient } from "mongodb";
+import { getMongoDb } from "@/lib/mongoClient";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 
 export async function GET(req: NextRequest) {
   try {
-    const uri = process.env.MONGODB_URI as string;
-    if (!uri) {
-      return new Response(JSON.stringify({ success: false, error: "MongoDB URI not configured" }), { status: 500 });
-    }
-
-    const mongo = new MongoClient(uri);
-    await mongo.connect();
-    const mdb = mongo.db();
+    const mdb = await getMongoDb();
     const users = mdb.collection("users");
     const { tenantSubdomain } = await getTenantContextFromRequest(req as any);
     const filter = tenantSubdomain ? { tenantSubdomain } : {};
@@ -23,8 +16,6 @@ export async function GET(req: NextRequest) {
         userMap[String((u as any).code)] = String((u as any).name);
       }
     }
-    
-    await mongo.close();
     
     return new Response(JSON.stringify({ success: true, users: userMap }), { status: 200 });
   } catch (e: any) {

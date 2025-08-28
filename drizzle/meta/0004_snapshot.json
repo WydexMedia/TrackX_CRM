@@ -422,7 +422,7 @@
         },
         "tenantId": {
           "name": "tenant_id",
-          "type": "type": "integer",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
