@@ -135,6 +135,23 @@ export default function LeadsPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (phones.length === 0) return;
+    const confirmMsg = `Delete ${phones.length} selected lead(s)? This action cannot be undone.`;
+    if (!confirm(confirmMsg)) return;
+    try {
+      const res = await fetch("/api/tl/leads", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phones }) });
+      if (!res.ok) throw new Error("Failed to delete leads");
+      toast.success("Deleted selected leads");
+      setSelected({});
+      const d = await fetch(`/api/tl/leads?${params}`).then((r) => r.json());
+      setRows(d.rows || []);
+      setTotal(d.total || 0);
+    } catch {
+      toast.error("Failed to delete leads");
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -476,6 +493,11 @@ export default function LeadsPage() {
             setSelected({});
           }}
         >Create Tasks</button>
+        <button
+          className="rounded-xl bg-red-600 text-white px-3 py-2 text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          disabled={phones.length === 0}
+          onClick={handleBulkDelete}
+        >Delete</button>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">

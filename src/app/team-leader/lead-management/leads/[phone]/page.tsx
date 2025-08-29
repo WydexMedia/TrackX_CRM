@@ -170,6 +170,22 @@ export default function LeadDetailPage() {
     console.log('Events types in state:', events.map(e => e.type));
   }, [events]);
 
+  // Delete current lead
+  const handleDeleteLead = async () => {
+    if (!lead) return;
+    const confirmMsg = `Delete lead ${lead.name || lead.phone}? This action cannot be undone.`;
+    if (!confirm(confirmMsg)) return;
+    try {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete lead");
+      toast.success("Lead deleted");
+      // Navigate back to leads list
+      window.location.href = "/team-leader/lead-management/leads";
+    } catch {
+      toast.error("Failed to delete lead");
+    }
+  };
+
   const timeline = (() => {
     const items: Array<{ id: string | number; label: string; at?: string; meta?: string; type: string; data?: any; icon: any; color: string; notes?: string }> = [];
     
@@ -378,6 +394,14 @@ export default function LeadDetailPage() {
           <div className="text-sm text-slate-500"><Link href="/team-leader/lead-management/leads" className="hover:underline">Leads</Link> / {lead?.phone}</div>
           <h1 className="text-2xl font-semibold">{lead?.name || lead?.phone}</h1>
                           <div className="text-sm text-slate-600">{lead?.email || "—"} • Source: {lead?.source || "—"} • Stage: {lead?.stage || "Not contacted"}</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDeleteLead}
+            className="px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 bg-red-100 text-red-700 hover:bg-red-200"
+          >
+            Delete Lead
+          </button>
         </div>
       </div>
 

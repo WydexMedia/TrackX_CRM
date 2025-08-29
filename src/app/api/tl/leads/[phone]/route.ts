@@ -228,4 +228,36 @@ export async function PUT(_req: Request, { params }: any) {
   }
 }
 
+// Delete a single lead by phone (and related events & tasks)
+export async function DELETE(_req: Request, { params }: any) {
+  try {
+    const tenantId = await requireTenantIdFromRequest(_req).catch(() => undefined);
+    const phone = decodeURIComponent(await params.phone);
+
+    // Normalize variants similar to GET lookup for cleanup
+    const variantsSet = new Set<string>();
+    const base = String(phone || "");
+    if (base) {
+      variantsSet.add(base);
+      const noSpace = base.replace(/\s+/g, "");
+      variantsSet.add(noSpace);
+      if (base.startsWith('+')) variantsSet.add(base.slice(1));
+      else variantsSet.add(`+${base}`);
+    }
+    const variants = Array.from(variantsSet);
+
+    await db.delete(leadEvents).where(tenantId ? and(inArray(leadEvents.leadPhone, variants), eq(leadEvents.tenantId, tenantId)) : inArray(leadEvents.leadPhone, variants));
+    await db.delete(tasks).where(tenantId ? and(inArray(tasks.leadPhone, variants), eq(tasks.tenantId, tenantId)) : inArray(tasks.leadPhone, variants));
+    const deleted = await db.delete(leads).where(tenantId ? and(eq(leads.phone, phone), eq(leads.tenantId, tenantId)) : eq(leads.phone, phone)).returning({ phone: leads.phone });
+
+    if (!deleted[0]) {
+      return new Response(JSON.stringify({ success: false, error: "Lead not found" }), { status: 404 });
+    }
+
+    return new Response(JSON.stringify({ success: true, phone: deleted[0].phone }), { status: 200 });
+  } catch (e: any) {
+    return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to delete lead" }), { status: 500 });
+  }
+}
+
 
