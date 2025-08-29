@@ -51,6 +51,9 @@ function LeadDetailsModal({
   const [followupDate, setFollowupDate] = useState("");
   const [leadDetails, setLeadDetails] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
+  const [showTimeline, setShowTimeline] = useState(false);
+  const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
+  const [loadingUsers, setLoadingUsers] = useState(true);
 
   // Available stages - customized for business needs
   const availableStages = [
@@ -67,12 +70,45 @@ function LeadDetailsModal({
     "Other Language"
   ];
 
+  // Function to fetch user names from API
+  const fetchUserNames = async () => {
+    try {
+      console.log('Fetching user names...');
+      const response = await fetch("/api/tl/users");
+      console.log('User names response status:', response.status);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('User names response data:', data);
+        if (data.success && data.users) {
+          const nameMap = new Map<string, string>();
+          Object.entries(data.users).forEach(([code, name]) => {
+            nameMap.set(code, name as string);
+          });
+          console.log('Built name map:', nameMap);
+          setUserNames(nameMap);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch user names:", error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  // Function to resolve actor ID to user name
+  const resolveActorName = (actorId: string) => {
+    const resolved = userNames.get(actorId) || actorId;
+    console.log(`Resolving actorId "${actorId}" to "${resolved}"`);
+    return resolved;
+  };
+
   useEffect(() => {
     if (lead && isOpen) {
       setStage(lead.stage || "");
       setNeedFollowup("no");
       setFollowupDate("");
       fetchLeadDetails();
+      fetchUserNames();
     }
   }, [lead, isOpen]);
 
@@ -141,7 +177,26 @@ function LeadDetailsModal({
       <div className="bg-white/95 backdrop-blur-md rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200/50">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-white/50">
-          <h2 className="text-xl font-bold text-gray-900">Lead dddDetails</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-gray-900">Lead Details</h2>
+            <button
+              onClick={() => {
+                const newShowTimeline = !showTimeline;
+                setShowTimeline(newShowTimeline);
+                if (newShowTimeline && userNames.size === 0) {
+                  fetchUserNames();
+                }
+              }}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 flex items-center gap-2 ${
+                showTimeline 
+                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Activity size={16} />
+              {showTimeline ? 'Hide Timeline' : 'Show Timeline'}
+            </button>
+          </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-105"
@@ -287,7 +342,7 @@ function LeadDetailsModal({
           </div>
 
           {/* Activity Timeline */}
-          {/* {events.length > 0 && (
+          {showTimeline && events.length > 0 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <Activity size={20} className="text-green-600" />
@@ -301,7 +356,16 @@ function LeadDetailsModal({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-medium text-gray-900">
-                          {event.type === "STAGE_CHANGE" && "Stage Changed"}
+                          {event.type === "STAGE_CHANGE" && (() => {
+                            const actorId = event.data?.actorId || event.actorId || "system";
+                            console.log('STAGE_CHANGE event:', event);
+                            console.log('ActorId found:', actorId);
+                            if (actorId && actorId !== "system") {
+                              const actorName = resolveActorName(actorId);
+                              return `${actorName} changed stage`;
+                            }
+                            return "Stage Changed";
+                          })()}
                           {event.type === "ASSIGNED" && "Lead Assigned"}
                           {event.type === "CREATED" && "Lead Created"}
                           {event.type === "CALL_COMPLETED" && "Call Completed"}
@@ -327,7 +391,7 @@ function LeadDetailsModal({
                 ))}
               </div>
             </div>
-          )} */}
+          )}
         </div>
       </div>
     </div>
