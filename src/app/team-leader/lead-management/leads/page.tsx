@@ -15,13 +15,29 @@ interface LeadRow {
   score: number | null;
   lastActivityAt: string | null;
   createdAt: string | null;
+  callCount?: number;
+}
+
+interface ListView {
+  id: string;
+  name: string;
+  icon: string;
+  filters: {
+    stage?: string;
+    owner?: string;
+    source?: string;
+    needFollowup?: boolean;
+    hasEmail?: boolean;
+    lastActivity?: string;
+    dateRange?: string;
+    scoreMin?: string;
+    scoreMax?: string;
+  };
+  count?: number;
 }
 
 export default function LeadsPage() {
   const [q, setQ] = useState("");
-  const [stage, setStage] = useState("");
-  const [source, setSource] = useState("");
-  const [owner, setOwner] = useState("");
   const [rows, setRows] = useState<LeadRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -29,87 +45,107 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [newLead, setNewLead] = useState<{ phone: string; name?: string; email?: string; source?: string; stage?: string; score?: number }>({ phone: "" });
-  const [importing, setImporting] = useState(false);
   const [sales, setSales] = useState<Array<{ code: string; name: string }>>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [assignee, setAssignee] = useState<string>("");
   const [autoAssigning, setAutoAssigning] = useState(false);
   
-  // Advanced filter states
+  // List view management
+  const [currentView, setCurrentView] = useState<string>("all");
+  const [showCreateView, setShowCreateView] = useState(false);
+  const [newViewName, setNewViewName] = useState("");
+  const [customViews, setCustomViews] = useState<ListView[]>([]);
+  
+  // Advanced filtering (restored)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [dateRange, setDateRange] = useState("");
-  const [scoreRange, setScoreRange] = useState({ min: "", max: "" });
-  const [priority, setPriority] = useState("");
-  const [campaign, setCampaign] = useState("");
-  const [tags, setTags] = useState("");
-  const [lastActivity, setLastActivity] = useState("");
-  const [slaStatus, setSlaStatus] = useState("");
+  const [advancedFilters, setAdvancedFilters] = useState({
+    dateRange: "",
+    scoreMin: "",
+    scoreMax: "",
+    priority: "",
+    campaign: "",
+    tags: "",
+    lastActivity: "",
+    slaStatus: "",
+    needFollowup: "",
+    hasEmail: "",
+    emailDomain: "",
+    excludeEarlyStages: false,
+    sortByCallCount: false,
+    callCountMin: "",
+    callCountMax: "",
+  });
 
-  // Custom confirm for bulk delete
+  // Bulk actions
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-
-  // Create task modal states
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [taskTitle, setTaskTitle] = useState("Follow up");
   const [taskAssignee, setTaskAssignee] = useState("");
   const [creatingTask, setCreatingTask] = useState(false);
 
+  // Predefined list views (updated with score ranges)
+  const defaultViews: ListView[] = [
+    { id: "all", name: "All Leads", icon: "📋", filters: {} },
+    { id: "unassigned", name: "Unassigned", icon: "🔄", filters: { owner: "unassigned" } },
+    { id: "not-contacted", name: "Not Contacted", icon: "📞", filters: { stage: "Not contacted" } },
+    { id: "qualified", name: "Qualified", icon: "✅", filters: { stage: "Qualified" } },
+    { id: "interested", name: "Interested", icon: "💡", filters: { stage: "Interested" } },
+    { id: "follow-up", name: "Follow Up", icon: "⏰", filters: { needFollowup: true } },
+    { id: "recent", name: "Recent (7 days)", icon: "🆕", filters: { dateRange: "last7days" } },
+    { id: "no-email", name: "No Email", icon: "📧", filters: { hasEmail: false } },
+    { id: "customers", name: "Customers", icon: "👑", filters: { stage: "Customer" } },
+    { id: "meta-leads", name: "Meta Leads", icon: "📘", filters: { source: "META" } },
+    { id: "google-leads", name: "Google Leads", icon: "🔍", filters: { source: "GOOGLE" } },
+    { id: "high-score", name: "High Score (80+)", icon: "⭐", filters: { scoreMin: "80" } },
+  ];
+
+  const allViews = [...defaultViews, ...customViews];
+  const currentViewData = allViews.find(v => v.id === currentView) || defaultViews[0];
+
   const params = useMemo(() => {
     const sp = new URLSearchParams();
     if (q) sp.set("q", q);
-    if (stage) sp.set("stage", stage);
-    if (source) sp.set("source", source);
-    if (owner) sp.set("owner", owner);
-    if (dateRange) sp.set("dateRange", dateRange);
-    if (scoreRange.min) sp.set("scoreMin", scoreRange.min);
-    if (scoreRange.max) sp.set("scoreMax", scoreRange.max);
-    if (priority) sp.set("priority", priority);
-    if (campaign) sp.set("campaign", campaign);
-    if (tags) sp.set("tags", tags);
-    if (lastActivity) sp.set("lastActivity", lastActivity);
-    if (slaStatus) sp.set("slaStatus", slaStatus);
+    
+    // Apply current view filters
+    const filters = currentViewData.filters;
+    if (filters.stage) sp.set("stage", filters.stage);
+    if (filters.owner) sp.set("owner", filters.owner);
+    if (filters.source) sp.set("source", filters.source);
+    if (filters.needFollowup !== undefined) sp.set("needFollowup", String(filters.needFollowup));
+    if (filters.hasEmail !== undefined) sp.set("hasEmail", String(filters.hasEmail));
+    if (filters.lastActivity) sp.set("lastActivity", filters.lastActivity);
+    if (filters.dateRange) sp.set("dateRange", filters.dateRange);
+    if (filters.scoreMin) sp.set("scoreMin", filters.scoreMin);
+    if (filters.scoreMax) sp.set("scoreMax", filters.scoreMax);
+    
+    // Apply advanced filters when enabled
+    if (showAdvancedFilters) {
+      if (advancedFilters.dateRange) sp.set("dateRange", advancedFilters.dateRange);
+      if (advancedFilters.scoreMin) sp.set("scoreMin", advancedFilters.scoreMin);
+      if (advancedFilters.scoreMax) sp.set("scoreMax", advancedFilters.scoreMax);
+      if (advancedFilters.lastActivity) sp.set("lastActivity", advancedFilters.lastActivity);
+      if (advancedFilters.needFollowup) sp.set("needFollowup", advancedFilters.needFollowup);
+      if (advancedFilters.hasEmail) sp.set("hasEmail", advancedFilters.hasEmail);
+      if (advancedFilters.emailDomain) sp.set("emailDomain", advancedFilters.emailDomain);
+      if (advancedFilters.excludeEarlyStages) sp.set("excludeEarlyStages", "true");
+      if (advancedFilters.sortByCallCount) sp.set("sortByCallCount", "true");
+      if (advancedFilters.callCountMin) sp.set("callCountMin", advancedFilters.callCountMin);
+      if (advancedFilters.callCountMax) sp.set("callCountMax", advancedFilters.callCountMax);
+    }
+    
     sp.set("limit", String(pageSize));
     sp.set("offset", String((page - 1) * pageSize));
     return sp.toString();
-  }, [q, stage, source, owner, dateRange, scoreRange, priority, campaign, tags, lastActivity, slaStatus, page]);
-
-  const clearAllFilters = () => {
-    setQ("");
-    setStage("");
-    setSource("");
-    setOwner("");
-    setDateRange("");
-    setScoreRange({ min: "", max: "" });
-    setPriority("");
-    setCampaign("");
-    setTags("");
-    setLastActivity("");
-    setSlaStatus("");
-    setPage(1);
-  };
-
-  const getActiveFilterCount = () => {
-    let count = 0;
-    if (q) count++;
-    if (stage) count++;
-    if (source) count++;
-    if (owner) count++;
-    if (dateRange) count++;
-    if (scoreRange.min || scoreRange.max) count++;
-    if (priority) count++;
-    if (campaign) count++;
-    if (tags) count++;
-    if (lastActivity) count++;
-    if (slaStatus) count++;
-    return count;
-  };
+  }, [q, currentView, currentViewData, page, showAdvancedFilters, advancedFilters]);
 
   useEffect(() => {
     setLoading(true);
     fetch(`/api/tl/leads?${params}`)
       .then((r) => r.json())
-      .then((d) => { setRows(d.rows || []); setTotal(d.total || 0); })
+      .then((d) => { 
+        setRows(d.rows || []); 
+        setTotal(d.total || 0); 
+      })
       .finally(() => setLoading(false));
   }, [params]);
 
@@ -118,8 +154,20 @@ export default function LeadsPage() {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
       const preOwner = sp.get("owner");
-      if (preOwner) setOwner(preOwner);
+      if (preOwner) {
+        // Find and set the appropriate view
+        const ownerView = allViews.find(v => v.filters.owner === preOwner);
+        if (ownerView) {
+          setCurrentView(ownerView.id);
+        } else {
+          // Create a temporary custom view for this owner
+          const ownerName = sales.find(s => s.code === preOwner)?.name || preOwner;
+          setAdvancedFilters(prev => ({ ...prev, owner: preOwner }));
+          setShowAdvancedFilters(true);
+        }
+      }
     }
+    
     fetch("/api/users")
       .then((r) => r.json())
       .then((all) => {
@@ -131,7 +179,6 @@ export default function LeadsPage() {
 
   const phones = Object.keys(selected).filter((k) => selected[k]);
 
-  // Helper: get current user code for actorId
   const getActorId = () => {
     if (typeof window === 'undefined') return undefined;
     try {
@@ -151,9 +198,7 @@ export default function LeadsPage() {
       if (!res.ok) throw new Error("Failed to delete leads");
       toast.success("Deleted selected leads");
       setSelected({});
-      const d = await fetch(`/api/tl/leads?${params}`).then((r) => r.json());
-      setRows(d.rows || []);
-      setTotal(d.total || 0);
+      refreshData();
     } catch {
       toast.error("Failed to delete leads");
     } finally {
@@ -190,6 +235,7 @@ export default function LeadsPage() {
         setCreateTaskOpen(false);
         setTaskTitle("Follow up");
         setTaskAssignee("");
+        refreshData();
       } else {
         toast.error("Failed to create tasks");
       }
@@ -200,120 +246,228 @@ export default function LeadsPage() {
     }
   };
 
-  return (
-    <div className="p-6">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">Leads</h1>
-            <p className="text-sm text-slate-500">Data table with advanced filters</p>
-          </div>
-          <div className="flex gap-2">
-            <button className="rounded-xl bg-slate-800 text-white px-4 py-2 text-sm hover:bg-slate-900" onClick={() => setShowImport(true)}>Import CSV/Excel</button>
-            <button className="rounded-xl bg-cyan-600 text-white px-4 py-2 text-sm hover:bg-cyan-700" onClick={() => setShowAdd(true)}>Add Lead</button>
-          </div>
-        </div>
-      </div>
+  const refreshData = () => {
+    fetch(`/api/tl/leads?${params}`).then((r) => r.json()).then((d) => {
+      setRows(d.rows || []);
+      setTotal(d.total || 0);
+    });
+  };
 
-      {/* Advanced Filters Section */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-4">
+  const createCustomView = () => {
+    if (!newViewName.trim()) {
+      toast.error("Please enter a view name");
+      return;
+    }
+    
+    const newView: ListView = {
+      id: `custom-${Date.now()}`,
+      name: newViewName,
+      icon: "📌",
+      filters: { 
+        ...currentViewData.filters,
+        ...(showAdvancedFilters ? {
+          dateRange: advancedFilters.dateRange,
+          scoreMin: advancedFilters.scoreMin,
+          scoreMax: advancedFilters.scoreMax,
+          lastActivity: advancedFilters.lastActivity,
+        } : {})
+      },
+    };
+    
+    setCustomViews([...customViews, newView]);
+    setCurrentView(newView.id);
+    setShowCreateView(false);
+    setNewViewName("");
+    toast.success("Custom view created");
+  };
+
+  const clearAdvancedFilters = () => {
+    setAdvancedFilters({
+      dateRange: "",
+      scoreMin: "",
+      scoreMax: "",
+      priority: "",
+      campaign: "",
+      tags: "",
+      lastActivity: "",
+      slaStatus: "",
+      needFollowup: "",
+      hasEmail: "",
+      emailDomain: "",
+      excludeEarlyStages: false,
+      sortByCallCount: false,
+      callCountMin: "",
+      callCountMax: "",
+    });
+  };
+
+  const getActiveAdvancedFilterCount = () => {
+    let count = 0;
+    if (advancedFilters.dateRange) count++;
+    if (advancedFilters.scoreMin || advancedFilters.scoreMax) count++;
+    if (advancedFilters.priority) count++;
+    if (advancedFilters.campaign) count++;
+    if (advancedFilters.tags) count++;
+    if (advancedFilters.lastActivity) count++;
+    if (advancedFilters.slaStatus) count++;
+    if (advancedFilters.needFollowup) count++;
+    if (advancedFilters.hasEmail) count++;
+    if (advancedFilters.emailDomain) count++;
+    if (advancedFilters.excludeEarlyStages) count++;
+    if (advancedFilters.callCountMin || advancedFilters.callCountMax) count++;
+    return count;
+  };
+
+  const getStageColor = (stage: string) => {
+    switch (stage) {
+      case "Customer": return "bg-green-100 text-green-800";
+      case "Qualified": return "bg-blue-100 text-blue-800";
+      case "Interested": return "bg-purple-100 text-purple-800";
+      case "Not interested": return "bg-red-100 text-red-800";
+      case "To be nurtured": return "bg-yellow-100 text-yellow-800";
+      case "Not contacted": return "bg-gray-100 text-gray-800";
+      default: return "bg-slate-100 text-slate-700";
+    }
+  };
+
+  const getSourceIcon = (source: string) => {
+    switch (source) {
+      case "META": return "📘";
+      case "GOOGLE": return "🔍";
+      case "CSV": return "📄";
+      case "WEBSITE": return "🌐";
+      case "REFERRAL": return "👥";
+      default: return "📋";
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar with List Views */}
+      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+        <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-50 text-blue-600 p-2 rounded-lg">
+            <h1 className="text-xl font-semibold text-gray-900">Lead Lists</h1>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className={`p-2 rounded-lg text-sm ${showAdvancedFilters ? 'bg-blue-100 text-blue-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                title="Advanced Filters"
+              >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900">Lead Filters</h3>
-              <p className="text-sm text-slate-600">Filter and search your leads data</p>
+              </button>
+              <button
+                onClick={() => setShowCreateView(true)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                title="Create custom view"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {getActiveFilterCount() > 0 && (
-              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                {getActiveFilterCount()} filter{getActiveFilterCount() > 1 ? 's' : ''} active
+          
+          {/* Advanced Filters Toggle */}
+          {showAdvancedFilters && getActiveAdvancedFilterCount() > 0 && (
+            <div className="mb-3 flex items-center justify-between bg-blue-50 px-3 py-2 rounded-lg">
+              <span className="text-sm text-blue-700 font-medium">
+                {getActiveAdvancedFilterCount()} advanced filter{getActiveAdvancedFilterCount() > 1 ? 's' : ''} active
               </span>
-            )}
             <button
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                onClick={clearAdvancedFilters}
+                className="text-xs text-blue-600 hover:text-blue-800"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-              </svg>
-              {showAdvancedFilters ? 'Hide Filters' : 'Show Filters'}
+                Clear
             </button>
           </div>
-        </div>
+          )}
 
-        {/* Basic Filters - Always Visible */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+          {/* Search */}
           <div className="relative">
-            <svg className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
-              className="border border-slate-300 rounded-lg px-10 py-2.5 text-sm w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Search name, phone, email..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Search leads..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          <select
-            className="border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={stage}
-            onChange={(e) => setStage(e.target.value)}
-          >
-            <option value="">All Stages</option>
-                            <option value="Not contacted">Not contacted</option>
-            <option value="Qualified"> Qualified</option>
-            <option value="Not interested"> Not interested</option>
-            <option value="Interested"> Interested</option>
-            <option value="To be nurtured"> To be nurtured</option>
-            <option value="Junk">Junk</option>
-            <option value="Ask to call back"> Ask to call back</option>
-            <option value="Attempt to contact">Attempt to contact</option>
-            <option value="Did not Connect"> Did not Connect</option>
-            <option value="Customer">Customer</option>
-            <option value="Other Language"> Other Language</option>
-          </select>
-          <select
-            className="border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-          >
-            <option value="">All Sources</option>
-            <option value="META">📘 Meta Lead Ads</option>
-            <option value="GOOGLE">🔍 Google Lead Form</option>
-            <option value="CSV">📄 CSV Upload</option>
-            <option value="WEBSITE">🌐 Website</option>
-            <option value="REFERRAL">👥 Referral</option>
-          </select>
-          <select
-            className="border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={owner}
-            onChange={(e) => setOwner(e.target.value)}
-          >
-            <option value="">All Owners</option>
-            {sales.map((s) => (
-              <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
-            ))}
-            <option value="unassigned">🔄 Unassigned</option>
-          </select>
         </div>
 
-        {/* Advanced Filters - Collapsible */}
+        {/* List Views */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4">
+            <div className="space-y-1">
+              {allViews.map((view) => (
+                <button
+                  key={view.id}
+                  onClick={() => {
+                    setCurrentView(view.id);
+                    setPage(1);
+                    setSelected({});
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors ${
+                    currentView === view.id
+                      ? "bg-blue-50 text-blue-700 border border-blue-200"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }`}
+          >
+                  <div className="flex items-center gap-3">
+                    <span className="text-base">{view.icon}</span>
+                    <span className="font-medium">{view.name}</span>
+                  </div>
+                  {view.count !== undefined && (
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                      {view.count}
+                    </span>
+                  )}
+                </button>
+            ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="space-y-2">
+            <button 
+              className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 flex items-center justify-center gap-2"
+              onClick={() => setShowAdd(true)}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Add Lead
+            </button>
+            <button 
+              className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 flex items-center justify-center gap-2"
+              onClick={() => setShowImport(true)}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              Import
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Advanced Filters Panel */}
         {showAdvancedFilters && (
-          <div className="border-t border-slate-200 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+          <div className="bg-white border-b border-gray-200 p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
               {/* Date Range */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Date Range</label>
                 <select
-                  value={dateRange}
-                  onChange={(e) => setDateRange(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                value={advancedFilters.dateRange}
+                onChange={(e) => setAdvancedFilters(prev => ({ ...prev, dateRange: e.target.value }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Time</option>
                   <option value="today">Today</option>
@@ -323,165 +477,139 @@ export default function LeadsPage() {
                   <option value="thismonth">This month</option>
                   <option value="lastmonth">Last month</option>
                 </select>
-              </div>
 
               {/* Score Range */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Lead Score</label>
-                <div className="flex gap-2">
+              <div className="flex gap-1">
                   <input
                     type="number"
-                    placeholder="Min"
-                    value={scoreRange.min}
-                    onChange={(e) => setScoreRange(prev => ({ ...prev, min: e.target.value }))}
-                    className="w-1/2 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  placeholder="Min Score"
+                  value={advancedFilters.scoreMin}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, scoreMin: e.target.value }))}
+                  className="w-1/2 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   <input
                     type="number"
-                    placeholder="Max"
-                    value={scoreRange.max}
-                    onChange={(e) => setScoreRange(prev => ({ ...prev, max: e.target.value }))}
-                    className="w-1/2 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  placeholder="Max Score"
+                  value={advancedFilters.scoreMax}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, scoreMax: e.target.value }))}
+                  className="w-1/2 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                </div>
               </div>
 
-              {/* Priority */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Priority</label>
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                >
-                  <option value="">All Priorities</option>
-                  <option value="high">🔴 High Priority</option>
-                  <option value="medium">🟡 Medium Priority</option>
-                  <option value="low">🟢 Low Priority</option>
-                </select>
-              </div>
-
-              {/* Campaign */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Campaign</label>
-                <select
-                  value={campaign}
-                  onChange={(e) => setCampaign(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                >
-                  <option value="">All Campaigns</option>
-                  <option value="summer-2024">🌞 Summer 2024</option>
-                  <option value="product-launch">🚀 Product Launch</option>
-                  <option value="holiday-special">🎄 Holiday Special</option>
-                  <option value="webinar-series">📺 Webinar Series</option>
-                  <option value="no-campaign">❌ No Campaign</option>
-                </select>
-              </div>
-
-              {/* Last Activity */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Last Activity</label>
-                <select
-                  value={lastActivity}
-                  onChange={(e) => setLastActivity(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                >
-                  <option value="">Any Time</option>
-                  <option value="today">Today</option>
-                  <option value="last3days">Last 3 days</option>
-                  <option value="lastweek">Last week</option>
-                  <option value="lastmonth">Last month</option>
-                  <option value="noactivity">No activity</option>
-                </select>
-              </div>
-
-              {/* SLA Status */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">SLA Status</label>
-                <select
-                  value={slaStatus}
-                  onChange={(e) => setSlaStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                >
-                  <option value="">All SLA Status</option>
-                  <option value="on-track">✅ On Track</option>
-                  <option value="at-risk">⚠️ At Risk</option>
-                  <option value="overdue">🔴 Overdue</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Tags Input */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Tags</label>
+              {/* Email Domain */}
               <input
                 type="text"
-                placeholder="Enter tags separated by commas (e.g., hot-lead, follow-up, demo-requested)"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                placeholder="Email domain (e.g. gmail.com)"
+                value={advancedFilters.emailDomain}
+                onChange={(e) => setAdvancedFilters(prev => ({ ...prev, emailDomain: e.target.value }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
+
+              {/* Call Count Range */}
+              <div className="flex gap-1">
+                <input
+                  type="number"
+                  placeholder="Min Calls"
+                  value={advancedFilters.callCountMin}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, callCountMin: e.target.value }))}
+                  className="w-1/2 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <input
+                  type="number"
+                  placeholder="Max Calls"
+                  value={advancedFilters.callCountMax}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, callCountMax: e.target.value }))}
+                  className="w-1/2 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
             </div>
 
-            {/* Filter Actions */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-              <button
-                onClick={clearAllFilters}
-                className="px-4 py-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors text-sm"
-              >
-                Clear All Filters
-              </button>
-              <div className="flex items-center gap-3">
-                <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Export Filtered Data
-                </button>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Apply Filters
-                </button>
-              </div>
+            {/* Checkboxes */}
+            <div className="flex flex-wrap gap-4 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={advancedFilters.excludeEarlyStages}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, excludeEarlyStages: e.target.checked }))}
+                />
+                Exclude early stages
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={advancedFilters.sortByCallCount}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, sortByCallCount: e.target.checked }))}
+                />
+                Sort by call count
+              </label>
             </div>
           </div>
         )}
+
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <span className="text-2xl">{currentViewData.icon}</span>
+                {currentViewData.name}
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {loading ? "Loading..." : `${total} leads`}
+              </p>
       </div>
 
-      {/* Bulk Actions from Queue */}
-      <div className="flex items-center gap-2 mb-3">
+            {/* Bulk Actions */}
+            {phones.length > 0 && (
+              <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg">
+                <span className="text-sm text-blue-700 font-medium">
+                  {phones.length} selected
+                </span>
+                <div className="flex gap-1">
         <select
-          className="border border-slate-300 rounded-md px-2 py-2 text-sm"
+                    className="text-xs border border-blue-200 rounded px-2 py-1"
           value={assignee}
           onChange={(e) => setAssignee(e.target.value)}
         >
-          <option value="">Select salesperson…</option>
+                    <option value="">Assign to...</option>
           {sales.map((s) => (
-            <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
+                      <option key={s.code} value={s.code}>{s.name}</option>
           ))}
         </select>
         <button
-          className="rounded-xl bg-slate-800 text-white px-3 py-2 text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-          disabled={phones.length === 0 || !assignee}
+                    className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50"
+                    disabled={!assignee}
           onClick={async () => {
             const actorId = getActorId();
-            const res = await fetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "assign", phones, ownerId: assignee, actorId }) });
-            if (res.ok) toast.success(`Assigned ${phones.length} lead(s)`); else toast.error("Assignment failed");
+                      const res = await fetch("/api/tl/queue", { 
+                        method: "POST", 
+                        headers: { "Content-Type": "application/json" }, 
+                        body: JSON.stringify({ action: "assign", phones, ownerId: assignee, actorId }) 
+                      });
+                      if (res.ok) {
+                        toast.success(`Assigned ${phones.length} lead(s)`);
             setSelected({});
-            const d = await fetch(`/api/tl/leads?${params}`).then((r) => r.json());
-            setRows(d.rows || []);
+                        refreshData();
+                      } else {
+                        toast.error("Assignment failed");
+                      }
           }}
-        >Assign</button>
+                  >
+                    Assign
+                  </button>
+                  {/* Auto-Assign Button - RESTORED */}
         <button
-          className="rounded-xl cursor-pointer bg-emerald-600 text-white px-3 py-2 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                    className="text-xs bg-emerald-600 text-white px-3 py-1 rounded hover:bg-emerald-700 disabled:opacity-50 inline-flex items-center gap-1"
           disabled={phones.length === 0 || autoAssigning}
           onClick={async () => {
             try {
               setAutoAssigning(true);
               const actorId = getActorId();
-              const res = await fetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "autoAssign", phones, actorId }) });
+                        const res = await fetch("/api/tl/queue", { 
+                          method: "POST", 
+                          headers: { "Content-Type": "application/json" }, 
+                          body: JSON.stringify({ action: "autoAssign", phones, actorId }) 
+                        });
               if (res.ok) {
                 const data = await res.json();
                 toast.success(`Auto-assigned ${phones.length} lead(s) via ${data.rule}`);
@@ -489,72 +617,267 @@ export default function LeadsPage() {
                 toast.error("Auto-assign failed");
               }
               setSelected({});
-              const d = await fetch(`/api/tl/leads?${params}`).then((r) => r.json());
-              setRows(d.rows || []);
+                        refreshData();
             } finally {
               setAutoAssigning(false);
             }
           }}
         >
           {autoAssigning && (
-            <span className="inline-block  h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
+                      <span className="inline-block h-3 w-3 rounded-full border-2 border-white/80 border-t-transparent animate-spin" />
           )}
-          <span>{autoAssigning ? "Auto-Assigning…" : "Auto-Assign (Active Rule)"}</span>
+                    Auto
         </button>
         <button
-          className="rounded-xl bg-cyan-600 text-white px-3 py-2 text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-          disabled={phones.length === 0}
+                    className="text-xs bg-cyan-600 text-white px-3 py-1 rounded hover:bg-cyan-700"
           onClick={() => setCreateTaskOpen(true)}
-        >Create Tasks</button>
+                  >
+                    Task
+                  </button>
         <button
-          className="rounded-xl bg-red-600 text-white px-3 py-2 text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-          disabled={phones.length === 0}
+                    className="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
           onClick={() => setConfirmDeleteOpen(true)}
-        >Delete</button>
-      </div>
-
-      {/* Delete confirmation modal */}
-      <div className={`${confirmDeleteOpen ? '' : 'hidden'} fixed inset-0 z-50 flex items-center justify-center bg-black/40`}>
-        <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
-          <h3 className="text-lg font-semibold text-slate-900">Delete selected leads?</h3>
-          <p className="text-sm text-slate-600 mt-1">This action cannot be undone. You are about to delete {phones.length} lead(s).</p>
-          <div className="mt-6 flex items-center justify-end gap-2">
-            <button
-              className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg text-sm cursor-pointer"
-              onClick={() => setConfirmDeleteOpen(false)}
-            >Cancel</button>
-            <button
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm cursor-pointer"
-              onClick={performBulkDelete}
-            >Delete</button>
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Table */}
+        <div className="flex-1 overflow-auto">
+          <div className="bg-white">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+                <tr>
+                  <th className="w-12 px-4 py-3">
+                    <input 
+                      type="checkbox" 
+                      onChange={(e) => {
+                        const next: Record<string, boolean> = {};
+                        if (e.target.checked) rows.forEach((r) => (next[r.phone] = true));
+                        setSelected(next);
+                      }} 
+                    />
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-700">Lead</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-700">Stage</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-700">Owner</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-700">Source</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-700">Score</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-700">Last Activity</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-700">Created</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {loading ? (
+                  <tr>
+                    <td className="px-4 py-8 text-center text-gray-500" colSpan={8}>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                        Loading leads...
+                      </div>
+                    </td>
+                  </tr>
+                ) : rows.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-8 text-center text-gray-500" colSpan={8}>
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="text-4xl">📭</div>
+                        <div>No leads found in this view</div>
+                        <button 
+                          className="text-blue-600 hover:text-blue-700 text-sm"
+                          onClick={() => setShowAdd(true)}
+                        >
+                          Add your first lead
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((lead) => (
+                    <tr key={lead.phone} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <input 
+                          type="checkbox" 
+                          checked={!!selected[lead.phone]} 
+                          onChange={(e) => setSelected({ ...selected, [lead.phone]: e.target.checked })} 
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col">
+                          <a 
+                            href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
+                            className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                          >
+                            {lead.name || "Unknown"}
+                          </a>
+                          <div className="text-xs text-gray-500 space-x-2">
+                            <span>{lead.phone}</span>
+                            {lead.email && <span>• {lead.email}</span>}
+                            {lead.callCount !== undefined && lead.callCount > 0 && (
+                              <span className="bg-gray-100 text-gray-600 px-1 rounded">
+                                {lead.callCount} calls
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStageColor(lead.stage)}`}>
+                          {lead.stage || "Not contacted"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {(sales.find((s) => s.code === lead.ownerId)?.name) || lead.ownerId || "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <span>{getSourceIcon(lead.source || "")}</span>
+                          <span className="text-gray-600">{lead.source || "—"}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-sm">{lead.score ?? 0}</span>
+                          {(lead.score ?? 0) >= 80 && <span className="text-yellow-500">⭐</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {lead.lastActivityAt ? new Date(lead.lastActivityAt).toLocaleDateString() : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : "—"}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Pagination */}
+        {total > pageSize && (
+          <div className="bg-white border-t border-gray-200 px-6 py-3">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 hover:bg-gray-50"
+                  disabled={page === 1}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                >
+                  Previous
+                </button>
+                <button
+                  className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 hover:bg-gray-50"
+                  disabled={page * pageSize >= total}
+                  onClick={() => setPage(p => p + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Create Custom View Modal */}
+      {showCreateView && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Custom View</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">View Name</label>
+                <input
+                  type="text"
+                  value={newViewName}
+                  onChange={(e) => setNewViewName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter view name..."
+                />
+              </div>
+              <p className="text-sm text-gray-600">
+                This will create a view with the current filters: {currentViewData.name}
+                {showAdvancedFilters && getActiveAdvancedFilterCount() > 0 && ` + ${getActiveAdvancedFilterCount()} advanced filter(s)`}
+              </p>
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                onClick={() => {
+                  setShowCreateView(false);
+                  setNewViewName("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                onClick={createCustomView}
+              >
+                Create View
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {confirmDeleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
+            <h3 className="text-lg font-semibold text-gray-900">Delete selected leads?</h3>
+            <p className="text-sm text-gray-600 mt-1">This action cannot be undone. You are about to delete {phones.length} lead(s).</p>
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <button
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              onClick={() => setConfirmDeleteOpen(false)}
+              >
+                Cancel
+              </button>
+            <button
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              onClick={performBulkDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create Task modal */}
-      <div className={`${createTaskOpen ? '' : 'hidden'} fixed inset-0 z-50 flex items-center justify-center bg-black/40`}>
-        <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
-          <h3 className="text-lg font-semibold text-slate-900">Create Tasks</h3>
-          <p className="text-sm text-slate-600 mt-1">Create tasks for {phones.length} selected lead(s).</p>
+      {createTaskOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900">Create Tasks</h3>
+            <p className="text-sm text-gray-600 mt-1">Create tasks for {phones.length} selected lead(s).</p>
           
           <div className="mt-4 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Task Title</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Task Title</label>
               <input
                 type="text"
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                 placeholder="Enter task title..."
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Assign to</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assign to</label>
               <select
                 value={taskAssignee}
                 onChange={(e) => setTaskAssignee(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
               >
                 <option value="">Select assignee...</option>
                 {sales.map((s) => (
@@ -566,15 +889,17 @@ export default function LeadsPage() {
           
           <div className="mt-6 flex items-center justify-end gap-2">
             <button
-              className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg text-sm cursor-pointer"
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
               onClick={() => {
                 setCreateTaskOpen(false);
                 setTaskTitle("Follow up");
                 setTaskAssignee("");
               }}
-            >Cancel</button>
+              >
+                Cancel
+              </button>
             <button
-              className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50"
               onClick={performCreateTasks}
               disabled={creatingTask || !taskTitle.trim() || !taskAssignee}
             >
@@ -583,105 +908,17 @@ export default function LeadsPage() {
           </div>
         </div>
       </div>
-
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="px-4 py-3"><input type="checkbox" onChange={(e) => {
-                  const next: Record<string, boolean> = {};
-                  if (e.target.checked) rows.forEach((r) => (next[r.phone] = true));
-                  setSelected(next);
-                }} /></th>
-                <th className="text-left px-4 py-3">Lead</th>
-                <th className="text-left px-4 py-3">Source/UTM</th>
-                <th className="text-left px-4 py-3">Stage</th>
-                <th className="text-left px-4 py-3">Owner</th>
-                <th className="text-left px-4 py-3">Score</th>
-                <th className="text-left px-4 py-3">Last Activity</th>
-                <th className="text-left px-4 py-3">Date and Time</th>
-                <th className="text-left px-4 py-3">SLA</th>
-                
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {loading ? (
-                <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={9}>
-                    Loading...
-                  </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={9}>
-                    No leads found
-                  </td>
-                </tr>
-              ) : (
-                rows.map((r) => {
-                  const utm = r.utm ? Object.entries(r.utm).map(([k, v]) => `${k}=${v}`).join(" ") : "";
-                  return (
-                    <tr key={r.phone} className="hover:bg-slate-50">
-                      <td className="px-4 py-3"><input type="checkbox" checked={!!selected[r.phone]} onChange={(e) => setSelected({ ...selected, [r.phone]: e.target.checked })} /></td>
-                      <td className="px-4 py-3">
-                        <a href={`/team-leader/lead-management/leads/${encodeURIComponent(r.phone)}`} className="font-medium text-blue-600 hover:underline">{r.name || "—"}</a>
-                        <div className="text-xs text-slate-500">
-                          {r.phone} {r.email ? `• ${r.email}` : ""}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{r.source || "—"} {utm && `• ${utm}`}</td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2 py-0.5 text-xs">
-                          {r.stage || "Not contacted"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">{(sales.find((s) => s.code === (r.ownerId || ""))?.name) || r.ownerId || "—"}</td>
-                      <td className="px-4 py-3">{r.score ?? 0}</td>
-                      <td className="px-4 py-3">{r.lastActivityAt ? new Date(r.lastActivityAt).toLocaleString() : "—"}</td>
-                      <td className="px-4 py-3">{r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}</td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-xs">OK</span>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between text-sm">
-        <div className="text-slate-600">Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total}</div>
-        <div className="flex gap-2">
-          <button
-            className="px-3 py-1.5 rounded-lg border disabled:opacity-50"
-            disabled={page === 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >Previous</button>
-          <button
-            className="px-3 py-1.5 rounded-lg border disabled:opacity-50"
-            disabled={page * pageSize >= total}
-            onClick={() => setPage((p) => p + 1)}
-          >Next</button>
-        </div>
-      </div>
+      )}
 
       <AddLeadModal
         open={showAdd}
         onClose={() => setShowAdd(false)}
-        onCreated={() => {
-          // refresh
-          fetch(`/api/tl/leads?${params}`).then((r) => r.json()).then((d) => setRows(d.rows || []));
-        }}
+        onCreated={refreshData}
       />
       <ImportLeadsModal
         open={showImport}
         onClose={() => setShowImport(false)}
-        onImported={() => {
-          fetch(`/api/tl/leads?${params}`).then((r) => r.json()).then((d) => setRows(d.rows || []));
-        }}
+        onImported={refreshData}
       />
     </div>
   );
