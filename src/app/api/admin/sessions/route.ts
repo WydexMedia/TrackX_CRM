@@ -15,7 +15,7 @@ export async function GET() {
     
     // Get user details for each session
     const sessionsWithUserInfo = await Promise.all(
-      activeSessions.map(async (session) => {
+      activeSessions.map(async (session: any) => {
         try {
           const user = await users.findOne({ _id: session.userId });
           return {
