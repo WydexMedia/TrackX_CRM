@@ -61,7 +61,7 @@ function LeadDetailsModal({
     "To be nurtured",
     "Junk",
     "Ask to call back",
-    "Did not Pickup",
+    "Attempt to contact",
     "Did not Connect",
     "Customer",
     "Other Language"
@@ -141,7 +141,7 @@ function LeadDetailsModal({
       <div className="bg-white/95 backdrop-blur-md rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200/50">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-white/50">
-          <h2 className="text-xl font-bold text-gray-900">Lead Details</h2>
+          <h2 className="text-xl font-bold text-gray-900">Lead dddDetails</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-105"
@@ -373,7 +373,7 @@ export default function TasksPage() {
       "To be nurtured": "To be Nurtured",
       "Junk": "Junk",
       "Ask to call back": "Ask to Call Back",
-      "Did not Pickup": "Did not Pickup",
+      "Attempt to contact": "Attempt to contact",
       "Did not Connect": "Did not Connect",
       "Customer": "Customer",
       "Other Language": "Other Language"
@@ -938,7 +938,7 @@ export default function TasksPage() {
                   <option value="To be nurtured">To be Nurtured</option>
                   <option value="Junk">Junk</option>
                   <option value="Ask to call back">Ask to Call Back</option>
-                  <option value="Did not Pickup">Did not Pickup</option>
+                  <option value="Attempt to contact">Attempt to contact</option>
                   <option value="Did not Connect">Did not Connect</option>
                   <option value="Customer">Customer</option>
                   <option value="Other Language">Other Language</option>
@@ -1012,7 +1012,7 @@ export default function TasksPage() {
                             ? "text-blue-600 bg-blue-100 border-blue-200"
                             : lead.stage === "Customer"
                             ? "text-green-600 bg-green-100 border-green-200"
-                            : lead.stage === "Not interested" || lead.stage === "Junk" || lead.stage === "Did not Pickup" || lead.stage === "Did not Connect" || lead.stage === "Other Language"
+                            : lead.stage === "Not interested" || lead.stage === "Junk" || lead.stage === "Attempt to contact" || lead.stage === "Did not Connect" || lead.stage === "Other Language"
                             ? "text-red-600 bg-red-100 border-red-200"
                             : "text-amber-600 bg-amber-100 border-amber-200"
                         }`}>

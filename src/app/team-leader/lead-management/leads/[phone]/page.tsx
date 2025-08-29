@@ -50,6 +50,7 @@ export default function LeadDetailPage() {
   const [addingNote, setAddingNote] = useState(false);
   const [selectedStage, setSelectedStage] = useState<string>("");
   const [stageChangeNotes, setStageChangeNotes] = useState<string>("");
+  const [stageNotesError, setStageNotesError] = useState<string>("");
   const [updatingStage, setUpdatingStage] = useState(false);
   const [callStatus, setCallStatus] = useState<string>("");
   const [callNotes, setCallNotes] = useState<string>("");
@@ -552,7 +553,7 @@ export default function LeadDetailPage() {
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     lead.stage === 'Qualified' || lead.stage === 'Interested' || lead.stage === 'Customer' ? 'text-green-800 bg-green-100 border border-green-200' :
                     lead.stage === 'To be nurtured' || lead.stage === 'Ask to call back' ? 'text-blue-800 bg-blue-100 border border-blue-200' :
-                    lead.stage === 'Not interested' || lead.stage === 'Junk' || lead.stage === 'Did not Pickup' || lead.stage === 'Did not Connect' || lead.stage === 'Other Language' ? 'text-red-800 bg-red-100 border border-red-200' :
+                    lead.stage === 'Not interested' || lead.stage === 'Junk' || lead.stage === 'Attempt to contact' || lead.stage === 'Did not Connect' || lead.stage === 'Other Language' ? 'text-red-800 bg-red-100 border border-red-200' :
                     lead.stage === 'Not contacted' ? 'text-gray-800 bg-gray-100 border border-gray-200' :
                     'text-slate-800 bg-slate-100 border border-slate-200'
                   }`}>
@@ -606,26 +607,31 @@ export default function LeadDetailPage() {
                     <option value="To be nurtured">To be Nurtured</option>
                     <option value="Junk">Junk</option>
                     <option value="Ask to call back">Ask to Call Back</option>
-                    <option value="Did not Pickup">Did not Pickup</option>
+                    <option value="Attempt to contact">Attempt to contact</option>
                     <option value="Did not Connect">Did not Connect</option>
                     <option value="Customer">Customer</option>
                     <option value="Other Language">Other Language</option>
                   </select>
                   <textarea
                     placeholder="Stage change reason/notes..."
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    className={`w-full border ${stageNotesError ? 'border-red-500' : 'border-slate-300'} rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none`}
                     rows={2}
+                    required
                     value={stageChangeNotes}
-                    onChange={(e) => setStageChangeNotes(e.target.value)}
+                    onChange={(e) => { setStageChangeNotes(e.target.value); if (stageNotesError && e.target.value.trim()) setStageNotesError(""); }}
                   />
+                  {stageNotesError && (
+                    <div className="text-red-600 text-xs mt-1">{stageNotesError}</div>
+                  )}
                   <button
-                    className="w-full bg-purple-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                    className="w-full cursor-pointer bg-purple-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
                     onClick={async () => {
                       if (!selectedStage) {
                         toast.error("Please select a new stage.");
                         return;
                       }
                       if (!stageChangeNotes.trim()) {
+                        setStageNotesError("Please provide a reason for the stage change");
                         toast.error("Please provide a reason for the stage change.");
                         return;
                       }
@@ -648,6 +654,7 @@ export default function LeadDetailPage() {
 
                         if (res.ok) {
                           toast.success("Stage updated successfully", { id: toastId });
+                          setStageNotesError("");
                           
                           // Refresh lead data
                           console.log('Refreshing data after stage update...');
@@ -678,7 +685,7 @@ export default function LeadDetailPage() {
                         setUpdatingStage(false);
                       }
                     }}
-                    disabled={!selectedStage || !stageChangeNotes.trim() || updatingStage}
+                    disabled={!selectedStage || updatingStage}
                   >
                     {updatingStage ? (
                       <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />

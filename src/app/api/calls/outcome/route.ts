@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
         newStage = "Not interested";
         break;
       case "DNP":
-        newStage = "Did not Pickup";
+        newStage = "Attempt to contact";
         break;
       case "DNC":
         newStage = "Did not Connect";

@@ -383,7 +383,7 @@ function LeadsReports() {
               <option value="To be nurtured">🌱 To be nurtured</option>
               <option value="Junk">🗑️ Junk</option>
               <option value="Ask to call back">📞 Ask to call back</option>
-              <option value="Did not Pickup">📱 Did not Pickup</option>
+              <option value="Attempt to contact">📱 Attempt to contact</option>
               <option value="Did not Connect">🔌 Did not Connect</option>
               <option value="Customer">💼 Customer</option>
               <option value="Other Language">🌐 Other Language</option>
@@ -476,7 +476,7 @@ function LeadsReports() {
               <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-excludeEarlyStages">Successful Connections</label>
               <select id="adv-excludeEarlyStages" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={excludeEarlyStages ? "true" : ""} onChange={e=>{setOffset(0); setExcludeEarlyStages(e.target.value === "true");}}>
                 <option value="">All leads</option>
-                <option value="true">Only leads with successful connections (excludes: Did not Pickup, Did not Connect, Not contacted)</option>
+                <option value="true">Only leads with successful connections (excludes: Attempt to contact, Did not Connect, Not contacted)</option>
               </select>
             </div>
             <div>
@@ -559,7 +559,7 @@ function LeadsReports() {
             }}
           >
             <option value="">All leads</option>
-                            <option value="true">Only leads with successful connections (excludes: Did not Pickup, Did not Connect, Not contacted)</option>
+                            <option value="true">Only leads with successful connections (excludes: Attempt to contact, Did not Connect, Not contacted)</option>
           </select>
           <div className="text-xs text-slate-500">
             {excludeEarlyStages ? 'Filtering successful connections only' : 'Showing all leads'}
