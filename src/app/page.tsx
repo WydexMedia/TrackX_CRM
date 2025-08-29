@@ -2,6 +2,20 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+// Dynamic import for tenant homepage - moved outside component to prevent recreation
+const TenantHomepage = dynamic(() => import('./tenant-homepage'), {
+  loading: () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-slate-600">Loading tenant workspace...</p>
+      </div>
+    </div>
+  ),
+  ssr: false
+});
 import { 
   Trophy, 
   Phone, 
@@ -41,15 +55,13 @@ import TenantLogo from "@/components/TenantLogo";
 import { useTenant } from "@/hooks/useTenant";
 
 export default function HomePage() {
-  const { subdomain } = useTenant();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // This is the main marketing/landing page for wydex.co (main domain)
+  // For subdomains like proskill.wydex.co, it will render TenantHomepage instead
+  const { subdomain, loading } = useTenant();
   const [activeCard, setActiveCard] = useState<number | null>(null);
   const [isMainDomain, setIsMainDomain] = useState(false);
 
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+
 
   // Detect if we're on the main domain or a subdomain
   useEffect(() => {
@@ -80,6 +92,23 @@ export default function HomePage() {
       setIsMainDomain(!hasSubdomain);
     }
   }, []);
+
+  // If we have a subdomain, show tenant homepage instead
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If we have a subdomain, redirect to tenant homepage
+  if (subdomain) {
+    return <TenantHomepage />;
+  }
 
   // All main actions in a single row (5 buttons)
   const mainActions = [
@@ -241,7 +270,7 @@ export default function HomePage() {
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
                   TrackX
                 </h1>
-                <p className="text-xs text-slate-500 -mt-1 font-medium">Sales CRM Platform</p>
+                <p className="text-xs text-slate-500 -mt-1 font-medium">Sales CRM Platform - Main Site</p>
               </div>
             </div>
 
@@ -373,7 +402,7 @@ export default function HomePage() {
                 
                 <h1 className="text-5xl lg:text-6xl font-bold text-slate-900 leading-tight">
                   A new way to run{" "}
-                  <span className="text-blue-600">high velocity sales</span> and  operations
+                  <span className="text-blue-600">high velocity sales</span> and operations
                 </h1>
                 
                 <p className="text-xl text-slate-600 leading-relaxed">
