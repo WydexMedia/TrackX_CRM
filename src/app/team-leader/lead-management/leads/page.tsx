@@ -3,6 +3,35 @@
 import { useEffect, useMemo, useState } from "react";
 import { AddLeadModal, ImportLeadsModal } from "./AddLeadModals";
 import toast from "react-hot-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import { 
+  Clipboard, 
+  RotateCcw, 
+  Phone, 
+  CheckCircle, 
+  Lightbulb, 
+  Clock, 
+  Sparkles, 
+  Mail, 
+  Crown, 
+  Facebook, 
+  Search, 
+  Star,
+  Filter,
+  Plus,
+  Upload,
+  ChevronLeft,
+  ChevronRight,
+  Pin,
+  Users,
+  Globe,
+  FileText
+} from "lucide-react";
 
 interface LeadRow {
   phone: string;
@@ -21,7 +50,7 @@ interface LeadRow {
 interface ListView {
   id: string;
   name: string;
-  icon: string;
+  icon: React.ComponentType<{ className?: string }>;
   filters: {
     stage?: string;
     owner?: string;
@@ -50,6 +79,9 @@ export default function LeadsPage() {
   const [assignee, setAssignee] = useState<string>("");
   const [autoAssigning, setAutoAssigning] = useState(false);
   
+  // Sidebar collapse state
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
   // List view management
   const [currentView, setCurrentView] = useState<string>("all");
   const [showCreateView, setShowCreateView] = useState(false);
@@ -75,7 +107,7 @@ export default function LeadsPage() {
     callCountMin: "",
     callCountMax: "",
   });
-
+  
   // Bulk actions
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
@@ -83,20 +115,20 @@ export default function LeadsPage() {
   const [taskAssignee, setTaskAssignee] = useState("");
   const [creatingTask, setCreatingTask] = useState(false);
 
-  // Predefined list views (updated with score ranges)
+  // Predefined list views with Lucide icons
   const defaultViews: ListView[] = [
-    { id: "all", name: "All Leads", icon: "📋", filters: {} },
-    { id: "unassigned", name: "Unassigned", icon: "🔄", filters: { owner: "unassigned" } },
-    { id: "not-contacted", name: "Not Contacted", icon: "📞", filters: { stage: "Not contacted" } },
-    { id: "qualified", name: "Qualified", icon: "✅", filters: { stage: "Qualified" } },
-    { id: "interested", name: "Interested", icon: "💡", filters: { stage: "Interested" } },
-    { id: "follow-up", name: "Follow Up", icon: "⏰", filters: { needFollowup: true } },
-    { id: "recent", name: "Recent (7 days)", icon: "🆕", filters: { dateRange: "last7days" } },
-    { id: "no-email", name: "No Email", icon: "📧", filters: { hasEmail: false } },
-    { id: "customers", name: "Customers", icon: "👑", filters: { stage: "Customer" } },
-    { id: "meta-leads", name: "Meta Leads", icon: "📘", filters: { source: "META" } },
-    { id: "google-leads", name: "Google Leads", icon: "🔍", filters: { source: "GOOGLE" } },
-    { id: "high-score", name: "High Score (80+)", icon: "⭐", filters: { scoreMin: "80" } },
+    { id: "all", name: "All Leads", icon: Clipboard, filters: {} },
+    { id: "unassigned", name: "Unassigned", icon: RotateCcw, filters: { owner: "unassigned" } },
+    { id: "not-contacted", name: "Not Contacted", icon: Phone, filters: { stage: "Not contacted" } },
+    { id: "qualified", name: "Qualified", icon: CheckCircle, filters: { stage: "Qualified" } },
+    { id: "interested", name: "Interested", icon: Lightbulb, filters: { stage: "Interested" } },
+    { id: "follow-up", name: "Follow Up", icon: Clock, filters: { needFollowup: true } },
+    { id: "recent", name: "Recent (7 days)", icon: Sparkles, filters: { dateRange: "last7days" } },
+    { id: "no-email", name: "No Email", icon: Mail, filters: { hasEmail: false } },
+    { id: "customers", name: "Customers", icon: Crown, filters: { stage: "Customer" } },
+    { id: "meta-leads", name: "Meta Leads", icon: Facebook, filters: { source: "META" } },
+    { id: "google-leads", name: "Google Leads", icon: Search, filters: { source: "GOOGLE" } },
+    { id: "high-score", name: "High Score (80+)", icon: Star, filters: { scoreMin: "80" } },
   ];
 
   const allViews = [...defaultViews, ...customViews];
@@ -262,7 +294,7 @@ export default function LeadsPage() {
     const newView: ListView = {
       id: `custom-${Date.now()}`,
       name: newViewName,
-      icon: "📌",
+      icon: Pin,
       filters: { 
         ...currentViewData.filters,
         ...(showAdvancedFilters ? {
@@ -332,102 +364,174 @@ export default function LeadsPage() {
 
   const getSourceIcon = (source: string) => {
     switch (source) {
-      case "META": return "📘";
-      case "GOOGLE": return "🔍";
-      case "CSV": return "📄";
-      case "WEBSITE": return "🌐";
-      case "REFERRAL": return "👥";
-      default: return "📋";
+      case "META": return <Facebook className="w-4 h-4" />;
+      case "GOOGLE": return <Search className="w-4 h-4" />;
+      case "CSV": return <FileText className="w-4 h-4" />;
+      case "WEBSITE": return <Globe className="w-4 h-4" />;
+      case "REFERRAL": return <Users className="w-4 h-4" />;
+      default: return <Clipboard className="w-4 h-4" />;
+    }
+  };
+
+  const getStageIcon = (stage: string) => {
+    switch (stage) {
+      case "Customer": return <Crown className="w-4 h-4" />;
+      case "Qualified": return <CheckCircle className="w-4 h-4" />;
+      case "Interested": return <Lightbulb className="w-4 h-4" />;
+      case "Not interested": return <Phone className="w-4 h-4" style={{ transform: 'rotate(135deg)' }} />;
+      case "To be nurtured": return <Clock className="w-4 h-4" />;
+      case "Not contacted": return <Phone className="w-4 h-4" />;
+      default: return <Clipboard className="w-4 h-4" />;
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar with List Views */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-semibold text-gray-900">Lead Lists</h1>
+    <TooltipProvider delayDuration={0}>
+      <div className="flex h-screen bg-gray-50">
+      {/* Collapsible Sidebar with List Views */}
+      <div className={`${sidebarCollapsed ? 'w-16' : 'w-80'} bg-white border-r border-gray-200 flex flex-col transition-all duration-300`}>
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            {!sidebarCollapsed && (
+              <h1 className="text-xl font-semibold text-gray-900">Lead Lists</h1>
+            )}
             <div className="flex gap-1">
-              <button
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className={`p-2 rounded-lg text-sm ${showAdvancedFilters ? 'bg-blue-100 text-blue-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
-                title="Advanced Filters"
-              >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              </button>
-              <button
-                onClick={() => setShowCreateView(true)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
-                title="Create custom view"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </button>
+              {!sidebarCollapsed && (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                        className={`p-2 rounded-lg text-sm ${showAdvancedFilters ? 'bg-blue-100 text-blue-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                      >
+                        <Filter className="w-5 h-5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
+                      <p className="font-medium">Advanced Filters</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setShowCreateView(true)}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                      >
+                        <Plus className="w-5 h-5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
+                      <p className="font-medium">Create custom view</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </>
+              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
+                  <p className="font-medium">{sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
           
           {/* Advanced Filters Toggle */}
-          {showAdvancedFilters && getActiveAdvancedFilterCount() > 0 && (
+          {!sidebarCollapsed && showAdvancedFilters && getActiveAdvancedFilterCount() > 0 && (
             <div className="mb-3 flex items-center justify-between bg-blue-50 px-3 py-2 rounded-lg">
               <span className="text-sm text-blue-700 font-medium">
                 {getActiveAdvancedFilterCount()} advanced filter{getActiveAdvancedFilterCount() > 1 ? 's' : ''} active
               </span>
-            <button
+              <button
                 onClick={clearAdvancedFilters}
                 className="text-xs text-blue-600 hover:text-blue-800"
-            >
+              >
                 Clear
-            </button>
-          </div>
+              </button>
+            </div>
           )}
-
+          
           {/* Search */}
-          <div className="relative">
-            <svg className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Search leads..."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
+          {!sidebarCollapsed && (
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Search leads..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
         {/* List Views */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-4">
+          <div className="p-2">
             <div className="space-y-1">
-              {allViews.map((view) => (
-                <button
-                  key={view.id}
-                  onClick={() => {
-                    setCurrentView(view.id);
-                    setPage(1);
-                    setSelected({});
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors ${
-                    currentView === view.id
-                      ? "bg-blue-50 text-blue-700 border border-blue-200"
-                      : "text-gray-700 hover:bg-gray-50"
-                  }`}
-          >
-                  <div className="flex items-center gap-3">
-                    <span className="text-base">{view.icon}</span>
-                    <span className="font-medium">{view.name}</span>
-                  </div>
-                  {view.count !== undefined && (
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                      {view.count}
-                    </span>
-                  )}
-                </button>
-            ))}
+              {allViews.map((view) => {
+                const IconComponent = view.icon;
+                if (sidebarCollapsed) {
+                  return (
+                    <Tooltip key={view.id}>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => {
+                            setCurrentView(view.id);
+                            setPage(1);
+                            setSelected({});
+                          }}
+                          className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-3 py-2'} text-sm rounded-lg transition-colors ${
+                            currentView === view.id
+                              ? "bg-blue-50 text-blue-700 border border-blue-200"
+                              : "text-gray-700 hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className={`flex items-center ${sidebarCollapsed ? '' : 'gap-3'}`}>
+                            <IconComponent className="w-5 h-5 flex-shrink-0" />
+                          </div>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
+                        <p className="font-medium">{view.name}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                }
+                return (
+                  <button
+                    key={view.id}
+                    onClick={() => {
+                      setCurrentView(view.id);
+                      setPage(1);
+                      setSelected({});
+                    }}
+                    className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-3 py-2'} text-sm rounded-lg transition-colors ${
+                      currentView === view.id
+                        ? "bg-blue-50 text-blue-700 border border-blue-200"
+                        : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className={`flex items-center ${sidebarCollapsed ? '' : 'gap-3'}`}>
+                      <IconComponent className="w-5 h-5 flex-shrink-0" />
+                      {!sidebarCollapsed && (
+                        <span className="font-medium">{view.name}</span>
+                      )}
+                    </div>
+                    {!sidebarCollapsed && view.count !== undefined && (
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                        {view.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -435,24 +539,53 @@ export default function LeadsPage() {
         {/* Actions */}
         <div className="p-4 border-t border-gray-200">
           <div className="space-y-2">
-            <button 
-              className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 flex items-center justify-center gap-2"
-              onClick={() => setShowAdd(true)}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Lead
-            </button>
-            <button 
-              className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 flex items-center justify-center gap-2"
-              onClick={() => setShowImport(true)}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-              Import
-            </button>
+            {sidebarCollapsed ? (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      className={`w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-2'}`}
+                      onClick={() => setShowAdd(true)}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
+                    <p className="font-medium">Add Lead</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      className={`w-full bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-2'}`}
+                      onClick={() => setShowImport(true)}
+                    >
+                      <Upload className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
+                    <p className="font-medium">Import</p>
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            ) : (
+              <>
+                <button 
+                  className={`w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-2'}`}
+                  onClick={() => setShowAdd(true)}
+                >
+                  <Plus className="w-4 h-4" />
+                  {!sidebarCollapsed && "Add Lead"}
+                </button>
+                <button 
+                  className={`w-full bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-2'}`}
+                  onClick={() => setShowImport(true)}
+                >
+                  <Upload className="w-4 h-4" />
+                  {!sidebarCollapsed && "Import"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -464,36 +597,36 @@ export default function LeadsPage() {
           <div className="bg-white border-b border-gray-200 p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
               {/* Date Range */}
-                <select
+              <select
                 value={advancedFilters.dateRange}
                 onChange={(e) => setAdvancedFilters(prev => ({ ...prev, dateRange: e.target.value }))}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="yesterday">Yesterday</option>
-                  <option value="last7days">Last 7 days</option>
-                  <option value="last30days">Last 30 days</option>
-                  <option value="thismonth">This month</option>
-                  <option value="lastmonth">Last month</option>
-                </select>
+              >
+                <option value="">All Time</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="last7days">Last 7 days</option>
+                <option value="last30days">Last 30 days</option>
+                <option value="thismonth">This month</option>
+                <option value="lastmonth">Last month</option>
+              </select>
 
               {/* Score Range */}
               <div className="flex gap-1">
-                  <input
-                    type="number"
+                <input
+                  type="number"
                   placeholder="Min Score"
                   value={advancedFilters.scoreMin}
                   onChange={(e) => setAdvancedFilters(prev => ({ ...prev, scoreMin: e.target.value }))}
                   className="w-1/2 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <input
-                    type="number"
+                />
+                <input
+                  type="number"
                   placeholder="Max Score"
                   value={advancedFilters.scoreMax}
                   onChange={(e) => setAdvancedFilters(prev => ({ ...prev, scoreMax: e.target.value }))}
                   className="w-1/2 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                />
               </div>
 
               {/* Email Domain */}
@@ -551,13 +684,13 @@ export default function LeadsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <span className="text-2xl">{currentViewData.icon}</span>
+                <currentViewData.icon className="w-6 h-6" />
                 {currentViewData.name}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
                 {loading ? "Loading..." : `${total} leads`}
               </p>
-      </div>
+            </div>
 
             {/* Bulk Actions */}
             {phones.length > 0 && (
@@ -566,21 +699,21 @@ export default function LeadsPage() {
                   {phones.length} selected
                 </span>
                 <div className="flex gap-1">
-        <select
+                  <select
                     className="text-xs border border-blue-200 rounded px-2 py-1"
-          value={assignee}
-          onChange={(e) => setAssignee(e.target.value)}
-        >
+                    value={assignee}
+                    onChange={(e) => setAssignee(e.target.value)}
+                  >
                     <option value="">Assign to...</option>
-          {sales.map((s) => (
+                    {sales.map((s) => (
                       <option key={s.code} value={s.code}>{s.name}</option>
-          ))}
-        </select>
-        <button
+                    ))}
+                  </select>
+                  <button
                     className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50"
                     disabled={!assignee}
-          onClick={async () => {
-            const actorId = getActorId();
+                    onClick={async () => {
+                      const actorId = getActorId();
                       const res = await fetch("/api/tl/queue", { 
                         method: "POST", 
                         headers: { "Content-Type": "application/json" }, 
@@ -588,55 +721,55 @@ export default function LeadsPage() {
                       });
                       if (res.ok) {
                         toast.success(`Assigned ${phones.length} lead(s)`);
-            setSelected({});
+                        setSelected({});
                         refreshData();
                       } else {
                         toast.error("Assignment failed");
                       }
-          }}
+                    }}
                   >
                     Assign
                   </button>
                   {/* Auto-Assign Button - RESTORED */}
-        <button
+                  <button
                     className="text-xs bg-emerald-600 text-white px-3 py-1 rounded hover:bg-emerald-700 disabled:opacity-50 inline-flex items-center gap-1"
-          disabled={phones.length === 0 || autoAssigning}
-          onClick={async () => {
-            try {
-              setAutoAssigning(true);
-              const actorId = getActorId();
+                    disabled={phones.length === 0 || autoAssigning}
+                    onClick={async () => {
+                      try {
+                        setAutoAssigning(true);
+                        const actorId = getActorId();
                         const res = await fetch("/api/tl/queue", { 
                           method: "POST", 
                           headers: { "Content-Type": "application/json" }, 
                           body: JSON.stringify({ action: "autoAssign", phones, actorId }) 
                         });
-              if (res.ok) {
-                const data = await res.json();
-                toast.success(`Auto-assigned ${phones.length} lead(s) via ${data.rule}`);
-              } else {
-                toast.error("Auto-assign failed");
-              }
-              setSelected({});
+                        if (res.ok) {
+                          const data = await res.json();
+                          toast.success(`Auto-assigned ${phones.length} lead(s) via ${data.rule}`);
+                        } else {
+                          toast.error("Auto-assign failed");
+                        }
+                        setSelected({});
                         refreshData();
-            } finally {
-              setAutoAssigning(false);
-            }
-          }}
-        >
-          {autoAssigning && (
+                      } finally {
+                        setAutoAssigning(false);
+                      }
+                    }}
+                  >
+                    {autoAssigning && (
                       <span className="inline-block h-3 w-3 rounded-full border-2 border-white/80 border-t-transparent animate-spin" />
-          )}
+                    )}
                     Auto
-        </button>
-        <button
+                  </button>
+                  <button
                     className="text-xs bg-cyan-600 text-white px-3 py-1 rounded hover:bg-cyan-700"
-          onClick={() => setCreateTaskOpen(true)}
+                    onClick={() => setCreateTaskOpen(true)}
                   >
                     Task
                   </button>
-        <button
+                  <button
                     className="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-          onClick={() => setConfirmDeleteOpen(true)}
+                    onClick={() => setConfirmDeleteOpen(true)}
                   >
                     Delete
                   </button>
@@ -685,7 +818,7 @@ export default function LeadsPage() {
                   <tr>
                     <td className="px-4 py-8 text-center text-gray-500" colSpan={8}>
                       <div className="flex flex-col items-center gap-2">
-                        <div className="text-4xl">📭</div>
+                        <Clipboard className="w-12 h-12 text-gray-300" />
                         <div>No leads found in this view</div>
                         <button 
                           className="text-blue-600 hover:text-blue-700 text-sm"
@@ -726,23 +859,33 @@ export default function LeadsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStageColor(lead.stage)}`}>
-                          {lead.stage || "Not contacted"}
-                        </span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStageColor(lead.stage)}`}>
+                              {lead.stage || "Not contacted"}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent 
+                            side="top" 
+                            className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg"
+                          >
+                            <p className="font-medium">{lead.stage || "Not contacted"}</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </td>
                       <td className="px-4 py-3 text-gray-600">
                         {(sales.find((s) => s.code === lead.ownerId)?.name) || lead.ownerId || "—"}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <span>{getSourceIcon(lead.source || "")}</span>
+                          {getSourceIcon(lead.source || "")}
                           <span className="text-gray-600">{lead.source || "—"}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <span className="font-mono text-sm">{lead.score ?? 0}</span>
-                          {(lead.score ?? 0) >= 80 && <span className="text-yellow-500">⭐</span>}
+                          {(lead.score ?? 0) >= 80 && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-600 text-xs">
@@ -835,16 +978,16 @@ export default function LeadsPage() {
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
             <h3 className="text-lg font-semibold text-gray-900">Delete selected leads?</h3>
             <p className="text-sm text-gray-600 mt-1">This action cannot be undone. You are about to delete {phones.length} lead(s).</p>
-          <div className="mt-6 flex items-center justify-end gap-2">
-            <button
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button
                 className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-              onClick={() => setConfirmDeleteOpen(false)}
+                onClick={() => setConfirmDeleteOpen(false)}
               >
                 Cancel
               </button>
-            <button
+              <button
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-              onClick={performBulkDelete}
+                onClick={performBulkDelete}
               >
                 Delete
               </button>
@@ -859,55 +1002,55 @@ export default function LeadsPage() {
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-900">Create Tasks</h3>
             <p className="text-sm text-gray-600 mt-1">Create tasks for {phones.length} selected lead(s).</p>
-          
-          <div className="mt-4 space-y-4">
-            <div>
+            
+            <div className="mt-4 space-y-4">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Task Title</label>
-              <input
-                type="text"
-                value={taskTitle}
-                onChange={(e) => setTaskTitle(e.target.value)}
+                <input
+                  type="text"
+                  value={taskTitle}
+                  onChange={(e) => setTaskTitle(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                placeholder="Enter task title..."
-              />
+                  placeholder="Enter task title..."
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assign to</label>
+                <select
+                  value={taskAssignee}
+                  onChange={(e) => setTaskAssignee(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                >
+                  <option value="">Select assignee...</option>
+                  {sales.map((s) => (
+                    <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
+                  ))}
+                </select>
+              </div>
             </div>
             
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Assign to</label>
-              <select
-                value={taskAssignee}
-                onChange={(e) => setTaskAssignee(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-              >
-                <option value="">Select assignee...</option>
-                {sales.map((s) => (
-                  <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          <div className="mt-6 flex items-center justify-end gap-2">
-            <button
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button
                 className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-              onClick={() => {
-                setCreateTaskOpen(false);
-                setTaskTitle("Follow up");
-                setTaskAssignee("");
-              }}
+                onClick={() => {
+                  setCreateTaskOpen(false);
+                  setTaskTitle("Follow up");
+                  setTaskAssignee("");
+                }}
               >
                 Cancel
               </button>
-            <button
+              <button
                 className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50"
-              onClick={performCreateTasks}
-              disabled={creatingTask || !taskTitle.trim() || !taskAssignee}
-            >
-              {creatingTask ? "Creating..." : "Create Tasks"}
-            </button>
+                onClick={performCreateTasks}
+                disabled={creatingTask || !taskTitle.trim() || !taskAssignee}
+              >
+                {creatingTask ? "Creating..." : "Create Tasks"}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
       )}
 
       <AddLeadModal
@@ -921,6 +1064,7 @@ export default function LeadsPage() {
         onImported={refreshData}
       />
     </div>
+  </TooltipProvider>
   );
 }
 
