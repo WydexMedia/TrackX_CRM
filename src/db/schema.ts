@@ -116,4 +116,30 @@ export const tenants = pgTable(
   }
 );
 
+// Lead lists (saved views) per tenant
+export const leadLists = pgTable(
+  "lead_lists",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 160 }).notNull(),
+    tenantId: integer("tenant_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  }
+);
+
+// Items in a lead list (phones)
+export const leadListItems = pgTable(
+  "lead_list_items",
+  {
+    id: serial("id").primaryKey(),
+    listId: integer("list_id").notNull(),
+    leadPhone: varchar("lead_phone", { length: 32 }).notNull(),
+    tenantId: integer("tenant_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    uniq: uniqueIndex("lead_list_items_unique").on(t.listId, t.leadPhone, t.tenantId),
+  })
+);
+
 

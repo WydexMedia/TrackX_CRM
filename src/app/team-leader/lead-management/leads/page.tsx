@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AddLeadModal, ImportLeadsModal } from "./AddLeadModals";
+import { ListCreateModal } from "./ListCreateModal";
 import toast from "react-hot-toast";
 import {
   Tooltip,
@@ -88,6 +89,10 @@ export default function LeadsPage() {
   const [newViewName, setNewViewName] = useState("");
   const [customViews, setCustomViews] = useState<ListView[]>([]);
   
+  // Saved Lists
+  const [lists, setLists] = useState<Array<{ id: number; name: string }>>([]);
+  const [showCreateList, setShowCreateList] = useState(false);
+  
   // Advanced filtering (restored)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState({
@@ -115,6 +120,9 @@ export default function LeadsPage() {
   const [taskAssignee, setTaskAssignee] = useState("");
   const [creatingTask, setCreatingTask] = useState(false);
 
+  // Bulk: add to list
+  const [addToListId, setAddToListId] = useState<string>("");
+
   // Predefined list views with Lucide icons
   const defaultViews: ListView[] = [
     { id: "all", name: "All Leads", icon: Clipboard, filters: {} },
@@ -130,7 +138,12 @@ export default function LeadsPage() {
   ];
 
   const allViews = [...defaultViews, ...customViews];
+  // Interpret list-<id> views as a filter by list id
+  const isListView = currentView.startsWith("list-");
+  const listIdParam = isListView ? currentView.replace("list-", "") : undefined;
   const currentViewData = allViews.find(v => v.id === currentView) || defaultViews[0];
+  const viewTitle = isListView ? (lists.find(l => String(l.id) === listIdParam)?.name || "List") : currentViewData.name;
+  const ViewIcon = isListView ? Pin : currentViewData.icon;
 
   const params = useMemo(() => {
     const sp = new URLSearchParams();
@@ -147,6 +160,12 @@ export default function LeadsPage() {
     if (filters.dateRange) sp.set("dateRange", filters.dateRange);
     if (filters.scoreMin) sp.set("scoreMin", filters.scoreMin);
     if (filters.scoreMax) sp.set("scoreMax", filters.scoreMax);
+
+    // If viewing a saved list, pass listId
+    if (isListView && listIdParam) {
+      sp.set("listId", listIdParam);
+      console.log("Setting listId filter:", listIdParam);
+    }
     
     // Apply advanced filters when enabled
     if (showAdvancedFilters) {
@@ -165,8 +184,9 @@ export default function LeadsPage() {
     
     sp.set("limit", String(pageSize));
     sp.set("offset", String((page - 1) * pageSize));
+    console.log("API params:", sp.toString());
     return sp.toString();
-  }, [q, currentView, currentViewData, page, showAdvancedFilters, advancedFilters]);
+  }, [q, currentView, currentViewData, page, showAdvancedFilters, advancedFilters, isListView, listIdParam]);
 
   useEffect(() => {
     setLoading(true);
@@ -204,6 +224,12 @@ export default function LeadsPage() {
         const onlySales = (Array.isArray(all) ? all : []).filter((u: any) => (u.role ?? 'sales') === "sales");
         setSales(onlySales.map((u: any) => ({ code: u.code, name: u.name })));
       })
+      .catch(() => {});
+
+    // Load saved lists
+    fetch("/api/tl/lists")
+      .then((r) => r.json())
+      .then((d) => setLists(d?.rows || []))
       .catch(() => {});
   }, []);
 
@@ -391,7 +417,15 @@ export default function LeadsPage() {
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
             {!sidebarCollapsed && (
-              <h1 className="text-xl font-semibold text-gray-900">Lead Lists</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-semibold text-gray-900">Lead Lists</h1>
+                <button
+                  onClick={() => setShowCreateList(true)}
+                  className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
             )}
             <div className="flex gap-1">
               {!sidebarCollapsed && (
@@ -472,6 +506,35 @@ export default function LeadsPage() {
         {/* List Views */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-2">
+            {lists.length > 0 && !sidebarCollapsed && (
+              <div className="mb-3">
+                <div className="text-xs uppercase tracking-wide text-gray-500 px-2 mb-1">My Lists</div>
+                <div className="space-y-1">
+                  {lists.map((l) => (
+                    <button
+                      key={`list-${l.id}`}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors ${
+                        currentView === `list-${l.id}`
+                          ? "bg-blue-50 text-blue-700 border border-blue-200"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                      onClick={() => {
+                        console.log("Selecting list:", l.id, l.name);
+                        setCurrentView(`list-${l.id}`);
+                        setSelected({});
+                        setPage(1);
+                        console.log("Current view set to:", `list-${l.id}`);
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Pin className="w-4 h-4" />
+                        <span className="font-medium">{l.name}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="space-y-1">
               {allViews.map((view) => {
                 const IconComponent = view.icon;
@@ -690,11 +753,21 @@ export default function LeadsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <currentViewData.icon className="w-6 h-6" />
-                {currentViewData.name}
+                <ViewIcon className="w-6 h-6" />
+                {viewTitle}
+                {isListView && (
+                  <span className="text-sm text-gray-500 font-normal">
+                    (List View)
+                  </span>
+                )}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
                 {loading ? "Loading..." : `${total} leads`}
+                {isListView && listIdParam && (
+                  <span className="text-xs text-gray-400 ml-2">
+                    • Filtered by list
+                  </span>
+                )}
               </p>
             </div>
 
@@ -705,6 +778,45 @@ export default function LeadsPage() {
                   {phones.length} selected
                 </span>
                 <div className="flex gap-1">
+                  {lists.length > 0 && (
+                    <>
+                      <select
+                        className="text-xs border border-blue-200 rounded px-2 py-1"
+                        value={addToListId}
+                        onChange={(e) => setAddToListId(e.target.value)}
+                      >
+                        <option value="">Add to list...</option>
+                        {lists.map((l) => (
+                          <option key={l.id} value={String(l.id)}>{l.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 disabled:opacity-50"
+                        disabled={!addToListId}
+                        onClick={async () => {
+                          try {
+                            const res = await fetch("/api/tl/lists", {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ listId: Number(addToListId), phones }),
+                            });
+                            if (res.ok) {
+                              const selectedList = lists.find(l => String(l.id) === addToListId);
+                              toast.success(`Added ${phones.length} lead(s) to "${selectedList?.name || 'list'}"`);
+                              setSelected({});
+                              setAddToListId("");
+                            } else {
+                              toast.error("Failed to add to list");
+                            }
+                          } catch {
+                            toast.error("Failed to add to list");
+                          }
+                        }}
+                      >
+                        Add
+                      </button>
+                    </>
+                  )}
                   <select
                     className="text-xs border border-blue-200 rounded px-2 py-1"
                     value={assignee}
@@ -1068,6 +1180,12 @@ export default function LeadsPage() {
         open={showImport}
         onClose={() => setShowImport(false)}
         onImported={refreshData}
+      />
+
+      <ListCreateModal
+        open={showCreateList}
+        onClose={() => setShowCreateList(false)}
+        onCreated={(l) => setLists((prev) => [...prev, l])}
       />
     </div>
   </TooltipProvider>

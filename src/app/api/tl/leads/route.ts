@@ -28,6 +28,10 @@ export async function GET(req: NextRequest) {
     const callCountMin = searchParams.get("callCountMin") ? Number(searchParams.get("callCountMin")) : undefined;
     const callCountMax = searchParams.get("callCountMax") ? Number(searchParams.get("callCountMax")) : undefined;
 
+    // Optional: filter by saved list
+    const listId = searchParams.get("listId");
+    console.log("API received listId:", listId);
+
     // Date filters: explicit from/to or derived from dateRange
     let from = searchParams.get("from") || undefined;
     let to = searchParams.get("to") || undefined;
@@ -103,8 +107,15 @@ export async function GET(req: NextRequest) {
       emailDomain ? ilike(leads.email, `%@${emailDomain}`) : undefined,
       // Filter to exclude leads that are still in early stages
               excludeEarlyStages ? sql`${leads.stage} NOT IN ('Attempt to contact', 'Did not Connect', 'Not contacted')` : undefined,
+      // Filter by list membership
+      listId ? (sql`exists (select 1 from lead_list_items lli where lli.lead_phone = ${leads.phone} and lli.list_id = ${Number(listId)} and (lli.tenant_id = ${leads.tenantId} or lli.tenant_id is null))` as any) : undefined,
       // Call count filtering will be applied after fetching leads with call counts
     ].filter(Boolean) as any[];
+
+    console.log("Filters applied:", filters.length);
+    if (listId) {
+      console.log("List filter active for listId:", listId);
+    }
 
     // Last activity window
     if (lastActivity) {
