@@ -724,12 +724,14 @@ export default function LeadDetailPage() {
                   onChange={(e) => setCallStatus(e.target.value)}
                 >
                   <option value="">Select Call Status</option>
-                  <option value="QUALIFIED">QUALIFIED</option>
-                  <option value="CONNECTED_TO_WHATSAPP">CONNECTED TO WHATSAPP</option>
-                  <option value="DNP">Did not Pickup</option>
-                  <option value="POSITIVE">POSITIVE</option>
-                  <option value="NATC">NATC</option>
-                  <option value="NOT_INTERESTED">NOT INTERESTED</option>
+                  <option value="Qualified">⭐ Qualified</option>
+                  <option value="Interested">🤝 Interested</option>
+                  <option value="Customer">💼 Customer</option>
+                  <option value="Did not Pickup">📱 Did not Pickup</option>
+                  <option value="Did not Connect">🔌 Did not Connect</option>
+                  <option value="Not interested">❌ Not interested</option>
+                  <option value="Ask to call back">📞 Ask to call back</option>
+                  <option value="Other Language">🌐 Other Language</option>
                 </select>
                 <textarea
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"

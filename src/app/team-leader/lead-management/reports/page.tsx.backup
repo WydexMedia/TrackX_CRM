@@ -196,17 +196,12 @@ function LeadsReports() {
             <label className="block text-xs text-slate-500 mb-1">Stage</label>
             <select className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={stage} onChange={e=>{setOffset(0); setStage(e.target.value);}}>
               <option value="">All</option>
-              <option value="Attempt to contact">📞 Attempt to contact</option>
-              <option value="Qualified">⭐ Qualified</option>
-              <option value="Interested">🤝 Interested</option>
-              <option value="To be nurtured">🌱 To be nurtured</option>
-              <option value="Not interested">❌ Not interested</option>
-              <option value="Ask to call back">📞 Ask to call back</option>
-              <option value="Did not Pickup">📱 Did not Pickup</option>
-              <option value="Did not Connect">🔌 Did not Connect</option>
-              <option value="Customer">💼 Customer</option>
-              <option value="Other Language">🌐 Other Language</option>
-              <option value="Junk">🗑️ Junk</option>
+              <option>Attempt to contact</option>
+              <option>Qualified</option>
+              <option>Connected to WhatsApp</option>
+              <option>Positive</option>
+              <option>Not interested</option>
+              <option>Invalid</option>
             </select>
           </div>
           <div>

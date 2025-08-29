@@ -63,8 +63,23 @@ function parseDateRange(url: string) {
 
 export async function GET(req: NextRequest) {
   try {
-    const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
+    let tenantId: number | undefined;
+    try {
+      tenantId = await requireTenantIdFromRequest(req as any);
+    } catch (error) {
+      console.error("Failed to resolve tenant:", error);
+      // Return error instead of continuing with undefined tenantId
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Tenant not found or invalid" 
+        }), 
+        { status: 400 }
+      );
+    }
+
     const { from, to } = parseDateRange(req.url);
+    console.log("Date range:", { from, to, dateRange: new URL(req.url).searchParams.get("dateRange") });
 
     const whereTimeRangeCalls = from && to ? sql`AND started_at BETWEEN ${from} AND ${to}` : sql``;
     const whereTimeRangeLeadsCreated = from && to ? sql`AND created_at BETWEEN ${from} AND ${to}` : sql``;
@@ -72,12 +87,13 @@ export async function GET(req: NextRequest) {
     const whereTimeRangeEvents = from && to ? sql`AND at BETWEEN ${from} AND ${to}` : sql``;
 
     // Calls per lead (started/completed)
+    console.log("Executing callsPerLead query with tenantId:", tenantId);
     const callsPerLead = await db.execute(sql`
       SELECT lead_phone as "leadPhone",
              COUNT(*)::int as "started",
              COUNT(ended_at)::int as "completed"
       FROM call_logs
-      WHERE (${tenantId} IS NULL OR tenant_id = ${tenantId})
+      WHERE tenant_id = ${tenantId}
       ${whereTimeRangeCalls}
       GROUP BY lead_phone
       ORDER BY COUNT(*) DESC
@@ -85,19 +101,21 @@ export async function GET(req: NextRequest) {
     `);
 
     // Assigned vs Converted per salesperson
+    console.log("Executing assigned query with tenantId:", tenantId);
     const assigned = await db.execute(sql`
       SELECT owner_id as "ownerId", COUNT(*)::int as "assigned"
       FROM leads
-      WHERE (${tenantId} IS NULL OR tenant_id = ${tenantId})
+      WHERE tenant_id = ${tenantId}
       AND owner_id IS NOT NULL
       ${whereTimeRangeLeadsCreated}
       GROUP BY owner_id;
     `);
 
+    console.log("Executing converted query with tenantId:", tenantId);
     const converted = await db.execute(sql`
       SELECT owner_id as "ownerId", COUNT(*)::int as "converted"
       FROM leads
-      WHERE (${tenantId} IS NULL OR tenant_id = ${tenantId})
+      WHERE tenant_id = ${tenantId}
       AND owner_id IS NOT NULL
       AND stage = 'Customer'
       ${whereTimeRangeLeadsUpdated}
@@ -117,47 +135,53 @@ export async function GET(req: NextRequest) {
     const assignedVsConverted = Object.values(ownerMap).sort((a,b)=>b.assigned - a.assigned).slice(0, 20);
 
     // Average response time (first call - lead created)
+    console.log("Executing avgRes query with tenantId:", tenantId);
     const avgRes = await db.execute(sql`
       WITH first_calls AS (
         SELECT lead_phone, MIN(started_at) AS first_call
         FROM call_logs
-        WHERE (${tenantId} IS NULL OR tenant_id = ${tenantId})
+        WHERE tenant_id = ${tenantId}
         GROUP BY lead_phone
       )
       SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (fc.first_call - l.created_at)) * 1000), 0)::bigint AS "avgMs"
       FROM leads l
       JOIN first_calls fc ON fc.lead_phone = l.phone
-      WHERE (${tenantId} IS NULL OR l.tenant_id = ${tenantId})
+      WHERE l.tenant_id = ${tenantId}
       ${whereTimeRangeLeadsCreated};
     `);
 
     const avgResponseMs = Number((avgRes.rows as any[])[0]?.avgMs || 0);
 
     // Conversion trends (daily/weekly/monthly) using STAGE_CHANGE to Customer
+    console.log("Executing daily trends query with tenantId:", tenantId);
     const daily = await db.execute(sql`
       SELECT (date_trunc('day', at))::date AS period, COUNT(*)::int AS conversions
       FROM lead_events
-      WHERE (${tenantId} IS NULL OR tenant_id = ${tenantId})
+      WHERE tenant_id = ${tenantId}
       AND type = 'STAGE_CHANGE'
       AND (data->>'to') = 'Customer'
       ${whereTimeRangeEvents}
       GROUP BY 1
       ORDER BY 1;
     `);
+    
+    console.log("Executing weekly trends query with tenantId:", tenantId);
     const weekly = await db.execute(sql`
       SELECT (date_trunc('week', at))::date AS period, COUNT(*)::int AS conversions
       FROM lead_events
-      WHERE (${tenantId} IS NULL OR tenant_id = ${tenantId})
+      WHERE tenant_id = ${tenantId}
       AND type = 'STAGE_CHANGE'
       AND (data->>'to') = 'Customer'
       ${whereTimeRangeEvents}
       GROUP BY 1
       ORDER BY 1;
     `);
+    
+    console.log("Executing monthly trends query with tenantId:", tenantId);
     const monthly = await db.execute(sql`
       SELECT (date_trunc('month', at))::date AS period, COUNT(*)::int AS conversions
       FROM lead_events
-      WHERE (${tenantId} IS NULL OR tenant_id = ${tenantId})
+      WHERE tenant_id = ${tenantId}
       AND type = 'STAGE_CHANGE'
       AND (data->>'to') = 'Customer'
       ${whereTimeRangeEvents}
@@ -180,6 +204,14 @@ export async function GET(req: NextRequest) {
       { status: 200 }
     );
   } catch (e: any) {
-    return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to build reports" }), { status: 500 });
+    console.error("Reports API error:", e);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: e?.message || "Failed to build reports",
+        details: process.env.NODE_ENV === 'development' ? e?.stack : undefined
+      }), 
+      { status: 500 }
+    );
   }
 } 
