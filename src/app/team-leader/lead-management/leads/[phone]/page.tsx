@@ -56,6 +56,9 @@ export default function LeadDetailPage() {
   const [callNotes, setCallNotes] = useState<string>("");
   const [loggingCall, setLoggingCall] = useState(false);
 
+  // Delete confirm modal state
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
   // Function to fetch user names from API
   const fetchUserNames = async () => {
     try {
@@ -170,19 +173,18 @@ export default function LeadDetailPage() {
     console.log('Events types in state:', events.map(e => e.type));
   }, [events]);
 
-  // Delete current lead
-  const handleDeleteLead = async () => {
+  // Delete current lead using modal confirmation
+  const performDeleteLead = async () => {
     if (!lead) return;
-    const confirmMsg = `Delete lead ${lead.name || lead.phone}? This action cannot be undone.`;
-    if (!confirm(confirmMsg)) return;
     try {
       const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete lead");
       toast.success("Lead deleted");
-      // Navigate back to leads list
       window.location.href = "/team-leader/lead-management/leads";
     } catch {
       toast.error("Failed to delete lead");
+    } finally {
+      setConfirmDeleteOpen(false);
     }
   };
 
@@ -397,11 +399,29 @@ export default function LeadDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={handleDeleteLead}
+            onClick={() => setConfirmDeleteOpen(true)}
             className="px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 bg-red-100 text-red-700 hover:bg-red-200"
           >
             Delete Lead
           </button>
+        </div>
+      </div>
+
+      {/* Delete confirmation modal */}
+      <div className={`${confirmDeleteOpen ? '' : 'hidden'} fixed inset-0 z-50 flex items-center justify-center bg-black/40`}>
+        <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+          <h3 className="text-lg font-semibold text-slate-900">Delete this lead?</h3>
+          <p className="text-sm text-slate-600 mt-1">This action cannot be undone. You are about to delete {lead?.name || lead?.phone}.</p>
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <button
+              className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg text-sm cursor-pointer"
+              onClick={() => setConfirmDeleteOpen(false)}
+            >Cancel</button>
+            <button
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm cursor-pointer"
+              onClick={performDeleteLead}
+            >Delete</button>
+          </div>
         </div>
       </div>
 

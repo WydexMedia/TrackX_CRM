@@ -46,6 +46,9 @@ export default function LeadsPage() {
   const [lastActivity, setLastActivity] = useState("");
   const [slaStatus, setSlaStatus] = useState("");
 
+  // Custom confirm for bulk delete
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
   const params = useMemo(() => {
     const sp = new URLSearchParams();
     if (q) sp.set("q", q);
@@ -135,10 +138,8 @@ export default function LeadsPage() {
     }
   };
 
-  const handleBulkDelete = async () => {
+  const performBulkDelete = async () => {
     if (phones.length === 0) return;
-    const confirmMsg = `Delete ${phones.length} selected lead(s)? This action cannot be undone.`;
-    if (!confirm(confirmMsg)) return;
     try {
       const res = await fetch("/api/tl/leads", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phones }) });
       if (!res.ok) throw new Error("Failed to delete leads");
@@ -149,6 +150,8 @@ export default function LeadsPage() {
       setTotal(d.total || 0);
     } catch {
       toast.error("Failed to delete leads");
+    } finally {
+      setConfirmDeleteOpen(false);
     }
   };
 
@@ -496,8 +499,26 @@ export default function LeadsPage() {
         <button
           className="rounded-xl bg-red-600 text-white px-3 py-2 text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
           disabled={phones.length === 0}
-          onClick={handleBulkDelete}
+          onClick={() => setConfirmDeleteOpen(true)}
         >Delete</button>
+      </div>
+
+      {/* Delete confirmation modal */}
+      <div className={`${confirmDeleteOpen ? '' : 'hidden'} fixed inset-0 z-50 flex items-center justify-center bg-black/40`}>
+        <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+          <h3 className="text-lg font-semibold text-slate-900">Delete selected leads?</h3>
+          <p className="text-sm text-slate-600 mt-1">This action cannot be undone. You are about to delete {phones.length} lead(s).</p>
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <button
+              className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg text-sm cursor-pointer"
+              onClick={() => setConfirmDeleteOpen(false)}
+            >Cancel</button>
+            <button
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm cursor-pointer"
+              onClick={performBulkDelete}
+            >Delete</button>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
