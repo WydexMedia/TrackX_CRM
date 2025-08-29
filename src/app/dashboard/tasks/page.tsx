@@ -54,7 +54,7 @@ function LeadDetailsModal({
 
   // Available stages - customized for business needs
   const availableStages = [
-    "Attempt to contact",
+    "Not contacted",
     "Qualified",
     "Not interested",
     "Interested",
@@ -366,7 +366,7 @@ export default function TasksPage() {
     
     // Handle special cases
     const statusMap: Record<string, string> = {
-      "Attempt to contact": "Attempt to Contact",
+      "Not contacted": "Not Contacted",
       "Qualified": "Qualified",
       "Not interested": "Not Interested",
       "Interested": "Interested",
@@ -931,8 +931,7 @@ export default function TasksPage() {
                   className="px-3 py-2 text-black border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-full sm:w-auto"
                 >
                   <option value="all">All Statuses</option>
-                  <option value="Not contacted">Not Contacted</option>
-                  <option value="Attempt to contact">Attempt to Contact</option>
+                  <option value="Not contacted">Not contacted</option>
                   <option value="Qualified">Qualified</option>
                   <option value="Not interested">Not Interested</option>
                   <option value="Interested">Interested</option>
@@ -1007,7 +1006,7 @@ export default function TasksPage() {
                       </div>
                       <div className="flex justify-center sm:justify-end">
                         <span className={`text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-bold border ${
-                          !lead.stage || lead.stage === "Attempt to contact" 
+                          !lead.stage || lead.stage === "Not contacted" 
                             ? "text-gray-600 bg-gray-100 border-gray-200"
                             : lead.stage === "Qualified" || lead.stage === "Interested" || lead.stage === "To be nurtured" || lead.stage === "Ask to call back"
                             ? "text-blue-600 bg-blue-100 border-blue-200"
@@ -1017,7 +1016,7 @@ export default function TasksPage() {
                             ? "text-red-600 bg-red-100 border-red-200"
                             : "text-amber-600 bg-amber-100 border-amber-200"
                         }`}>
-                          {!lead.stage || lead.stage === "Attempt to contact" ? "Attempt to Contact" : formatStatusText(lead.stage)}
+                          {!lead.stage || lead.stage === "Not contacted" ? "Not Contacted" : formatStatusText(lead.stage)}
                         </span>
                       </div>
                     </div>

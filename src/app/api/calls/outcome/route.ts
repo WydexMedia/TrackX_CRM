@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
         newStage = "Customer";
         break;
       case "NOT_CONTACTED":
-        newStage = "Attempt to contact";
+        newStage = "Not contacted";
         break;
       case "OTHER_LANGUAGE":
         newStage = "Other Language";

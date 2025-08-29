@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
       hasEmailParam === "true" ? (sql`${leads.email} is not null and ${leads.email} <> ''` as any) : hasEmailParam === "false" ? (sql`${leads.email} is null or ${leads.email} = ''` as any) : undefined,
       emailDomain ? ilike(leads.email, `%@${emailDomain}`) : undefined,
       // Filter to exclude leads that are still in early stages
-      excludeEarlyStages ? sql`${leads.stage} NOT IN ('Did not Pickup', 'Did not Connect', 'Attempt to contact')` : undefined,
+              excludeEarlyStages ? sql`${leads.stage} NOT IN ('Did not Pickup', 'Did not Connect', 'Not contacted')` : undefined,
       // Call count filtering will be applied after fetching leads with call counts
     ].filter(Boolean) as any[];
 
@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
       name: name ?? null,
       email: email ?? null,
       source: source ?? null,
-      stage: stage ?? "Attempt to contact",
+              stage: stage ?? "Not contacted",
       score: typeof score === "number" ? score : undefined,
       tenantId: tenantId || null,
     } as any;

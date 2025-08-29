@@ -182,17 +182,17 @@ export default function LeadsPage() {
             onChange={(e) => setStage(e.target.value)}
           >
             <option value="">All Stages</option>
-            <option value="Attempt to contact">📞 Attempt to contact</option>
-            <option value="Qualified">⭐ Qualified</option>
-            <option value="Not interested">❌ Not interested</option>
-            <option value="Interested">🤝 Interested</option>
-            <option value="To be nurtured">🌱 To be nurtured</option>
-            <option value="Junk">🗑️ Junk</option>
-            <option value="Ask to call back">📞 Ask to call back</option>
-            <option value="Did not Pickup">📱 Did not Pickup</option>
-            <option value="Did not Connect">🔌 Did not Connect</option>
-            <option value="Customer">💼 Customer</option>
-            <option value="Other Language">🌐 Other Language</option>
+                            <option value="Not contacted">Not contacted</option>
+            <option value="Qualified"> Qualified</option>
+            <option value="Not interested"> Not interested</option>
+            <option value="Interested"> Interested</option>
+            <option value="To be nurtured"> To be nurtured</option>
+            <option value="Junk">Junk</option>
+            <option value="Ask to call back"> Ask to call back</option>
+            <option value="Did not Pickup">Did not Pickup</option>
+            <option value="Did not Connect"> Did not Connect</option>
+            <option value="Customer">Customer</option>
+            <option value="Other Language"> Other Language</option>
           </select>
           <select
             className="border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -409,7 +409,7 @@ export default function LeadsPage() {
                       <td className="px-4 py-3 text-slate-600">{r.source || "—"} {utm && `• ${utm}`}</td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2 py-0.5 text-xs">
-                          {r.stage || "Attempt to contact"}
+                          {r.stage || "Not contacted"}
                         </span>
                       </td>
                       <td className="px-4 py-3">{(sales.find((s) => s.code === (r.ownerId || ""))?.name) || r.ownerId || "—"}</td>

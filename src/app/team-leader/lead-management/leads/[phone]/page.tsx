@@ -376,7 +376,7 @@ export default function LeadDetailPage() {
         <div>
           <div className="text-sm text-slate-500"><Link href="/team-leader/lead-management/leads" className="hover:underline">Leads</Link> / {lead?.phone}</div>
           <h1 className="text-2xl font-semibold">{lead?.name || lead?.phone}</h1>
-          <div className="text-sm text-slate-600">{lead?.email || "—"} • Source: {lead?.source || "—"} • Stage: {lead?.stage || "Attempt to contact"}</div>
+                          <div className="text-sm text-slate-600">{lead?.email || "—"} • Source: {lead?.source || "—"} • Stage: {lead?.stage || "Not contacted"}</div>
         </div>
       </div>
 
@@ -533,13 +533,7 @@ export default function LeadDetailPage() {
               <User className="w-5 h-5 text-slate-600" />
               <h2 className="text-lg font-semibold text-slate-900">Lead Details</h2>
             </div>
-            <Link
-              href={`/call-form?leadPhone=${encodeURIComponent(lead.phone)}`}
-              className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
-              <PhoneIcon className="w-4 h-4" />
-              Log Call
-            </Link>
+           
           </div>
           
           <div className="space-y-4">
@@ -559,10 +553,10 @@ export default function LeadDetailPage() {
                     lead.stage === 'Qualified' || lead.stage === 'Interested' || lead.stage === 'Customer' ? 'text-green-800 bg-green-100 border border-green-200' :
                     lead.stage === 'To be nurtured' || lead.stage === 'Ask to call back' ? 'text-blue-800 bg-blue-100 border border-blue-200' :
                     lead.stage === 'Not interested' || lead.stage === 'Junk' || lead.stage === 'Did not Pickup' || lead.stage === 'Did not Connect' || lead.stage === 'Other Language' ? 'text-red-800 bg-red-100 border border-red-200' :
-                    lead.stage === 'Attempt to contact' ? 'text-gray-800 bg-gray-100 border border-gray-200' :
+                    lead.stage === 'Not contacted' ? 'text-gray-800 bg-gray-100 border border-gray-200' :
                     'text-slate-800 bg-slate-100 border border-slate-200'
                   }`}>
-                    {lead.stage || "Attempt to contact"}
+                    {lead.stage || "Not contacted"}
                   </span>
                 </dd>
               </div>
@@ -605,7 +599,7 @@ export default function LeadDetailPage() {
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select New Stage</option>
-                    <option value="Attempt to contact">Attempt to Contact</option>
+                    <option value="Not contacted">Not contacted</option>
                     <option value="Qualified">Qualified</option>
                     <option value="Not interested">Not Interested</option>
                     <option value="Interested">Interested</option>
@@ -712,90 +706,7 @@ export default function LeadDetailPage() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-200">
-              <div className="flex items-center gap-2 mb-3">
-                <Phone className="w-4 h-4 text-slate-600" />
-                <h3 className="text-sm font-medium text-slate-700">Quick Call Log</h3>
-              </div>
-              <div className="space-y-3">
-                <select
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={callStatus || lead.ownerId || ""}
-                  onChange={(e) => setCallStatus(e.target.value)}
-                >
-                  <option value="">Select Call Status</option>
-                  <option value="Qualified">⭐ Qualified</option>
-                  <option value="Interested">🤝 Interested</option>
-                  <option value="Customer">💼 Customer</option>
-                  <option value="Did not Pickup">📱 Did not Pickup</option>
-                  <option value="Did not Connect">🔌 Did not Connect</option>
-                  <option value="Not interested">❌ Not interested</option>
-                  <option value="Ask to call back">📞 Ask to call back</option>
-                  <option value="Other Language">🌐 Other Language</option>
-                </select>
-                <textarea
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  rows={3}
-                  placeholder="Call notes..."
-                  value={callNotes}
-                  onChange={(e) => setCallNotes(e.target.value)}
-                />
-                <button
-                  className="w-full rounded-lg bg-green-600 text-white px-4 py-2 text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
-                  disabled={!callStatus || !callNotes.trim() || loggingCall}
-                  onClick={async () => {
-                    try {
-                      setLoggingCall(true);
-                      const toastId = toast.loading("Logging call...");
-                      const currentUser = getCurrentUser();
-                      const actorId = currentUser?.code || "system";
-                      
-                      const res = await fetch("/api/calls", { 
-                        method: "POST", 
-                        headers: { "Content-Type": "application/json" }, 
-                        body: JSON.stringify({ 
-                          leadPhone: lead.phone,
-                          callStatus: callStatus,
-                          notes: callNotes.trim(),
-                          callType: "followup",
-                          callCompleted: "yes",
-                          ogaName: currentUser?.name || "system",
-                          currentStage: lead.stage,
-                          stageChanged: false
-                        }) 
-                      });
-                      if (res.ok) {
-                        toast.success("Call logged successfully", { id: toastId });
-                        setCallStatus("");
-                        setCallNotes("");
-                        // Refresh events to show the new call
-                        const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
-                        setEvents(d.events || []);
-                      } else {
-                        toast.error("Failed to log call", { id: toastId });
-                      }
-                    } finally {
-                      setLoggingCall(false);
-                    }
-                  }}
-                >
-                  {loggingCall && (
-                    <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
-                  )}
-                  <span>{loggingCall ? "Logging..." : "Log Call"}</span>
-                </button>
-                
-                <div className="text-center">
-                  <Link
-                    href={`/call-form?leadPhone=${encodeURIComponent(lead.phone)}`}
-                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                  >
-                    Use full call form with stage changes →
-                  </Link>
-                </div>
-              </div>
-            </div>
-
+          
             <div className="pt-4 border-t border-slate-200">
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="w-4 h-4 text-slate-600" />

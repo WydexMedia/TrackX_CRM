@@ -12,7 +12,7 @@ import ReportsPage from '@/app/team-leader/lead-management/reports/page';
 const leadsPayload = {
   success: true,
   rows: [
-    { phone: '1234567890', name: 'Alice', email: 'alice@example.com', source: 'CSV', stage: 'Attempt to contact', score: 10, ownerId: 'A1', createdAt: new Date().toISOString(), lastActivityAt: null, needFollowup: false },
+    { phone: '1234567890', name: 'Alice', email: 'alice@example.com', source: 'CSV', stage: 'Not contacted', score: 10, ownerId: 'A1', createdAt: new Date().toISOString(), lastActivityAt: null, needFollowup: false },
   ],
   total: 1,
 };

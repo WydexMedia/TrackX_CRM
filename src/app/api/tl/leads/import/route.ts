@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
           name: safeStr(r.name, 160),
           email: safeStr(r.email, 256),
           source: safeStr(r.source, 64),
-          stage: safeStr(r.stage, 48) || "Attempt to contact",
+          stage: safeStr(r.stage, 48) || "Not contacted",
           score: typeof r.score === "number" ? r.score : Number.isFinite(Number(r.score)) ? Number(r.score) : 0,
           tenantId: tenantId || null,
         };
