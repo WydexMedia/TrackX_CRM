@@ -18,7 +18,12 @@ import {
   MapPin,
   Target,
   Activity,
-  Funnel
+  Funnel,
+  PhoneCall,
+  CheckCircle,
+  Heart,
+  Star,
+  RotateCcw
 } from "lucide-react";
 
 function getUser() {
@@ -429,8 +434,19 @@ export default function TasksPage() {
   // Modal state
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const [leadsModalOpen, setLeadsModalOpen] = useState(false);
+  const [modalLeads, setModalLeads] = useState<Lead[]>([]);
+  const [modalTitle, setModalTitle] = useState("");
+  const [followUpsModalOpen, setFollowUpsModalOpen] = useState(false);
+  const [specialTasksModalOpen, setSpecialTasksModalOpen] = useState(false);
 
+  // Function to open leads modal with filtered leads
+  const openLeadsModal = (stage: string, title: string) => {
+    const filteredLeads = newLeads.filter((lead: Lead) => lead.stage === stage);
+    setModalLeads(filteredLeads);
+    setModalTitle(title);
+    setLeadsModalOpen(true);
+  };
 
   // Filter state for leads
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>("all");
@@ -701,9 +717,8 @@ export default function TasksPage() {
             Back to Dashboard
           </a>
         </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+{/* Stats Cards */}
+<div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-lg">
             <div className="flex items-center justify-between">
               <div>
@@ -711,16 +726,15 @@ export default function TasksPage() {
                 <p 
                   className="text-3xl font-bold text-blue-600 cursor-pointer hover:text-blue-700 transition-colors"
                   onClick={() => {
-                    setLeadStatusFilter("all");
-                    scrollToSpecialTasksSection();
+                    setSpecialTasksModalOpen(true);
                   }}
-                  title="Click to show all leads and scroll to special tasks section"
+                  title="Click to view special tasks"
                 >
                   {specialTasks.length}
                 </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <ListTodo size={24} className="text-blue-600" />
+                <Star size={24} className="text-blue-600" />
               </div>
             </div>
           </div>
@@ -730,18 +744,17 @@ export default function TasksPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Not Contacted</p>
                 <p 
-                  className="text-3xl font-bold text-red-600 cursor-pointer hover:text-red-700 transition-colors"
+                  className="text-3xl font-bold text-emerald-600 cursor-pointer hover:text-emerald-700 transition-colors"
                   onClick={() => {
-                    setLeadStatusFilter("Not contacted");
-                    scrollToLeadsSection();
+                    openLeadsModal("Not contacted", "Not Contacted Leads");
                   }}
-                  title="Click to show Not contacted leads and scroll to leads section"
+                  title="Click to view not contacted leads"
                 >
                   {newLeads.filter(lead => lead.stage === "Not contacted").length}
                 </p>
               </div>
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <UserPlus size={24} className="text-red-600" />
+                <Clock size={24} className="text-red-600" />
               </div>
             </div>
           </div>
@@ -753,16 +766,15 @@ export default function TasksPage() {
                 <p 
                   className="text-3xl font-bold text-amber-600 cursor-pointer hover:text-amber-700 transition-colors"
                   onClick={() => {
-                    setLeadStatusFilter("all");
-                    scrollToFollowUpsSection();
+                    setFollowUpsModalOpen(true);
                   }}
-                  title="Click to show all leads and scroll to follow-ups section"
+                  title="Click to view follow-up tasks"
                 >
                   {followUps.length}
                 </p>
               </div>
               <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
-                <Users size={24} className="text-amber-600" />
+                <RotateCcw size={24} className="text-amber-600" />
               </div>
             </div>
           </div>
@@ -770,24 +782,65 @@ export default function TasksPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">New Leads</p>
+                <p className="text-sm font-medium text-gray-600">Ask to call back</p>
                 <p 
                   className="text-3xl font-bold text-emerald-600 cursor-pointer hover:text-emerald-700 transition-colors"
                   onClick={() => {
-                    setLeadStatusFilter("all");
-                    scrollToLeadsSection();
+                    openLeadsModal("Ask to call back", "Ask to Call Back Leads");
                   }}
-                  title="Click to show all leads and scroll to leads section"
+                  title="Click to view ask to call back leads"
                 >
-                  {newLeads.length}
+                 {newLeads.filter(lead => lead.stage === "Ask to call back").length}
                 </p>
               </div>
               <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <UserPlus size={24} className="text-emerald-600" />
+                <PhoneCall size={24} className="text-emerald-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Qualified</p>
+                <p 
+                  className="text-3xl font-bold text-emerald-600 cursor-pointer hover:text-emerald-700 transition-colors"
+                  onClick={() => {
+                    openLeadsModal("Qualified", "Qualified Leads");
+                  }}
+                  title="Click to view qualified leads"
+                >
+                  {newLeads.filter(lead => lead.stage === "Qualified").length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <CheckCircle size={24} className="text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Interested</p>
+                <p 
+                  className="text-3xl font-bold text-emerald-600 cursor-pointer hover:text-emerald-700 transition-colors"
+                  onClick={() => {
+                    openLeadsModal("Interested", "Interested Leads");
+                  }}
+                  title="Click to view interested leads"
+                >
+                 {newLeads.filter(lead => lead.stage === "Interested").length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Heart size={24} className="text-purple-600" />
               </div>
             </div>
           </div>
         </div>
+
+        
 
         {/* Special Tasks Section */}
         <section className="mb-8" ref={specialTasksSectionRef}>
@@ -1190,6 +1243,249 @@ export default function TasksPage() {
         onStatusUpdate={load}
         onCallInitiated={handleCallInitiated}
       />
+
+      {/* Leads List Modal */}
+      {leadsModalOpen && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center p-4 z-50">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200/50">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-white/50">
+              <h2 className="text-xl font-bold text-gray-900">{modalTitle}</h2>
+              <button
+                onClick={() => setLeadsModalOpen(false)}
+                className="p-2 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-105"
+              >
+                <X size={20} className="text-red-500 hover:text-red-600" />
+              </button>
+            </div>
+
+            {/* Leads List */}
+            <div className="p-6">
+              {modalLeads.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No leads found for this stage.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {modalLeads.map((lead) => (
+                    <div key={lead.phone} className="group bg-white/95 backdrop-blur-sm rounded-2xl border border-emerald-100 p-4 shadow-lg hover:shadow-xl hover:border-emerald-300 transition-all duration-300">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-start space-x-4">
+                          <div className="bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-full w-12 h-12 flex items-center justify-center shadow-sm flex-shrink-0">
+                            <UserPlus size={16} className="text-emerald-700" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <button
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                setIsModalOpen(true);
+                                setLeadsModalOpen(false);
+                              }}
+                              className="text-left w-full"
+                            >
+                              <h4 className="font-bold text-gray-900 text-lg mb-1 hover:text-emerald-700 transition-colors cursor-pointer">
+                                {lead.name || lead.phone}
+                              </h4>
+                            </button>
+                            <div className="flex flex-wrap gap-2 text-sm text-gray-600">
+                              <a 
+                                href={`tel:${lead.phone}`} 
+                                onClick={() => handleCallInitiated(lead)}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium text-xs"
+                              >
+                                <Phone size={12} />
+                                {lead.phone}
+                              </a>
+                              {lead.source && (
+                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full font-medium text-xs">
+                                  <Funnel size={12} />
+                                  {lead.source}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const phoneNumber = lead.phone?.replace(/\D/g, '');
+                              const whatsappUrl = `https://wa.me/${phoneNumber}`;
+                              window.open(whatsappUrl, '_blank');
+                            }}
+                            className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                            title="Open WhatsApp"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.465 3.488"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Follow-ups Modal */}
+      {followUpsModalOpen && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center p-4 z-50">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200/50">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-white/50">
+              <h2 className="text-xl font-bold text-gray-900">Follow-up Tasks</h2>
+              <button
+                onClick={() => setFollowUpsModalOpen(false)}
+                className="p-2 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-105"
+              >
+                <X size={20} className="text-red-500 hover:text-red-600" />
+              </button>
+            </div>
+
+            {/* Follow-ups List */}
+            <div className="p-6">
+              {followUps.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No follow-up tasks found.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {followUps.map((item) => (
+                    <div key={item.task.id} className="group bg-white/95 backdrop-blur-sm rounded-2xl border border-amber-100 p-4 shadow-lg hover:shadow-xl hover:border-amber-300 transition-all duration-300">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-start space-x-4">
+                          <div className="bg-gradient-to-br from-amber-100 to-amber-200 rounded-full w-12 h-12 flex items-center justify-center shadow-sm flex-shrink-0">
+                            <Clock size={16} className="text-amber-700" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <button
+                              onClick={() => {
+                                setSelectedLead(item.lead);
+                                setIsModalOpen(true);
+                                setFollowUpsModalOpen(false);
+                              }}
+                              className="text-left w-full"
+                            >
+                              <h4 className="font-bold text-gray-900 text-lg mb-1 hover:text-amber-700 transition-colors cursor-pointer">
+                                {item.lead.name || item.lead.phone}
+                              </h4>
+                            </button>
+                            <p className="text-sm text-gray-600 mb-2">{item.task.title}</p>
+                            <div className="flex flex-wrap gap-2 text-sm text-gray-600">
+                              <a 
+                                href={`tel:${item.lead.phone}`} 
+                                onClick={() => handleCallInitiated(item.lead)}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium text-xs"
+                              >
+                                <Phone size={12} />
+                                {item.lead.phone}
+                              </a>
+                              {item.task.dueAt && (
+                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full font-medium text-xs">
+                                  <Clock size={12} />
+                                  Due: {new Date(item.task.dueAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const phoneNumber = item.lead.phone?.replace(/\D/g, '');
+                              const whatsappUrl = `https://wa.me/${phoneNumber}`;
+                              window.open(whatsappUrl, '_blank');
+                            }}
+                            className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                            title="Open WhatsApp"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.465 3.488"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Special Tasks Modal */}
+      {specialTasksModalOpen && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center p-4 z-50">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200/50">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-white/50">
+              <h2 className="text-xl font-bold text-gray-900">Special Tasks</h2>
+              <button
+                onClick={() => setSpecialTasksModalOpen(false)}
+                className="p-2 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-105"
+              >
+                <X size={20} className="text-red-500 hover:text-red-600" />
+              </button>
+            </div>
+
+            {/* Special Tasks List */}
+            <div className="p-6">
+              {specialTasks.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No special tasks found.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {specialTasks.map((task) => (
+                    <div key={task.id} className="group bg-white/95 backdrop-blur-sm rounded-2xl border border-blue-100 p-4 shadow-lg hover:shadow-xl hover:border-blue-300 transition-all duration-300">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-start space-x-4">
+                          <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-full w-12 h-12 flex items-center justify-center shadow-sm flex-shrink-0">
+                            <ListTodo size={16} className="text-blue-700" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-gray-900 text-lg mb-1">
+                              {task.title}
+                            </h4>
+                            <div className="flex flex-wrap gap-2 text-sm text-gray-600">
+                              {task.type && (
+                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full font-medium text-xs">
+                                  <Target size={12} />
+                                  {task.type}
+                                </span>
+                              )}
+                              {task.priority && (
+                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-medium text-xs ${
+                                  task.priority === 'high' ? 'bg-red-100 text-red-700' :
+                                  task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-green-100 text-green-700'
+                                }`}>
+                                  <Star size={12} />
+                                  {task.priority}
+                                </span>
+                              )}
+                              {task.dueAt && (
+                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full font-medium text-xs">
+                                  <Clock size={12} />
+                                  Due: {new Date(task.dueAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
