@@ -182,10 +182,17 @@ export default function LeadsPage() {
             onChange={(e) => setStage(e.target.value)}
           >
             <option value="">All Stages</option>
-            <option value="NEW">🆕 New</option>
-            <option value="ATTEMPTED">📞 Attempted</option>
-            <option value="CONNECTED">✅ Connected</option>
-            <option value="QUALIFIED">⭐ Qualified</option>
+            <option value="Attempt to contact">📞 Attempt to contact</option>
+            <option value="Qualified">⭐ Qualified</option>
+            <option value="Not interested">❌ Not interested</option>
+            <option value="Interested">🤝 Interested</option>
+            <option value="To be nurtured">🌱 To be nurtured</option>
+            <option value="Junk">🗑️ Junk</option>
+            <option value="Ask to call back">📞 Ask to call back</option>
+            <option value="Did not Pickup">📱 Did not Pickup</option>
+            <option value="Did not Connect">🔌 Did not Connect</option>
+            <option value="Customer">💼 Customer</option>
+            <option value="Other Language">🌐 Other Language</option>
           </select>
           <select
             className="border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
