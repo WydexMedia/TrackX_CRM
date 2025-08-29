@@ -126,9 +126,7 @@ export default function LeadsPage() {
     { id: "recent", name: "Recent (7 days)", icon: Sparkles, filters: { dateRange: "last7days" } },
     { id: "no-email", name: "No Email", icon: Mail, filters: { hasEmail: false } },
     { id: "customers", name: "Customers", icon: Crown, filters: { stage: "Customer" } },
-    { id: "meta-leads", name: "Meta Leads", icon: Facebook, filters: { source: "META" } },
-    { id: "google-leads", name: "Google Leads", icon: Search, filters: { source: "GOOGLE" } },
-    { id: "high-score", name: "High Score (80+)", icon: Star, filters: { scoreMin: "80" } },
+  
   ];
 
   const allViews = [...defaultViews, ...customViews];
@@ -494,7 +492,7 @@ export default function LeadsPage() {
                           }`}
                         >
                           <div className={`flex items-center ${sidebarCollapsed ? '' : 'gap-3'}`}>
-                            <IconComponent className="w-5 h-5 flex-shrink-0" />
+                            <IconComponent className="w-4 h-4 flex-shrink-0" />
                           </div>
                         </button>
                       </TooltipTrigger>
@@ -547,7 +545,9 @@ export default function LeadsPage() {
                       className={`w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-2'}`}
                       onClick={() => setShowAdd(true)}
                     >
-                      <Plus className="w-4 h-4" />
+                      <span className="inline-flex text-white">
+                        <Plus className="w-4 h-4 stroke-white" strokeWidth={2.5} />
+                      </span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
@@ -560,7 +560,9 @@ export default function LeadsPage() {
                       className={`w-full bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-2'}`}
                       onClick={() => setShowImport(true)}
                     >
-                      <Upload className="w-4 h-4" />
+                      <span className="inline-flex text-white">
+                        <Upload className="w-4 h-4 stroke-white" strokeWidth={2.5} />
+                      </span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
@@ -574,14 +576,18 @@ export default function LeadsPage() {
                   className={`w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-2'}`}
                   onClick={() => setShowAdd(true)}
                 >
-                  <Plus className="w-4 h-4" />
+                  <span className="inline-flex text-white">
+                    <Plus className="w-5 h-5 stroke-white" strokeWidth={2.5} />
+                  </span>
                   {!sidebarCollapsed && "Add Lead"}
                 </button>
                 <button 
                   className={`w-full bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-2'}`}
                   onClick={() => setShowImport(true)}
                 >
-                  <Upload className="w-4 h-4" />
+                  <span className="inline-flex text-white">
+                    <Upload className="w-5 h-5 stroke-white" strokeWidth={2.5} />
+                  </span>
                   {!sidebarCollapsed && "Import"}
                 </button>
               </>
