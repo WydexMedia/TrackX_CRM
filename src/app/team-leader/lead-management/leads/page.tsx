@@ -377,7 +377,7 @@ export default function LeadsPage() {
                 <th className="text-left px-4 py-3">Owner</th>
                 <th className="text-left px-4 py-3">Score</th>
                 <th className="text-left px-4 py-3">Last Activity</th>
-                <th className="text-left px-4 py-3">Age</th>
+                <th className="text-left px-4 py-3">Date and Time</th>
                 <th className="text-left px-4 py-3">SLA</th>
                 <th className="text-left px-4 py-3">Actions</th>
               </tr>
@@ -415,7 +415,7 @@ export default function LeadsPage() {
                       <td className="px-4 py-3">{(sales.find((s) => s.code === (r.ownerId || ""))?.name) || r.ownerId || "—"}</td>
                       <td className="px-4 py-3">{r.score ?? 0}</td>
                       <td className="px-4 py-3">{r.lastActivityAt ? new Date(r.lastActivityAt).toLocaleString() : "—"}</td>
-                      <td className="px-4 py-3">{r.createdAt ? `${Math.floor((Date.now() - new Date(r.createdAt).getTime())/3600000)}h` : "—"}</td>
+                      <td className="px-4 py-3">{r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}</td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-xs">OK</span>
                       </td>
