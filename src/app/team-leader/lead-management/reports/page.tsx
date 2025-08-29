@@ -663,8 +663,12 @@ function LeadsReports() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.phone} className="border-t">
-                <td className="px-4 py-2">{r.phone}</td>
+              <tr 
+                key={r.phone} 
+                className="border-t hover:bg-slate-50 cursor-pointer transition-colors"
+                onClick={() => window.location.href = `/team-leader/lead-management/leads/${encodeURIComponent(r.phone)}`}
+              >
+                <td className="px-4 py-2 text-blue-600 underline">{r.phone}</td>
                 <td className="px-4 py-2">{r.name || '—'}</td>
                 <td className="px-4 py-2">{r.email || '—'}</td>
                 <td className="px-4 py-2">{r.source || '—'}</td>
