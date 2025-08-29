@@ -253,6 +253,119 @@ function LeadsReports() {
 
   return (
     <div className="space-y-4">
+
+<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Daily Conversions Card */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800">Daily Conversions</h3>
+                <p className="text-sm text-slate-600">Recent daily trends</p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3 max-h-64 overflow-auto custom-scrollbar">
+            {agg?.trends?.daily?.length ? agg.trends.daily.map((d: any) => (
+              <div key={String(d.period)} className="flex items-center justify-between p-3 bg-white/70 rounded-xl hover:bg-white/90 transition-colors">
+                <span className="text-slate-700 font-medium">{new Date(d.period).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold text-blue-600">{d.conversions}</span>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                </div>
+              </div>
+            )) : (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <p className="text-slate-500 font-medium">No data available</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Weekly Conversions Card */}
+        <div className="bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800">Weekly Conversions</h3>
+                <p className="text-sm text-slate-600">Weekly performance</p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3 max-h-64 overflow-auto custom-scrollbar">
+            {agg?.trends?.weekly?.length ? agg.trends.weekly.map((d: any) => (
+              <div key={String(d.period)} className="flex items-center justify-between p-3 bg-white/70 rounded-xl hover:bg-white/90 transition-colors">
+                <span className="text-slate-700 font-medium">Week of {new Date(d.period).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold text-emerald-600">{d.conversions}</span>
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                </div>
+              </div>
+            )) : (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <p className="text-slate-500 font-medium">No data available</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Monthly Conversions Card */}
+        <div className="bg-gradient-to-br from-purple-50 to-violet-100 border border-purple-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800">Monthly Conversions</h3>
+                <p className="text-sm text-slate-600">Monthly overview</p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3 max-h-64 overflow-auto custom-scrollbar">
+            {agg?.trends?.monthly?.length ? agg.trends.monthly.map((d: any) => (
+              <div key={String(d.period)} className="flex items-center justify-between p-3 bg-white/70 rounded-xl hover:bg-white/90 transition-colors">
+                <span className="text-slate-700 font-medium">{new Date(d.period).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold text-purple-600">{d.conversions}</span>
+                  <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                </div>
+              </div>
+            )) : (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <p className="text-slate-500 font-medium">No data available</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       <div className="bg-white border border-slate-200 rounded-2xl p-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
@@ -505,92 +618,6 @@ function LeadsReports() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">Calls per Lead (Top 10)</div>
-          <div className="space-y-2 text-sm">
-            {agg?.callsPerLead?.length ? agg.callsPerLead.map((c: any) => (
-              <div key={c.leadPhone} className="flex justify-between">
-                <span className="text-slate-600">{c.leadPhone}</span>
-                <span className="font-medium">{c.started} started / {c.completed} completed</span>
-              </div>
-            )) : <div className="text-slate-500">No data</div>}
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">Assigned vs Converted (Top 20)</div>
-          <div className="space-y-2 text-sm">
-            {agg?.assignedVsConverted?.length ? agg.assignedVsConverted.map((r: any) => (
-              <div key={r.ownerId} className="flex justify-between">
-                <span className="text-slate-600">{ownersMap[r.ownerId] || r.ownerId}</span>
-                <span className="font-medium">{r.converted}/{r.assigned}</span>
-              </div>
-            )) : <div className="text-slate-500">No data</div>}
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">Average Response Time</div>
-          <div className="text-2xl font-semibold">
-            {agg ? `${Math.round((agg.avgResponseMs || 0)/1000)}s` : '—'}
-          </div>
-          <div className="text-xs text-slate-500 mt-1">Time from lead creation to first call</div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">Top Call Count by Stage Changes</div>
-          <div className="space-y-2 text-sm max-h-64 overflow-auto">
-            {agg?.callCountTop?.length ? agg.callCountTop.map((c: any) => (
-              <div key={c.leadPhone} className="flex justify-between">
-                <span className="text-slate-600">{c.leadPhone}</span>
-                <span className="font-medium">{c.stageChanges} changes</span>
-              </div>
-            )) : <div className="text-slate-500">No data</div>}
-          </div>
-        </div>
-        {agg?.sortByDurationEnabled && (
-          <div className="bg-white border border-slate-200 rounded-2xl p-4">
-            <div className="text-sm font-medium mb-3">Duration Sorting</div>
-            <div className="text-xs text-slate-500">
-              ⚠️ Exotel integration pending - will sort by actual call duration
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">Daily Conversions</div>
-          <div className="space-y-1 text-sm max-h-64 overflow-auto">
-            {agg?.trends?.daily?.length ? agg.trends.daily.map((d: any) => (
-              <div key={String(d.period)} className="flex justify-between">
-                <span className="text-slate-600">{new Date(d.period).toLocaleDateString()}</span>
-                <span className="font-medium">{d.conversions}</span>
-              </div>
-            )) : <div className="text-slate-500">No data</div>}
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">Weekly Conversions</div>
-          <div className="space-y-1 text-sm max-h-64 overflow-auto">
-            {agg?.trends?.weekly?.length ? agg.trends.weekly.map((d: any) => (
-              <div key={String(d.period)} className="flex justify-between">
-                <span className="text-slate-600">{new Date(d.period).toLocaleDateString()}</span>
-                <span className="font-medium">{d.conversions}</span>
-              </div>
-            )) : <div className="text-slate-500">No data</div>}
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">Monthly Conversions</div>
-          <div className="space-y-1 text-sm max-h-64 overflow-auto">
-            {agg?.trends?.monthly?.length ? agg.trends.monthly.map((d: any) => (
-              <div key={String(d.period)} className="flex justify-between">
-                <span className="text-slate-600">{new Date(d.period).toLocaleDateString(undefined,{ year: 'numeric', month: 'short' })}</span>
-                <span className="font-medium">{d.conversions}</span>
-              </div>
-            )) : <div className="text-slate-500">No data</div>}
-          </div>
-        </div>
-      </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 text-sm">
