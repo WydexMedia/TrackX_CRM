@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AddLeadModal, ImportLeadsModal } from "./AddLeadModals";
+import toast from "react-hot-toast";
 
 interface LeadRow {
   phone: string;
@@ -31,6 +32,9 @@ export default function LeadsPage() {
   const [newLead, setNewLead] = useState<{ phone: string; name?: string; email?: string; source?: string; stage?: string; score?: number }>({ phone: "" });
   const [importing, setImporting] = useState(false);
   const [sales, setSales] = useState<Array<{ code: string; name: string }>>([]);
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [assignee, setAssignee] = useState<string>("");
+  const [autoAssigning, setAutoAssigning] = useState(false);
   
   // Advanced filter states
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -115,6 +119,21 @@ export default function LeadsPage() {
       })
       .catch(() => {});
   }, []);
+
+  const phones = Object.keys(selected).filter((k) => selected[k]);
+
+  // Helper: get current user code for actorId
+  const getActorId = () => {
+    if (typeof window === 'undefined') return undefined;
+    try {
+      const raw = localStorage.getItem("user");
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      return parsed?.code as string | undefined;
+    } catch {
+      return undefined;
+    }
+  };
 
   return (
     <div className="p-6">
@@ -366,11 +385,109 @@ export default function LeadsPage() {
         )}
       </div>
 
+      {/* Bulk Actions from Queue */}
+      <div className="flex items-center gap-2 mb-3">
+        <select
+          className="border border-slate-300 rounded-md px-2 py-2 text-sm"
+          value={assignee}
+          onChange={(e) => setAssignee(e.target.value)}
+        >
+          <option value="">Select salesperson…</option>
+          {sales.map((s) => (
+            <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
+          ))}
+        </select>
+        <button
+          className="rounded-xl bg-slate-800 text-white px-3 py-2 text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          disabled={phones.length === 0 || !assignee}
+          onClick={async () => {
+            const actorId = getActorId();
+            const res = await fetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "assign", phones, ownerId: assignee, actorId }) });
+            if (res.ok) toast.success(`Assigned ${phones.length} lead(s)`); else toast.error("Assignment failed");
+            setSelected({});
+            const d = await fetch(`/api/tl/leads?${params}`).then((r) => r.json());
+            setRows(d.rows || []);
+          }}
+        >Assign</button>
+        <button
+          className="rounded-xl cursor-pointer bg-emerald-600 text-white px-3 py-2 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+          disabled={phones.length === 0 || autoAssigning}
+          onClick={async () => {
+            try {
+              setAutoAssigning(true);
+              const actorId = getActorId();
+              const res = await fetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "autoAssign", phones, actorId }) });
+              if (res.ok) {
+                const data = await res.json();
+                toast.success(`Auto-assigned ${phones.length} lead(s) via ${data.rule}`);
+              } else {
+                toast.error("Auto-assign failed");
+              }
+              setSelected({});
+              const d = await fetch(`/api/tl/leads?${params}`).then((r) => r.json());
+              setRows(d.rows || []);
+            } finally {
+              setAutoAssigning(false);
+            }
+          }}
+        >
+          {autoAssigning && (
+            <span className="inline-block  h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
+          )}
+          <span>{autoAssigning ? "Auto-Assigning…" : "Auto-Assign (Active Rule)"}</span>
+        </button>
+        <button
+          className="rounded-xl bg-cyan-600 text-white px-3 py-2 text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          disabled={phones.length === 0}
+          onClick={async () => {
+            const title = prompt("Task title:") || "Follow up";
+            const dueAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+            
+            // Show assignee selection
+            const assigneePrompt = `Select assignee (enter number 1-${sales.length}):\n${sales.map((s, i) => `${i + 1}. ${s.name} (${s.code})`).join('\n')}`;
+            const assigneeIndex = prompt(assigneePrompt);
+            
+            if (!assigneeIndex || isNaN(Number(assigneeIndex))) {
+              toast.error("Please select a valid assignee");
+              return;
+            }
+            
+            const selectedIndex = Number(assigneeIndex) - 1;
+            if (selectedIndex < 0 || selectedIndex >= sales.length) {
+              toast.error("Invalid assignee selection");
+              return;
+            }
+            
+            const selectedAssignee = sales[selectedIndex];
+            
+            const res = await fetch("/api/tl/queue", { 
+              method: "POST", 
+              headers: { "Content-Type": "application/json" }, 
+              body: JSON.stringify({ 
+                action: "bulkTask", 
+                phones, 
+                title, 
+                dueAt,
+                ownerId: selectedAssignee.code 
+              }) 
+            });
+            if (res.ok) toast.success(`Tasks created and assigned to ${selectedAssignee.name}`); 
+            else toast.error("Failed to create tasks");
+            setSelected({});
+          }}
+        >Create Tasks</button>
+      </div>
+
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
+                <th className="px-4 py-3"><input type="checkbox" onChange={(e) => {
+                  const next: Record<string, boolean> = {};
+                  if (e.target.checked) rows.forEach((r) => (next[r.phone] = true));
+                  setSelected(next);
+                }} /></th>
                 <th className="text-left px-4 py-3">Lead</th>
                 <th className="text-left px-4 py-3">Source/UTM</th>
                 <th className="text-left px-4 py-3">Stage</th>
@@ -385,13 +502,13 @@ export default function LeadsPage() {
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={9}>
+                  <td className="px-4 py-6 text-slate-500" colSpan={10}>
                     Loading...
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={9}>
+                  <td className="px-4 py-6 text-slate-500" colSpan={10}>
                     No leads found
                   </td>
                 </tr>
@@ -400,6 +517,7 @@ export default function LeadsPage() {
                   const utm = r.utm ? Object.entries(r.utm).map(([k, v]) => `${k}=${v}`).join(" ") : "";
                   return (
                     <tr key={r.phone} className="hover:bg-slate-50">
+                      <td className="px-4 py-3"><input type="checkbox" checked={!!selected[r.phone]} onChange={(e) => setSelected({ ...selected, [r.phone]: e.target.checked })} /></td>
                       <td className="px-4 py-3">
                         <a href={`/team-leader/lead-management/leads/${encodeURIComponent(r.phone)}`} className="font-medium text-blue-600 hover:underline">{r.name || "—"}</a>
                         <div className="text-xs text-slate-500">

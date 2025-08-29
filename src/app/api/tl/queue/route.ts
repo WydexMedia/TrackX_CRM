@@ -45,13 +45,27 @@ export async function POST(req: NextRequest) {
     const { action } = body || {};
     const { tenantId, tenantSubdomain } = await getTenantContextFromRequest(req as any);
     if (action === "assign") {
-      const { phones, ownerId } = body as { phones: string[]; ownerId: string };
+      const { phones, ownerId, actorId } = body as { phones: string[]; ownerId: string; actorId?: string };
       if (!Array.isArray(phones) || !ownerId) {
         return new Response(JSON.stringify({ success: false, error: "phones[] and ownerId required" }), { status: 400 });
       }
+      // Capture previous owners before update
+      const existing = await db
+        .select({ phone: leads.phone, ownerId: leads.ownerId })
+        .from(leads)
+        .where(tenantId ? and(inArray(leads.phone, phones), eq(leads.tenantId, tenantId)) : inArray(leads.phone, phones));
+      const prevOwnerByPhone = new Map(existing.map((r: any) => [r.phone, r.ownerId as string | null]));
+
       await db.update(leads).set({ ownerId }).where(tenantId ? and(inArray(leads.phone, phones), eq(leads.tenantId, tenantId)) : inArray(leads.phone, phones));
-      // timeline events
-      const eventValues = phones.map((p) => ({ leadPhone: p, type: "ASSIGNED", data: { ownerId }, at: new Date(), tenantId: tenantId || null }));
+      // timeline events with from → to and actorId
+      const eventValues = phones.map((p) => ({
+        leadPhone: p,
+        type: "ASSIGNED",
+        data: { from: (prevOwnerByPhone.get(p) || "unassigned"), to: ownerId, actorId: actorId || "system" },
+        at: new Date(),
+        actorId: actorId || null,
+        tenantId: tenantId || null,
+      }));
       if (eventValues.length) {
         await db.insert(leadEvents).values(eventValues as any);
       }
@@ -74,7 +88,7 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ success: true }), { status: 201 });
     }
     if (action === "autoAssign") {
-      const { phones } = body as { phones: string[] };
+      const { phones, actorId } = body as { phones: string[]; actorId?: string };
       if (!Array.isArray(phones) || phones.length === 0) {
         return new Response(JSON.stringify({ success: false, error: "phones[] required" }), { status: 400 });
       }
@@ -190,7 +204,16 @@ export async function POST(req: NextRequest) {
         for (const [owner, list] of Object.entries(byOwner)) {
           await db.update(leads).set({ ownerId: owner }).where(tenantId ? and(inArray(leads.phone, list), eq(leads.tenantId, tenantId)) : inArray(leads.phone, list));
         }
-        const eventsToInsert = phones.map((p) => ({ leadPhone: p, type: "ASSIGNED", data: { ownerId: mapping.get(p) }, at: new Date(), tenantId: tenantId || null }));
+        // Log events with from → to and actorId
+        const prevOwnerByPhone = new Map<string, string | null>((rows as any[]).map((r) => [r.phone, r.ownerId || null]));
+        const eventsToInsert = phones.map((p) => ({ 
+          leadPhone: p, 
+          type: "ASSIGNED", 
+          data: { from: (prevOwnerByPhone.get(p) || "unassigned"), to: mapping.get(p), actorId: actorId || "system" }, 
+          at: new Date(), 
+          actorId: actorId || null, 
+          tenantId: tenantId || null 
+        }));
         if (eventsToInsert.length) await db.insert(leadEvents).values(eventsToInsert as any);
         await mongo.close();
         return new Response(JSON.stringify({ success: true, rule: rule }), { status: 200 });
@@ -203,10 +226,23 @@ export async function POST(req: NextRequest) {
         if (!byOwner[owner]) byOwner[owner] = [];
         byOwner[owner].push(p);
       });
+      // Capture previous owners for all phones before updates
+      const existingBefore = await db
+        .select({ phone: leads.phone, ownerId: leads.ownerId })
+        .from(leads)
+        .where(tenantId ? and(inArray(leads.phone, phones), eq(leads.tenantId, tenantId)) : inArray(leads.phone, phones));
+      const prevOwnerByPhone = new Map(existingBefore.map((r: any) => [r.phone, r.ownerId as string | null]));
       for (const [owner, list] of Object.entries(byOwner)) {
         await db.update(leads).set({ ownerId: owner }).where(tenantId ? and(inArray(leads.phone, list), eq(leads.tenantId, tenantId)) : inArray(leads.phone, list));
       }
-      const eventsToInsert = phones.map((p, i) => ({ leadPhone: p, type: "ASSIGNED", data: { ownerId: assignCodes[i % assignCodes.length] }, at: new Date(), tenantId: tenantId || null }));
+      const eventsToInsert = phones.map((p, i) => ({ 
+        leadPhone: p, 
+        type: "ASSIGNED", 
+        data: { from: (prevOwnerByPhone.get(p) || "unassigned"), to: assignCodes[i % assignCodes.length], actorId: actorId || "system" }, 
+        at: new Date(), 
+        actorId: actorId || null, 
+        tenantId: tenantId || null 
+      }));
       if (eventsToInsert.length) await db.insert(leadEvents).values(eventsToInsert as any);
       await mongo.close();
       return new Response(JSON.stringify({ success: true, rule: rule }), { status: 200 });
