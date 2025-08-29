@@ -49,6 +49,12 @@ export default function LeadsPage() {
   // Custom confirm for bulk delete
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
+  // Create task modal states
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [taskTitle, setTaskTitle] = useState("Follow up");
+  const [taskAssignee, setTaskAssignee] = useState("");
+  const [creatingTask, setCreatingTask] = useState(false);
+
   const params = useMemo(() => {
     const sp = new URLSearchParams();
     if (q) sp.set("q", q);
@@ -152,6 +158,45 @@ export default function LeadsPage() {
       toast.error("Failed to delete leads");
     } finally {
       setConfirmDeleteOpen(false);
+    }
+  };
+
+  const performCreateTasks = async () => {
+    if (!taskTitle.trim() || !taskAssignee) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    
+    try {
+      setCreatingTask(true);
+      const dueAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      
+      const res = await fetch("/api/tl/queue", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ 
+          action: "bulkTask", 
+          phones, 
+          title: taskTitle,
+          dueAt,
+          ownerId: taskAssignee 
+        }) 
+      });
+      
+      if (res.ok) {
+        const selectedAssignee = sales.find(s => s.code === taskAssignee);
+        toast.success(`Tasks created and assigned to ${selectedAssignee?.name || taskAssignee}`);
+        setSelected({});
+        setCreateTaskOpen(false);
+        setTaskTitle("Follow up");
+        setTaskAssignee("");
+      } else {
+        toast.error("Failed to create tasks");
+      }
+    } catch {
+      toast.error("Failed to create tasks");
+    } finally {
+      setCreatingTask(false);
     }
   };
 
@@ -459,42 +504,7 @@ export default function LeadsPage() {
         <button
           className="rounded-xl bg-cyan-600 text-white px-3 py-2 text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
           disabled={phones.length === 0}
-          onClick={async () => {
-            const title = prompt("Task title:") || "Follow up";
-            const dueAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-            
-            // Show assignee selection
-            const assigneePrompt = `Select assignee (enter number 1-${sales.length}):\n${sales.map((s, i) => `${i + 1}. ${s.name} (${s.code})`).join('\n')}`;
-            const assigneeIndex = prompt(assigneePrompt);
-            
-            if (!assigneeIndex || isNaN(Number(assigneeIndex))) {
-              toast.error("Please select a valid assignee");
-              return;
-            }
-            
-            const selectedIndex = Number(assigneeIndex) - 1;
-            if (selectedIndex < 0 || selectedIndex >= sales.length) {
-              toast.error("Invalid assignee selection");
-              return;
-            }
-            
-            const selectedAssignee = sales[selectedIndex];
-            
-            const res = await fetch("/api/tl/queue", { 
-              method: "POST", 
-              headers: { "Content-Type": "application/json" }, 
-              body: JSON.stringify({ 
-                action: "bulkTask", 
-                phones, 
-                title, 
-                dueAt,
-                ownerId: selectedAssignee.code 
-              }) 
-            });
-            if (res.ok) toast.success(`Tasks created and assigned to ${selectedAssignee.name}`); 
-            else toast.error("Failed to create tasks");
-            setSelected({});
-          }}
+          onClick={() => setCreateTaskOpen(true)}
         >Create Tasks</button>
         <button
           className="rounded-xl bg-red-600 text-white px-3 py-2 text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
@@ -521,6 +531,59 @@ export default function LeadsPage() {
         </div>
       </div>
 
+      {/* Create Task modal */}
+      <div className={`${createTaskOpen ? '' : 'hidden'} fixed inset-0 z-50 flex items-center justify-center bg-black/40`}>
+        <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+          <h3 className="text-lg font-semibold text-slate-900">Create Tasks</h3>
+          <p className="text-sm text-slate-600 mt-1">Create tasks for {phones.length} selected lead(s).</p>
+          
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Task Title</label>
+              <input
+                type="text"
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                placeholder="Enter task title..."
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Assign to</label>
+              <select
+                value={taskAssignee}
+                onChange={(e) => setTaskAssignee(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+              >
+                <option value="">Select assignee...</option>
+                {sales.map((s) => (
+                  <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <button
+              className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg text-sm cursor-pointer"
+              onClick={() => {
+                setCreateTaskOpen(false);
+                setTaskTitle("Follow up");
+                setTaskAssignee("");
+              }}
+            >Cancel</button>
+            <button
+              className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm cursor-pointer disabled:opacity-50"
+              onClick={performCreateTasks}
+              disabled={creatingTask || !taskTitle.trim() || !taskAssignee}
+            >
+              {creatingTask ? "Creating..." : "Create Tasks"}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -539,19 +602,19 @@ export default function LeadsPage() {
                 <th className="text-left px-4 py-3">Last Activity</th>
                 <th className="text-left px-4 py-3">Date and Time</th>
                 <th className="text-left px-4 py-3">SLA</th>
-                <th className="text-left px-4 py-3">Actions</th>
+                
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={10}>
+                  <td className="px-4 py-6 text-slate-500" colSpan={9}>
                     Loading...
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={10}>
+                  <td className="px-4 py-6 text-slate-500" colSpan={9}>
                     No leads found
                   </td>
                 </tr>
@@ -579,9 +642,6 @@ export default function LeadsPage() {
                       <td className="px-4 py-3">{r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}</td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-xs">OK</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <button className="text-blue-600 hover:underline">Preview</button>
                       </td>
                     </tr>
                   );
