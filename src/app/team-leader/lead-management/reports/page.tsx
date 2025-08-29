@@ -13,6 +13,8 @@ export default function ReportsPage() {
 }
 
 function LeadsReports() {
+  console.log('Debug - LeadsReports component rendering');
+  
   const [loading, setLoading] = React.useState(false);
   const [rows, setRows] = React.useState<any[]>([]);
   const [total, setTotal] = React.useState(0);
@@ -27,15 +29,30 @@ function LeadsReports() {
   const [showAdvanced, setShowAdvanced] = React.useState(false);
 
   // Advanced filter state
-  const [needFollowup, setNeedFollowup] = React.useState<string>(""); // '', 'true', 'false'
+
   const [hasEmail, setHasEmail] = React.useState<string>(""); // '', 'true', 'false'
   const [emailDomain, setEmailDomain] = React.useState<string>("");
   const [scoreMin, setScoreMin] = React.useState<string>("");
   const [scoreMax, setScoreMax] = React.useState<string>("");
   const [lastActivity, setLastActivity] = React.useState<string>("");
+  // New call-related filters
+  const [connected, setConnected] = React.useState(false);
+  const [callCountMin, setCallCountMin] = React.useState<string>("");
+  const [callCountMax, setCallCountMax] = React.useState<string>("");
+  const [sortByDuration, setSortByDuration] = React.useState(false);
+  // Filter to exclude leads in early/unsuccessful stages
+  const [excludeEarlyStages, setExcludeEarlyStages] = React.useState(false);
+  // Sort by number of calls (stage changes)
+  const [sortByCallCount, setSortByCallCount] = React.useState(false);
 
   // Saved quick filters
   const [savedFilters, setSavedFilters] = React.useState<Array<{ id: string; name: string; params: Record<string,string> }>>([]);
+  
+  // Debug: Log when component mounts
+  React.useEffect(() => {
+    console.log('Debug - LeadsReports component mounted');
+  }, []);
+  
   React.useEffect(() => {
     try {
       const raw = localStorage.getItem("tl_saved_filters");
@@ -52,12 +69,18 @@ function LeadsReports() {
     if (stage) params.stage = stage;
     if (owner) params.owner = owner;
     if (dateRange) params.dateRange = dateRange;
-    if (needFollowup) params.needFollowup = needFollowup;
+
     if (hasEmail) params.hasEmail = hasEmail;
     if (emailDomain) params.emailDomain = emailDomain;
     if (scoreMin) params.scoreMin = scoreMin;
     if (scoreMax) params.scoreMax = scoreMax;
     if (lastActivity) params.lastActivity = lastActivity;
+    if (connected) params.connected = 'true';
+    if (callCountMin) params.callCountMin = callCountMin;
+    if (callCountMax) params.callCountMax = callCountMax;
+    if (sortByDuration) params.sortByDuration = 'true';
+    if (excludeEarlyStages) params.excludeEarlyStages = 'true';
+    if (sortByCallCount) params.sortByCallCount = 'true';
     const name = prompt("Name this filter:")?.trim();
     if (!name) return;
     const id = `${Date.now()}`;
@@ -69,12 +92,18 @@ function LeadsReports() {
     setStage(f.params.stage || "");
     setOwner(f.params.owner || "");
     setDateRange(f.params.dateRange || "last30days");
-    setNeedFollowup(f.params.needFollowup || "");
+    
     setHasEmail(f.params.hasEmail || "");
     setEmailDomain(f.params.emailDomain || "");
     setScoreMin(f.params.scoreMin || "");
     setScoreMax(f.params.scoreMax || "");
     setLastActivity(f.params.lastActivity || "");
+    setConnected(f.params.connected === 'true');
+    setCallCountMin(f.params.callCountMin || "");
+    setCallCountMax(f.params.callCountMax || "");
+    setSortByDuration(f.params.sortByDuration === 'true');
+    setExcludeEarlyStages(f.params.excludeEarlyStages === 'true');
+    setSortByCallCount(f.params.sortByCallCount === 'true');
     setOffset(0);
   };
   const removeSavedFilter = (id: string) => {
@@ -82,29 +111,52 @@ function LeadsReports() {
   };
 
   React.useEffect(() => {
+    console.log('Debug - useEffect running with params:', { q, stage, owner, dateRange, limit, offset });
     setLoading(true);
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (stage) params.set("stage", stage);
     if (owner) params.set("owner", owner);
     if (dateRange) params.set("dateRange", dateRange);
-    if (needFollowup) params.set("needFollowup", needFollowup);
+    
     if (hasEmail) params.set("hasEmail", hasEmail);
     if (emailDomain) params.set("emailDomain", emailDomain);
     if (scoreMin) params.set("scoreMin", scoreMin);
     if (scoreMax) params.set("scoreMax", scoreMax);
     if (lastActivity) params.set("lastActivity", lastActivity);
+    if (connected) params.set("connected", "true");
+    if (callCountMin) params.set("callCountMin", callCountMin);
+    if (callCountMax) params.set("callCountMax", callCountMax);
+    if (sortByDuration) params.set("sortByDuration", "true");
+    if (excludeEarlyStages) params.set("excludeEarlyStages", "true");
+    if (sortByCallCount) params.set("sortByCallCount", "true");
     params.set("limit", String(limit));
     params.set("offset", String(offset));
+
+    console.log('Debug - Calling API with params:', {
+      excludeEarlyStages,
+      sortByCallCount,
+      connected,
+      allParams: params.toString()
+    });
+    console.log('Debug - Calling API with URL:', `/api/tl/leads?${params.toString()}`);
 
     Promise.all([
       fetch(`/api/tl/leads?${params.toString()}`).then(r => r.json()),
       fetch(`/api/tl/users`).then(r => r.json()),
-      fetch(`/api/tl/reports?dateRange=${encodeURIComponent(dateRange)}`).then(r => r.json())
+      fetch(`/api/tl/reports?dateRange=${encodeURIComponent(dateRange)}&sortByDuration=${sortByDuration}`).then(r => r.json())
     ]).then(([leadsRes, usersRes, reportsRes]) => {
+      console.log('Debug - API responses received:');
+      console.log('  leadsRes:', leadsRes);
+      console.log('  usersRes:', usersRes);
+      console.log('  reportsRes:', reportsRes);
+      
       if (leadsRes?.success) {
+        console.log('Debug - Setting leads data:', leadsRes.rows?.length, 'rows, total:', leadsRes.total);
         setRows(leadsRes.rows || []);
         setTotal(leadsRes.total || 0);
+      } else {
+        console.log('Debug - Leads API failed or returned no success:', leadsRes);
       }
       if (usersRes?.success) {
         setOwnersMap(usersRes.users || {});
@@ -112,12 +164,20 @@ function LeadsReports() {
       if (reportsRes?.success) {
         setAgg(reportsRes);
       }
+    }).catch(error => {
+      console.error('Debug - API call error:', error);
+      console.error('Debug - Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      setLoading(false);
     }).finally(() => setLoading(false));
-  }, [q, stage, owner, dateRange, needFollowup, hasEmail, emailDomain, scoreMin, scoreMax, lastActivity, limit, offset]);
+  }, [q, stage, owner, dateRange, hasEmail, emailDomain, scoreMin, scoreMax, lastActivity, connected, callCountMin, callCountMax, sortByDuration, excludeEarlyStages, sortByCallCount, limit, offset]);
 
   const exportCsv = () => {
     const header = [
-      'Phone','Name','Email','Source','Stage','Score','Owner','Created At','Last Activity','Need Followup','Followup Date','Followup Notes'
+      'Phone','Name','Email','Source','Stage','Score','Owner','Created At','Last Activity','Call Count'
     ];
     const lines = rows.map(r => {
       const ownerName = ownersMap[r.ownerId || ''] || (r.ownerId || '');
@@ -131,9 +191,7 @@ function LeadsReports() {
         ownerName,
         r.createdAt ? new Date(r.createdAt).toISOString() : '',
         r.lastActivityAt ? new Date(r.lastActivityAt).toISOString() : '',
-        r.needFollowup ? 'Yes' : 'No',
-        r.followupDate ? new Date(r.followupDate).toISOString() : '',
-        (r.followupNotes || '').toString().replace(/\n/g, ' ')
+        String(r.callCount || 0)
       ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
     });
     const csv = [header.join(','), ...lines].join('\n');
@@ -181,6 +239,15 @@ function LeadsReports() {
     const end = Math.min(totalPages, currentPage + 2);
     const pages: number[] = [];
     for (let p = start; p <= end; p++) pages.push(p);
+    
+    // Debug logging
+    console.log('Debug - Current state values:');
+    console.log('  rows length:', rows.length);
+    console.log('  total:', total);
+    console.log('  offset:', offset);
+    console.log('  limit:', limit);
+    console.log('  pagination:', { currentPage, totalPages, from, to, pages });
+    
     return { currentPage, totalPages, from, to, pages };
   }, [offset, limit, total]);
 
@@ -195,18 +262,18 @@ function LeadsReports() {
           <div>
             <label className="block text-xs text-slate-500 mb-1">Stage</label>
             <select className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={stage} onChange={e=>{setOffset(0); setStage(e.target.value);}}>
-              <option value="">All</option>
+              <option value="">All Stages</option>
               <option value="Attempt to contact">📞 Attempt to contact</option>
               <option value="Qualified">⭐ Qualified</option>
+              <option value="Not interested">❌ Not interested</option>
               <option value="Interested">🤝 Interested</option>
               <option value="To be nurtured">🌱 To be nurtured</option>
-              <option value="Not interested">❌ Not interested</option>
+              <option value="Junk">🗑️ Junk</option>
               <option value="Ask to call back">📞 Ask to call back</option>
               <option value="Did not Pickup">📱 Did not Pickup</option>
               <option value="Did not Connect">🔌 Did not Connect</option>
               <option value="Customer">💼 Customer</option>
               <option value="Other Language">🌐 Other Language</option>
-              <option value="Junk">🗑️ Junk</option>
             </select>
           </div>
           <div>
@@ -230,7 +297,7 @@ function LeadsReports() {
             </select>
           </div>
           <div className="ml-auto flex gap-2">
-            <button onClick={()=>{setQ(""); setStage(""); setOwner(""); setDateRange("last30days"); setNeedFollowup(""); setHasEmail(""); setEmailDomain(""); setScoreMin(""); setScoreMax(""); setLastActivity(""); setOffset(0);}} className="px-4 py-2 border border-slate-300 rounded-lg text-sm cursor-pointer">Reset</button>
+            <button onClick={()=>{setQ(""); setStage(""); setOwner(""); setDateRange("last30days"); setHasEmail(""); setEmailDomain(""); setScoreMin(""); setScoreMax(""); setLastActivity(""); setConnected(false); setCallCountMin(""); setCallCountMax(""); setSortByDuration(false); setExcludeEarlyStages(false); setSortByCallCount(false); setOffset(0);}} className="px-4 py-2 border border-slate-300 rounded-lg text-sm cursor-pointer">Reset</button>
             <button onClick={()=>setShowAdvanced(v=>!v)} className="px-4 py-2 border border-slate-300 rounded-lg text-sm cursor-pointer">{showAdvanced ? 'Hide Advanced' : 'Advanced Filters'}</button>
             <button onClick={saveCurrentFilter} className="px-4 py-2 border border-blue-600 text-blue-700 rounded-lg text-sm cursor-pointer">Save Filter</button>
             <button onClick={exportCsv} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm cursor-pointer">Download CSV</button>
@@ -239,14 +306,6 @@ function LeadsReports() {
 
         {showAdvanced && (
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-needFollowup">Need Follow-up</label>
-              <select id="adv-needFollowup" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={needFollowup} onChange={e=>{setOffset(0); setNeedFollowup(e.target.value);}}>
-                <option value="">Any</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
-            </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-hasEmail">Has Email</label>
               <select id="adv-hasEmail" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={hasEmail} onChange={e=>{setOffset(0); setHasEmail(e.target.value);}}>
@@ -276,6 +335,42 @@ function LeadsReports() {
                 <option value="lastweek">Last week</option>
                 <option value="lastmonth">Last month</option>
                 <option value="noactivity">No activity</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-connected">Connected Stages</label>
+              <select id="adv-connected" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={connected ? "true" : ""} onChange={e=>{setOffset(0); setConnected(e.target.value === "true");}}>
+                <option value="">All stages</option>
+                <option value="true">Connected only (Interested, Qualified, Customer, etc.)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-callCountMin">Call Count Min</label>
+              <input id="adv-callCountMin" type="number" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={callCountMin} onChange={e=>{setOffset(0); setCallCountMin(e.target.value);}} placeholder="0" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-callCountMax">Call Count Max</label>
+              <input id="adv-callCountMax" type="number" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={callCountMax} onChange={e=>{setOffset(0); setCallCountMax(e.target.value);}} placeholder="10" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-sortByDuration">Sort by Duration</label>
+              <select id="adv-sortByDuration" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={sortByDuration ? "true" : ""} onChange={e=>{setOffset(0); setSortByDuration(e.target.value === "true");}}>
+                <option value="">Default sorting</option>
+                <option value="true">By call duration (Exotel integration pending)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-excludeEarlyStages">Successful Connections</label>
+              <select id="adv-excludeEarlyStages" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={excludeEarlyStages ? "true" : ""} onChange={e=>{setOffset(0); setExcludeEarlyStages(e.target.value === "true");}}>
+                <option value="">All leads</option>
+                <option value="true">Only leads with successful connections (excludes: Did not Pickup, Did not Connect, Attempt to contact)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-sortByCallCount">Sort by Call Count</label>
+              <select id="adv-sortByCallCount" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={sortByCallCount ? "true" : ""} onChange={e=>{setOffset(0); setSortByCallCount(e.target.value === "true");}}>
+                <option value="">Default sorting</option>
+                <option value="true">By number of stage changes (most active leads first)</option>
               </select>
             </div>
           </div>
@@ -321,6 +416,93 @@ function LeadsReports() {
             {ownerSummary.length === 0 && <div className="text-slate-500 text-sm">No data</div>}
           </div>
         </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="text-sm font-medium mb-3">Connected Leads Filter</div>
+          <select 
+            className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2" 
+            value={connected ? "true" : ""} 
+            onChange={e=>{
+              console.log('Connected filter changed to:', e.target.value === "true");
+              setOffset(0); 
+              setConnected(e.target.value === "true");
+            }}
+          >
+            <option value="">All leads</option>
+            <option value="true">Number Of Connected Calls</option>
+          </select>
+          <div className="text-xs text-slate-500">
+            {connected ? 'Filtering connected leads only' : 'Showing all leads'}
+          </div>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="text-sm font-medium mb-3">Successful Connections Filter</div>
+          <select 
+            className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2" 
+            value={excludeEarlyStages ? "true" : ""} 
+            onChange={e=>{
+              console.log('ExcludeEarlyStages filter changed to:', e.target.value === "true");
+              setOffset(0); 
+              setExcludeEarlyStages(e.target.value === "true");
+            }}
+          >
+            <option value="">All leads</option>
+            <option value="true">Only leads with successful connections (excludes: Did not Pickup, Did not Connect, Attempt to contact)</option>
+          </select>
+          <div className="text-xs text-slate-500">
+            {excludeEarlyStages ? 'Filtering successful connections only' : 'Showing all leads'}
+          </div>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="text-sm font-medium mb-3">Call Count Filter</div>
+          <div className="flex gap-2 mb-2">
+            <input 
+              type="number" 
+              className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm" 
+              placeholder="Min calls" 
+              value={callCountMin} 
+              onChange={e=>{
+                console.log('CallCountMin changed to:', e.target.value);
+                setOffset(0); 
+                setCallCountMin(e.target.value);
+              }}
+            />
+            <input 
+              type="number" 
+              className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm" 
+              placeholder="Max calls" 
+              value={callCountMax} 
+              onChange={e=>{
+                console.log('CallCountMax changed to:', e.target.value);
+                setOffset(0); 
+                setCallCountMax(e.target.value);
+              }}
+            />
+          </div>
+          <div className="text-xs text-slate-500">
+            {callCountMin || callCountMax ? 
+              `Filtering leads with ${callCountMin || '0'}-${callCountMax || '∞'} calls` : 
+              'Showing leads with any number of calls'
+            }
+          </div>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="text-sm font-medium mb-3">Sorting Options</div>
+          <select 
+            className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2" 
+            value={sortByCallCount ? "true" : ""} 
+            onChange={e=>{
+              console.log('SortByCallCount filter changed to:', e.target.value === "true");
+              setOffset(0); 
+              setSortByCallCount(e.target.value === "true");
+            }}
+          >
+            <option value="">Sort by Date (newest first)</option>
+            <option value="true">Sort by Call Count (most active first)</option>
+          </select>
+          <div className="text-xs text-slate-500">
+            {sortByCallCount ? 'Sorting by number of stage changes' : 'Sorting by creation date'}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -353,6 +535,25 @@ function LeadsReports() {
           </div>
           <div className="text-xs text-slate-500 mt-1">Time from lead creation to first call</div>
         </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="text-sm font-medium mb-3">Top Call Count by Stage Changes</div>
+          <div className="space-y-2 text-sm max-h-64 overflow-auto">
+            {agg?.callCountTop?.length ? agg.callCountTop.map((c: any) => (
+              <div key={c.leadPhone} className="flex justify-between">
+                <span className="text-slate-600">{c.leadPhone}</span>
+                <span className="font-medium">{c.stageChanges} changes</span>
+              </div>
+            )) : <div className="text-slate-500">No data</div>}
+          </div>
+        </div>
+        {agg?.sortByDurationEnabled && (
+          <div className="bg-white border border-slate-200 rounded-2xl p-4">
+            <div className="text-sm font-medium mb-3">Duration Sorting</div>
+            <div className="text-xs text-slate-500">
+              ⚠️ Exotel integration pending - will sort by actual call duration
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -429,7 +630,8 @@ function LeadsReports() {
               <th className="px-4 py-2 text-left">Owner</th>
               <th className="px-4 py-2 text-left">Created</th>
               <th className="px-4 py-2 text-left">Last Activity</th>
-              <th className="px-4 py-2 text-left">Follow-up</th>
+
+              <th className="px-4 py-2 text-left">Call Count</th>
             </tr>
           </thead>
           <tbody>
@@ -444,7 +646,16 @@ function LeadsReports() {
                 <td className="px-4 py-2">{ownersMap[r.ownerId || ''] || r.ownerId || '—'}</td>
                 <td className="px-4 py-2">{r.createdAt ? new Date(r.createdAt).toLocaleString() : '—'}</td>
                 <td className="px-4 py-2">{r.lastActivityAt ? new Date(r.lastActivityAt).toLocaleString() : '—'}</td>
-                <td className="px-4 py-2">{r.needFollowup ? 'Yes' : 'No'}</td>
+
+                <td className="px-4 py-2">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    (r.callCount || 0) > 5 ? 'bg-green-100 text-green-800' :
+                    (r.callCount || 0) > 2 ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-slate-100 text-slate-800'
+                  }`}>
+                    {r.callCount || 0}
+                  </span>
+                </td>
               </tr>
             ))}
             {!loading && rows.length === 0 && (

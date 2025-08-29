@@ -23,6 +23,10 @@ export async function GET(req: NextRequest) {
     const needFollowupParam = searchParams.get("needFollowup");
     const hasEmailParam = searchParams.get("hasEmail");
     const emailDomain = searchParams.get("emailDomain") || undefined; // like gmail.com
+    const excludeEarlyStages = searchParams.get("excludeEarlyStages") === "true";
+    const sortByCallCount = searchParams.get("sortByCallCount") === "true";
+    const callCountMin = searchParams.get("callCountMin") ? Number(searchParams.get("callCountMin")) : undefined;
+    const callCountMax = searchParams.get("callCountMax") ? Number(searchParams.get("callCountMax")) : undefined;
 
     // Date filters: explicit from/to or derived from dateRange
     let from = searchParams.get("from") || undefined;
@@ -97,6 +101,9 @@ export async function GET(req: NextRequest) {
       needFollowupParam === "true" ? eq(leads.needFollowup, true) : needFollowupParam === "false" ? eq(leads.needFollowup, false) : undefined,
       hasEmailParam === "true" ? (sql`${leads.email} is not null and ${leads.email} <> ''` as any) : hasEmailParam === "false" ? (sql`${leads.email} is null or ${leads.email} = ''` as any) : undefined,
       emailDomain ? ilike(leads.email, `%@${emailDomain}`) : undefined,
+      // Filter to exclude leads that are still in early stages
+      excludeEarlyStages ? sql`${leads.stage} NOT IN ('Did not Pickup', 'Did not Connect', 'Attempt to contact')` : undefined,
+      // Call count filtering will be applied after fetching leads with call counts
     ].filter(Boolean) as any[];
 
     // Last activity window
@@ -126,13 +133,46 @@ export async function GET(req: NextRequest) {
     const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
     const scopedWhere = tenantId ? (where ? and(where, eq(leads.tenantId, tenantId)) : eq(leads.tenantId, tenantId)) : where as any;
 
-    const rows = await db
-      .select()
+    let rows;
+    
+    // Always fetch leads with call count for filtering and display
+    const leadsWithCallCount = await db
+      .select({
+        lead: leads,
+        callCount: sql<number>`(
+          SELECT COUNT(*) 
+          FROM lead_events 
+          WHERE lead_events.lead_phone = leads.phone 
+          AND lead_events.type = 'STAGE_CHANGE'
+          AND lead_events.tenant_id = leads.tenant_id
+        )`
+      })
       .from(leads)
       .where(scopedWhere as any)
-      .orderBy(desc(leads.createdAt))
+      .orderBy(sortByCallCount ? 
+        desc(sql`(
+          SELECT COUNT(*) 
+          FROM lead_events 
+          WHERE lead_events.lead_phone = leads.phone 
+          AND lead_events.type = 'STAGE_CHANGE'
+          AND lead_events.tenant_id = leads.tenant_id
+        )`) : 
+        desc(leads.createdAt)
+      )
       .limit(limit)
       .offset(offset);
+    
+    rows = leadsWithCallCount.map(row => ({ ...row.lead, callCount: row.callCount }));
+    
+    // Apply call count filtering if specified
+    if (callCountMin || callCountMax) {
+      rows = rows.filter(row => {
+        const callCount = row.callCount || 0;
+        const min = callCountMin ? Number(callCountMin) : 0;
+        const max = callCountMax ? Number(callCountMax) : Infinity;
+        return callCount >= min && callCount <= max;
+      });
+    }
 
     const totalRow = await db
       .select({ c: sql<number>`count(*)` })
