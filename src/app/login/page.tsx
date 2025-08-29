@@ -346,23 +346,44 @@ export default function LoginAndDashboard() {
   }
 
   // Logout handler
-  const handleLogout = () => {
+  const handleLogout = async () => {
     try {
       const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
       const parsed = stored ? JSON.parse(stored) : null;
       const sessionId = parsed?.sessionId;
+      
       if (sessionId) {
-        fetch('/api/users/logout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId })
-        }).catch(() => {});
+        console.log('🔐 Logging out with sessionId:', sessionId);
+        try {
+          // Wait for the logout API to complete
+          const response = await fetch('/api/users/logout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId })
+          });
+          
+          const result = await response.json();
+          if (response.ok && result.success) {
+            console.log('✅ Session successfully revoked');
+          } else {
+            console.warn('⚠️ Logout API warning:', result.error || 'Unknown error');
+          }
+        } catch (error) {
+          console.error('❌ Error calling logout API:', error);
+        }
+      } else {
+        console.log('ℹ️ No sessionId found, skipping API call');
       }
-    } catch {}
+    } catch (error) {
+      console.error('❌ Error in logout handler:', error);
+    }
+    
+    // Clean up local storage and state after API call
     localStorage.removeItem("user");
     setUser(null);
     setCode("");
     setPassword("");
+    console.log('🧹 Local logout completed');
   };
 
   // Show dashboard only

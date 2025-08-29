@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+ import { MongoClient } from 'mongodb';
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
 
 const uri = process.env.MONGODB_URI;

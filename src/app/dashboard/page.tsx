@@ -252,7 +252,37 @@ export default function DashboardPage() {
     );
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      const parsed = stored ? JSON.parse(stored) : null;
+      const sessionId = parsed?.sessionId;
+      
+      if (sessionId) {
+        console.log('🔐 Logging out with sessionId:', sessionId);
+        try {
+          // Wait for the logout API to complete
+          const response = await fetch('/api/users/logout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId })
+          });
+          
+          const result = await response.json();
+          if (response.ok && result.success) {
+            console.log('✅ Session successfully revoked');
+          } else {
+            console.warn('⚠️ Logout API warning:', result.error || 'Unknown error');
+          }
+        } catch (error) {
+          console.error('❌ Error calling logout API:', error);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error in logout handler:', error);
+    }
+    
+    // Clean up local storage and navigate after API call
     if (typeof window !== "undefined") localStorage.removeItem("user");
     router.push("/login");
   };
