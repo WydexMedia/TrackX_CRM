@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RefreshCw, Plus, Trash2, AlertTriangle, Wifi, WifiOff, Clock, CheckCircle, XCircle } from "lucide-react";
+import { RefreshCw, Plus, Trash2, AlertTriangle, Wifi, WifiOff, Clock, CheckCircle, XCircle, Search, Edit, User, Infinity, Plug, BookOpen, FileText, CreditCard, FileSpreadsheet, Mail, MessageSquare, Calendar, Facebook, Zap, Cloud, CircleDollarSign } from "lucide-react";
 
 interface IntegrationRow {
   id: number;
@@ -10,6 +10,8 @@ interface IntegrationRow {
   status: string;
   lastSyncAt: string | null;
   metrics24h?: any;
+  email?: string;
+  level?: string;
 }
 
 interface AddIntegrationModalProps {
@@ -27,12 +29,25 @@ interface ConfirmDeleteModalProps {
 }
 
 const PROVIDER_OPTIONS = [
-  { value: "META_LEAD_ADS", label: "Meta Lead Ads" },
-  { value: "CSV_UPLOAD", label: "CSV Upload" },
-  { value: "GOOGLE_SHEETS", label: "Google Sheets" },
-  { value: "SALESFORCE", label: "Salesforce" },
-  { value: "HUBSPOT", label: "HubSpot" },
-  { value: "ZAPIER", label: "Zapier" },
+  { value: "META_LEAD_ADS", label: "Meta Lead Ads", icon: Facebook },
+  { value: "CSV_UPLOAD", label: "CSV Upload", icon: FileSpreadsheet },
+  { value: "GOOGLE_SHEETS", label: "Google Sheets", icon: FileSpreadsheet },
+  { value: "SALESFORCE", label: "Salesforce", icon: Cloud },
+  { value: "HUBSPOT", label: "HubSpot", icon: CircleDollarSign },
+  { value: "ZAPIER", label: "Zapier", icon: Zap },
+];
+
+const BROWSE_INTEGRATIONS = [
+  { name: "Zoho Books", description: "Connect your Zoho Books account to Trackx", icon: BookOpen, provider: "ZOHO_BOOKS" },
+  { name: "Wafeq", description: "Connect your Wafeq account to Trackx", icon: FileText, provider: "WAFEQ" },
+  { name: "Telr", description: "Connect your Telr account to Trackx", icon: CreditCard, provider: "TELR" },
+  { name: "Forms", description: "Connect your Forms account to Trackx, set webhook to https://api.Trackx.com/api/webhooks/forms", icon: FileSpreadsheet, provider: "FORMS" },
+  { name: "Zoho Mail", description: "Connect your Zoho Mail account to Trackx", icon: Mail, provider: "ZOHO_MAIL" },
+  { name: "Gmail", description: "Connect your Gmail account to Trackx", icon: Mail, provider: "GMAIL" },
+  { name: "Outlook", description: "Connect your Outlook account to Trackx", icon: Mail, provider: "OUTLOOK" },
+  { name: "WhatsApp", description: "Connect your WhatsApp Business account to Trackx", icon: MessageSquare, provider: "WHATSAPP" },
+  { name: "Facebook Leads", description: "Connect your Facebook account to Trackx to get leads", icon: Facebook, provider: "FACEBOOK_LEADS" },
+  { name: "Calendly", description: "Connect Calendly to auto-create activities from bookings.", icon: Calendar, provider: "CALENDLY" },
 ];
 
 function AddIntegrationModal({ isOpen, onClose, onAdd }: AddIntegrationModalProps) {
@@ -197,68 +212,112 @@ function ConfirmDeleteModal({ isOpen, onClose, onConfirm, integration, isDeletin
   );
 }
 
-function StatusIcon({ status }: { status: string }) {
-  switch (status.toLowerCase()) {
-    case "active":
-    case "connected":
-      return <CheckCircle className="w-4 h-4 text-green-500" />;
-    case "error":
-    case "failed":
-      return <XCircle className="w-4 h-4 text-red-500" />;
-    case "syncing":
-      return <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />;
-    default:
-      return <Clock className="w-4 h-4 text-slate-400" />;
-  }
-}
-
-function IntegrationCard({ integration, onDelete }: { integration: IntegrationRow; onDelete: (integration: IntegrationRow) => void }) {
-  const getProviderLabel = (provider: string) => {
-    const option = PROVIDER_OPTIONS.find(opt => opt.value === provider);
-    return option?.label || provider;
+function ConnectedIntegrationCard({ integration, onDelete, onEdit }: { 
+  integration: IntegrationRow; 
+  onDelete: (integration: IntegrationRow) => void;
+  onEdit: (integration: IntegrationRow) => void;
+}) {
+  const getProviderIcon = (provider: string) => {
+    switch (provider.toLowerCase()) {
+      case 'gmail':
+        return <Mail className="w-5 h-5 text-red-500" />;
+      case 'meta_lead_ads':
+        return <Facebook className="w-5 h-5 text-blue-600" />;
+      case 'csv_upload':
+        return <FileSpreadsheet className="w-5 h-5 text-green-600" />;
+      case 'google_sheets':
+        return <FileSpreadsheet className="w-5 h-5 text-green-600" />;
+      case 'salesforce':
+        return <Cloud className="w-5 h-5 text-blue-500" />;
+      case 'hubspot':
+        return <CircleDollarSign className="w-5 h-5 text-orange-500" />;
+      case 'zapier':
+        return <Zap className="w-5 h-5 text-orange-500" />;
+      case 'zoho_books':
+        return <BookOpen className="w-5 h-5 text-blue-600" />;
+      case 'wafeq':
+        return <FileText className="w-5 h-5 text-blue-500" />;
+      case 'telr':
+        return <CreditCard className="w-5 h-5 text-green-600" />;
+      case 'forms':
+        return <FileSpreadsheet className="w-5 h-5 text-purple-600" />;
+      case 'zoho_mail':
+        return <Mail className="w-5 h-5 text-blue-600" />;
+      case 'outlook':
+        return <Mail className="w-5 h-5 text-blue-600" />;
+      case 'whatsapp':
+        return <MessageSquare className="w-5 h-5 text-green-500" />;
+      case 'facebook_leads':
+        return <Facebook className="w-5 h-5 text-blue-600" />;
+      case 'calendly':
+        return <Calendar className="w-5 h-5 text-blue-600" />;
+      default:
+        return <Plug className="w-5 h-5 text-slate-500" />;
+    }
   };
 
-  const formatLastSync = (lastSyncAt: string | null) => {
-    if (!lastSyncAt) return "Never";
-    const date = new Date(lastSyncAt);
-    const now = new Date();
-    const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffHours < 1) return "Just now";
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffHours < 168) return `${Math.floor(diffHours / 24)}d ago`;
-    return date.toLocaleDateString();
+  const getProviderLabel = (provider: string) => {
+    const option = PROVIDER_OPTIONS.find(opt => opt.value === provider);
+    return option?.label || provider.replace(/_/g, ' ');
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div className="flex-1">
-          <h3 className="font-semibold text-slate-900 mb-1">{integration.name}</h3>
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <StatusIcon status={integration.status} />
-            <span className="capitalize">{integration.status}</span>
-          </div>
+    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+          {getProviderIcon(integration.provider)}
         </div>
+        <div>
+          <h3 className="font-semibold text-slate-900">{integration.name}</h3>
+          <p className="text-sm text-slate-600">{integration.email || getProviderLabel(integration.provider)}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <button className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-lg text-xs font-medium flex items-center gap-1">
+          <User className="w-3 h-3" />
+          {integration.level || "User level"}
+        </button>
+        <button
+          onClick={() => onEdit(integration)}
+          className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg transition-colors"
+          title="Edit integration"
+        >
+          <Edit className="w-4 h-4" />
+        </button>
         <button
           onClick={() => onDelete(integration)}
-          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           title="Delete integration"
         >
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
-      
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-500">Provider</span>
-          <span className="text-slate-700 font-medium">{getProviderLabel(integration.provider)}</span>
+    </div>
+  );
+}
+
+function BrowseIntegrationCard({ integration, onConnect }: { 
+  integration: typeof BROWSE_INTEGRATIONS[0];
+  onConnect: (integration: typeof BROWSE_INTEGRATIONS[0]) => void;
+}) {
+  const IconComponent = integration.icon;
+  
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+          <IconComponent className="w-4 h-4 text-slate-600" />
         </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-500">Last sync</span>
-          <span className="text-slate-700">{formatLastSync(integration.lastSyncAt)}</span>
-        </div>
+        <button 
+          onClick={() => onConnect(integration)}
+          className="px-3 py-1 bg-green-600 text-white rounded-lg text-xs font-medium flex items-center gap-1 hover:bg-green-700 transition-colors"
+        >
+          <Plug className="w-3 h-3" />
+          Connect
+        </button>
       </div>
+      <h3 className="font-semibold text-slate-900 mb-1">{integration.name}</h3>
+      <p className="text-sm text-slate-600 leading-relaxed">{integration.description}</p>
     </div>
   );
 }
@@ -272,6 +331,13 @@ export default function IntegrationsPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<IntegrationRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIntegration, setSelectedIntegration] = useState<typeof BROWSE_INTEGRATIONS[0] | null>(null);
+
+  const filteredBrowseIntegrations = BROWSE_INTEGRATIONS.filter(integration =>
+    integration.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    integration.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   async function refresh() {
     const isInitialLoad = rows.length === 0;
@@ -309,7 +375,6 @@ export default function IntegrationsPage() {
       throw new Error(errorData?.error || "Failed to add integration");
     }
 
-    // Show success notification (you'd need to implement toast or notification system)
     refresh();
   }
 
@@ -344,31 +409,22 @@ export default function IntegrationsPage() {
     setConfirmOpen(true);
   }
 
+  function handleEditIntegration(integration: IntegrationRow) {
+    // TODO: Implement edit functionality
+    console.log("Edit integration:", integration);
+  }
+
+  function handleConnectIntegration(integration: typeof BROWSE_INTEGRATIONS[0]) {
+    setSelectedIntegration(integration);
+    setAddModalOpen(true);
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Integrations</h1>
-          <p className="text-slate-600 mt-1">Connect your data sources and telephony services</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={refresh}
-            disabled={refreshing}
-            className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
-            title="Refresh integrations"
-          >
-            <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
-          </button>
-          <button
-            onClick={() => setAddModalOpen(true)}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add Integration
-          </button>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Integrations</h1>
+        <p className="text-slate-600">Connect your favorite apps to Trackx.</p>
       </div>
 
       {/* Error Message */}
@@ -387,43 +443,90 @@ export default function IntegrationsPage() {
         </div>
       )}
 
-      {/* Content */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="flex items-center gap-3 text-slate-600">
-            <RefreshCw className="w-5 h-5 animate-spin" />
-            <span>Loading integrations...</span>
-          </div>
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="text-center py-12">
-          <WifiOff className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-900 mb-2">No integrations yet</h3>
-          <p className="text-slate-600 mb-6">Get started by connecting your first data source or telephony service.</p>
+      {/* Connected Section */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-slate-900">Connected</h2>
           <button
-            onClick={() => setAddModalOpen(true)}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-2 rounded-xl text-sm font-medium inline-flex items-center gap-2 transition-colors"
+            onClick={refresh}
+            disabled={refreshing}
+            className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+            title="Refresh integrations"
           >
-            <Plus className="w-4 h-4" />
-            Add Your First Integration
+            <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
           </button>
         </div>
-      ) : (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {rows.map((integration) => (
-            <IntegrationCard
-              key={integration.id}
+        <div className="bg-slate-50 rounded-xl p-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex items-center gap-3 text-slate-600">
+                <RefreshCw className="w-5 h-5 animate-spin" />
+                <span>Loading integrations...</span>
+              </div>
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="text-center py-8">
+              <WifiOff className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-slate-500 text-sm">No connected integrations</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rows.map((integration) => (
+                <ConnectedIntegrationCard
+                  key={integration.id}
+                  integration={integration}
+                  onDelete={openDeleteConfirm}
+                  onEdit={handleEditIntegration}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Browse Integrations Section */}
+      <div>
+        <h2 className="text-xl font-semibold text-slate-900 mb-2">Browse Integrations</h2>
+        <p className="text-slate-600 mb-4">Discover new integrations.</p>
+        
+        {/* Search Bar */}
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+          />
+        </div>
+
+        {/* Integration Grid */}
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredBrowseIntegrations.map((integration, index) => (
+            <BrowseIntegrationCard
+              key={index}
               integration={integration}
-              onDelete={openDeleteConfirm}
+              onConnect={handleConnectIntegration}
             />
           ))}
         </div>
-      )}
+
+        {filteredBrowseIntegrations.length === 0 && searchQuery && (
+          <div className="text-center py-12">
+            <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-slate-500">No integrations found matching "{searchQuery}"</p>
+          </div>
+        )}
+      </div>
 
       {/* Modals */}
       <AddIntegrationModal
         isOpen={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
+        onClose={() => {
+          setAddModalOpen(false);
+          setSelectedIntegration(null);
+        }}
         onAdd={handleAddIntegration}
       />
 
