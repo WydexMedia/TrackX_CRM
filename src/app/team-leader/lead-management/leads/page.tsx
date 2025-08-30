@@ -31,7 +31,8 @@ import {
   Pin,
   Users,
   Globe,
-  FileText
+  FileText,
+  Cylinder,
 } from "lucide-react";
 
 interface LeadRow {
@@ -318,7 +319,7 @@ export default function LeadsPage() {
     const newView: ListView = {
       id: `custom-${Date.now()}`,
       name: newViewName,
-      icon: Pin,
+      icon: Cylinder,
       filters: { 
         ...currentViewData.filters,
         ...(showAdvancedFilters ? {
@@ -419,12 +420,19 @@ export default function LeadsPage() {
             {!sidebarCollapsed && (
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-semibold text-gray-900">Lead Lists</h1>
+                <Tooltip>
+                <TooltipTrigger asChild>
                 <button
                   onClick={() => setShowCreateList(true)}
                   className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
+                      <p className="font-medium">Create New List</p>
+                    </TooltipContent>
+                </Tooltip>
               </div>
             )}
             <div className="flex gap-1">
@@ -449,7 +457,7 @@ export default function LeadsPage() {
                         onClick={() => setShowCreateView(true)}
                         className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
                       >
-                        <Plus className="w-5 h-5" />
+                        <Cylinder className="w-5 h-5" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">

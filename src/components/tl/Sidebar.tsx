@@ -15,7 +15,6 @@ const items = [
   { href: "/team-leader/lead-management/reports", label: "Reports", icon: Icons.PieChart, badge: null },
   { href: "/team-leader/lead-management/integrations", label: "Integrations", icon: Icons.Plug, badge: null },
   { href: "/team-leader/lead-management/settings", label: "Settings", icon: Icons.Settings, badge: null },
-  { href: "/team-leader/lead-management/audit", label: "Buckets", icon: Icons.Archive, badge: null },
   { href: "/team-leader", label: "Home", icon: Icons.Home, badge: null },
 ];
 
