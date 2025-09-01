@@ -136,7 +136,6 @@ export default function LeadsPage() {
     { id: "interested", name: "Interested", icon: Lightbulb, filters: { stage: "Interested" } },
     { id: "follow-up", name: "Follow Up", icon: Clock, filters: { needFollowup: true } },
     { id: "recent", name: "Recent (7 days)", icon: Sparkles, filters: { dateRange: "last7days" } },
-    { id: "no-email", name: "No Email", icon: Mail, filters: { hasEmail: false } },
     { id: "customers", name: "Customers", icon: Crown, filters: { stage: "Customer" } },
   
   ];
