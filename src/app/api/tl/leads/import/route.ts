@@ -26,7 +26,12 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const rows = Array.isArray(body?.rows) ? body.rows : [];
-    const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
+    let tenantId: number;
+    try {
+      tenantId = await requireTenantIdFromRequest(req as any);
+    } catch {
+      return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
+    }
     if (rows.length === 0) {
       return new Response(JSON.stringify({ success: false, error: "rows array required" }), { status: 400 });
     }
@@ -40,7 +45,7 @@ export async function POST(req: NextRequest) {
           source: safeStr(r.source, 64),
           stage: safeStr(r.stage, 48) || "Not contacted",
           score: typeof r.score === "number" ? r.score : Number.isFinite(Number(r.score)) ? Number(r.score) : 0,
-          tenantId: tenantId || null,
+          tenantId: tenantId,
         };
       })
       .filter((v: { phone?: string }) => typeof v.phone === "string" && v.phone.length >= 10);
@@ -59,7 +64,7 @@ export async function POST(req: NextRequest) {
     if (inserted.length) {
       const ev = inserted
         .filter((r) => r.phone)
-        .map((r: { phone: string; source: string | null }) => ({ leadPhone: r.phone, type: "CREATED", data: { source: r.source }, at: new Date(), tenantId: tenantId || null }));
+        .map((r: { phone: string; source: string | null }) => ({ leadPhone: r.phone, type: "CREATED", data: { source: r.source }, at: new Date(), tenantId: tenantId }));
       if (ev.length) await db.insert(leadEvents).values(ev as any);
     }
 

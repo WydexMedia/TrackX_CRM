@@ -141,8 +141,13 @@ export async function GET(req: NextRequest) {
     }
 
     const where = filters.length ? and(...filters) : undefined;
-    const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
-    const scopedWhere = tenantId ? (where ? and(where, eq(leads.tenantId, tenantId)) : eq(leads.tenantId, tenantId)) : where as any;
+    let tenantId: number;
+    try {
+      tenantId = await requireTenantIdFromRequest(req as any);
+    } catch {
+      return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
+    }
+    const scopedWhere = where ? and(where, eq(leads.tenantId, tenantId)) : eq(leads.tenantId, tenantId);
 
     let rows;
     
@@ -199,7 +204,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
+    let tenantId: number;
+    try {
+      tenantId = await requireTenantIdFromRequest(req as any);
+    } catch {
+      return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
+    }
     const { phone, name, email, source, stage, score } = body || {};
     if (!phone || typeof phone !== "string" || phone.trim() === "") {
       return new Response(JSON.stringify({ success: false, error: "phone is required" }), { status: 400 });
@@ -211,13 +221,13 @@ export async function POST(req: NextRequest) {
       source: source ?? null,
               stage: stage ?? "Not contacted",
       score: typeof score === "number" ? score : undefined,
-      tenantId: tenantId || null,
+      tenantId: tenantId,
     } as any;
 
     const inserted = await db.insert(leads).values(values).returning({ phone: leads.phone, createdAt: leads.createdAt, source: leads.source });
     // timeline event for creation
     if (inserted[0]?.phone) {
-      await db.insert(leadEvents).values({ leadPhone: inserted[0].phone, type: "CREATED", data: { source: inserted[0].source }, at: new Date(), tenantId: tenantId || null } as any);
+      await db.insert(leadEvents).values({ leadPhone: inserted[0].phone, type: "CREATED", data: { source: inserted[0].source }, at: new Date(), tenantId: tenantId } as any);
     }
     return new Response(JSON.stringify({ success: true, phone: inserted[0]?.phone }), { status: 201 });
   } catch (e: any) {
@@ -237,13 +247,18 @@ export async function DELETE(req: NextRequest) {
     if (!phones.length) {
       return new Response(JSON.stringify({ success: false, error: "phones[] required" }), { status: 400 });
     }
-    const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
+    let tenantId: number;
+    try {
+      tenantId = await requireTenantIdFromRequest(req as any);
+    } catch {
+      return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
+    }
 
     // Delete related events and tasks first, then leads
-    await db.delete(leadEvents).where(tenantId ? and(inArray(leadEvents.leadPhone, phones), eq(leadEvents.tenantId, tenantId)) : inArray(leadEvents.leadPhone, phones));
+    await db.delete(leadEvents).where(and(inArray(leadEvents.leadPhone, phones), eq(leadEvents.tenantId, tenantId)));
     // tasks is imported from schema in [phone] route; here, only leadEvents and leads are imported.
     // Keep deletion minimal to avoid missing imports; tasks cleanup can be handled separately if needed.
-    const deleted = await db.delete(leads).where(tenantId ? and(inArray(leads.phone, phones), eq(leads.tenantId, tenantId)) : inArray(leads.phone, phones)).returning({ phone: leads.phone });
+    const deleted = await db.delete(leads).where(and(inArray(leads.phone, phones), eq(leads.tenantId, tenantId))).returning({ phone: leads.phone });
 
     return new Response(JSON.stringify({ success: true, deleted: deleted.map(d => d.phone) }), { status: 200 });
   } catch (e: any) {

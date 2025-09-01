@@ -6,22 +6,27 @@ import { requireTenantIdFromRequest } from "@/lib/tenant";
 
 export async function GET(_req: Request, { params }: any) {
   try {
-    const tenantId = await requireTenantIdFromRequest(_req).catch(() => undefined);
+    let tenantId: number;
+    try {
+      tenantId = await requireTenantIdFromRequest(_req);
+    } catch {
+      return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
+    }
     const phone = decodeURIComponent(await params.phone);
-    let lead = (await db.select().from(leads).where(tenantId ? and(eq(leads.phone, phone), eq(leads.tenantId, tenantId)) : eq(leads.phone, phone)))[0];
+    let lead = (await db.select().from(leads).where(and(eq(leads.phone, phone), eq(leads.tenantId, tenantId))))[0];
     if (!lead) {
       const noSpace = phone.replace(/\s+/g, "");
       if (noSpace && noSpace !== phone) {
-        lead = (await db.select().from(leads).where(tenantId ? and(eq(leads.phone, noSpace), eq(leads.tenantId, tenantId)) : eq(leads.phone, noSpace)))[0];
+        lead = (await db.select().from(leads).where(and(eq(leads.phone, noSpace), eq(leads.tenantId, tenantId))))[0];
       }
     }
     if (!lead) {
       if (phone.startsWith("+")) {
         const withoutPlus = phone.slice(1);
-        lead = (await db.select().from(leads).where(tenantId ? and(eq(leads.phone, withoutPlus), eq(leads.tenantId, tenantId)) : eq(leads.phone, withoutPlus)))[0];
+        lead = (await db.select().from(leads).where(and(eq(leads.phone, withoutPlus), eq(leads.tenantId, tenantId))))[0];
       } else {
         const withPlus = `+${phone}`;
-        lead = (await db.select().from(leads).where(tenantId ? and(eq(leads.phone, withPlus), eq(leads.tenantId, tenantId)) : eq(leads.phone, withPlus)))[0];
+        lead = (await db.select().from(leads).where(and(eq(leads.phone, withPlus), eq(leads.tenantId, tenantId))))[0];
       }
     }
     if (!lead) return new Response(JSON.stringify({ success: false, error: "not found" }), { status: 404 });
@@ -43,7 +48,7 @@ export async function GET(_req: Request, { params }: any) {
     const events = await db
       .select()
       .from(leadEvents)
-      .where(tenantId ? and(inArray(leadEvents.leadPhone, variants), eq(leadEvents.tenantId, tenantId)) : inArray(leadEvents.leadPhone, variants))
+      .where(and(inArray(leadEvents.leadPhone, variants), eq(leadEvents.tenantId, tenantId)))
       .orderBy(desc(leadEvents.at));
     
     console.log('Events found:', events.length);
@@ -53,7 +58,7 @@ export async function GET(_req: Request, { params }: any) {
     const openTasks = await db
       .select({ id: tasks.id, leadPhone: tasks.leadPhone, title: tasks.title, status: tasks.status, dueAt: tasks.dueAt, createdAt: tasks.createdAt })
       .from(tasks)
-      .where(tenantId ? and(inArray(tasks.leadPhone, variants), eq(tasks.tenantId, tenantId)) : inArray(tasks.leadPhone, variants))
+      .where(and(inArray(tasks.leadPhone, variants), eq(tasks.tenantId, tenantId)))
       .orderBy(desc(tasks.createdAt));
     return new Response(JSON.stringify({ success: true, lead, events, tasks: openTasks }), { status: 200 });
   } catch (e: any) {
@@ -63,7 +68,12 @@ export async function GET(_req: Request, { params }: any) {
 
 export async function PUT(_req: Request, { params }: any) {
   try {
-    const tenantId = await requireTenantIdFromRequest(_req).catch(() => undefined);
+    let tenantId: number;
+    try {
+      tenantId = await requireTenantIdFromRequest(_req);
+    } catch {
+      return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
+    }
     const phone = decodeURIComponent(await params.phone);
     const body = await _req.json();
     const { stage, score, ownerId, source, actorId, stageNotes, needFollowup, followupDate, followupNotes } = body || {};
@@ -72,7 +82,7 @@ export async function PUT(_req: Request, { params }: any) {
     console.log('Request body:', { stage, score, ownerId, source, actorId, stageNotes, needFollowup, followupDate, followupNotes });
     
     // Get current lead to capture previous values
-    const currentLead = await db.select().from(leads).where(tenantId ? and(eq(leads.phone, phone), eq(leads.tenantId, tenantId)) : eq(leads.phone, phone)).limit(1);
+    const currentLead = await db.select().from(leads).where(and(eq(leads.phone, phone), eq(leads.tenantId, tenantId))).limit(1);
     if (!currentLead[0]) {
       console.log('Lead not found for phone:', phone);
       return new Response(JSON.stringify({ success: false, error: "Lead not found" }), { status: 404 });
@@ -102,7 +112,7 @@ export async function PUT(_req: Request, { params }: any) {
     updateData.lastActivityAt = new Date();
 
     // Update the lead
-    await db.update(leads).set(updateData).where(tenantId ? and(eq(leads.phone, phone), eq(leads.tenantId, tenantId)) : eq(leads.phone, phone));
+    await db.update(leads).set(updateData).where(and(eq(leads.phone, phone), eq(leads.tenantId, tenantId)));
 
     // Log stage change event if stage was updated
     if (stage !== undefined && stage !== currentLead[0].stage) {
@@ -121,7 +131,7 @@ export async function PUT(_req: Request, { params }: any) {
         },
         actorId: actorId || currentLead[0].ownerId || "system",
         at: new Date(),
-        tenantId: tenantId || null
+        tenantId: tenantId
       };
       
       console.log('Inserting STAGE_CHANGE event:', eventData);
@@ -164,7 +174,7 @@ export async function PUT(_req: Request, { params }: any) {
           type: "FOLLOWUP",
           dueAt: formattedDate,
           ownerId: ownerId || currentLead[0].ownerId,
-          tenantId: tenantId || null,
+          tenantId: tenantId,
           createdAt: new Date(),
           updatedAt: new Date()
         } as any);
@@ -184,7 +194,7 @@ export async function PUT(_req: Request, { params }: any) {
           },
           actorId: actorId || currentLead[0].ownerId || "system",
           at: new Date(),
-          tenantId: tenantId || null
+          tenantId: tenantId
         } as any);
         
         console.log('FOLLOWUP_SCHEDULED event created successfully');
@@ -218,7 +228,7 @@ export async function PUT(_req: Request, { params }: any) {
         },
         actorId: actorId || currentLead[0].ownerId || "system",
         at: new Date(),
-        tenantId: tenantId || null,
+        tenantId: tenantId,
       } as any);
     }
 
@@ -231,7 +241,12 @@ export async function PUT(_req: Request, { params }: any) {
 // Delete a single lead by phone (and related events & tasks)
 export async function DELETE(_req: Request, { params }: any) {
   try {
-    const tenantId = await requireTenantIdFromRequest(_req).catch(() => undefined);
+    let tenantId: number;
+    try {
+      tenantId = await requireTenantIdFromRequest(_req);
+    } catch {
+      return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
+    }
     const phone = decodeURIComponent(await params.phone);
 
     // Normalize variants similar to GET lookup for cleanup
@@ -246,9 +261,9 @@ export async function DELETE(_req: Request, { params }: any) {
     }
     const variants = Array.from(variantsSet);
 
-    await db.delete(leadEvents).where(tenantId ? and(inArray(leadEvents.leadPhone, variants), eq(leadEvents.tenantId, tenantId)) : inArray(leadEvents.leadPhone, variants));
-    await db.delete(tasks).where(tenantId ? and(inArray(tasks.leadPhone, variants), eq(tasks.tenantId, tenantId)) : inArray(tasks.leadPhone, variants));
-    const deleted = await db.delete(leads).where(tenantId ? and(eq(leads.phone, phone), eq(leads.tenantId, tenantId)) : eq(leads.phone, phone)).returning({ phone: leads.phone });
+    await db.delete(leadEvents).where(and(inArray(leadEvents.leadPhone, variants), eq(leadEvents.tenantId, tenantId)));
+    await db.delete(tasks).where(and(inArray(tasks.leadPhone, variants), eq(tasks.tenantId, tenantId)));
+    const deleted = await db.delete(leads).where(and(eq(leads.phone, phone), eq(leads.tenantId, tenantId))).returning({ phone: leads.phone });
 
     if (!deleted[0]) {
       return new Response(JSON.stringify({ success: false, error: "Lead not found" }), { status: 404 });
