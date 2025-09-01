@@ -177,3 +177,63 @@ export async function PATCH(req: NextRequest) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to create tables" }), { status: 500 });
   }
 } 
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { listId } = await req.json().catch(() => ({}));
+    if (!listId || Number.isNaN(Number(listId))) {
+      return new Response(JSON.stringify({ success: false, error: "listId is required" }), { status: 400 });
+    }
+    const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
+
+    // Ensure list exists and belongs to tenant (or global null tenant when no tenant resolved)
+    const exists = await db
+      .select({ id: leadLists.id })
+      .from(leadLists)
+      .where(
+        tenantId
+          ? and(eq(leadLists.id, Number(listId)), eq(leadLists.tenantId, tenantId))
+          : eq(leadLists.id, Number(listId))
+      )
+      .limit(1);
+
+    if (!exists.length) {
+      return new Response(JSON.stringify({ success: false, error: "List not found" }), { status: 404 });
+    }
+
+    // Delete items first, then the list
+    if (tenantId) {
+      await db.delete(leadListItems).where(and(eq(leadListItems.listId, Number(listId)), eq(leadListItems.tenantId, tenantId)) as any);
+      await db.delete(leadLists).where(and(eq(leadLists.id, Number(listId)), eq(leadLists.tenantId, tenantId)) as any);
+    } else {
+      await db.delete(leadListItems).where(eq(leadListItems.listId, Number(listId)) as any);
+      await db.delete(leadLists).where(eq(leadLists.id, Number(listId)) as any);
+    }
+
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
+  } catch (e: any) {
+    // Attempt auto-create if table missing, then retry delete once
+    const msg = String(e?.message || "").toLowerCase();
+    if (msg.includes("relation") && (msg.includes("lead_lists") || msg.includes("lead_list_items"))) {
+      try {
+        await ensureTables();
+        const { listId } = await req.json().catch(() => ({}));
+        if (!listId || Number.isNaN(Number(listId))) {
+          return new Response(JSON.stringify({ success: false, error: "listId is required" }), { status: 400 });
+        }
+        const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
+        if (tenantId) {
+          await db.delete(leadListItems).where(and(eq(leadListItems.listId, Number(listId)), eq(leadListItems.tenantId, tenantId)) as any);
+          await db.delete(leadLists).where(and(eq(leadLists.id, Number(listId)), eq(leadLists.tenantId, tenantId)) as any);
+        } else {
+          await db.delete(leadListItems).where(eq(leadListItems.listId, Number(listId)) as any);
+          await db.delete(leadLists).where(eq(leadLists.id, Number(listId)) as any);
+        }
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      } catch (e2: any) {
+        return new Response(JSON.stringify({ success: false, error: e2?.message || "Failed to delete list" }), { status: 500 });
+      }
+    }
+    return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to delete list" }), { status: 500 });
+  }
+}

@@ -33,6 +33,7 @@ import {
   Globe,
   FileText,
   Cylinder,
+  Trash
 } from "lucide-react";
 
 interface LeadRow {
@@ -93,6 +94,8 @@ export default function LeadsPage() {
   // Saved Lists
   const [lists, setLists] = useState<Array<{ id: number; name: string }>>([]);
   const [showCreateList, setShowCreateList] = useState(false);
+  const [deletingListId, setDeletingListId] = useState<number | null>(null);
+  const [confirmDeleteListOpen, setConfirmDeleteListOpen] = useState(false);
   
   // Advanced filtering (restored)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -519,26 +522,36 @@ export default function LeadsPage() {
                 <div className="text-xs uppercase tracking-wide text-gray-500 px-2 mb-1">My Lists</div>
                 <div className="space-y-1">
                   {lists.map((l) => (
-                    <button
+                    <div
                       key={`list-${l.id}`}
                       className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors ${
                         currentView === `list-${l.id}`
                           ? "bg-blue-50 text-blue-700 border border-blue-200"
                           : "text-gray-700 hover:bg-gray-50"
                       }`}
-                      onClick={() => {
-                        console.log("Selecting list:", l.id, l.name);
-                        setCurrentView(`list-${l.id}`);
-                        setSelected({});
-                        setPage(1);
-                        console.log("Current view set to:", `list-${l.id}`);
-                      }}
                     >
-                      <div className="flex items-center gap-3">
+                      <button
+                        className="flex items-center gap-3 flex-1 text-left"
+                        onClick={() => {
+                          setCurrentView(`list-${l.id}`);
+                          setSelected({});
+                          setPage(1);
+                        }}
+                      >
                         <Pin className="w-4 h-4" />
                         <span className="font-medium">{l.name}</span>
-                      </div>
-                    </button>
+                      </button>
+                      <button
+                        className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"
+                        onClick={() => {
+                          setDeletingListId(l.id);
+                          setConfirmDeleteListOpen(true);
+                        }}
+                        aria-label="Delete list"
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1114,6 +1127,53 @@ export default function LeadsPage() {
               <button
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
                 onClick={performBulkDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete List confirmation modal */}
+      {confirmDeleteListOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
+            <h3 className="text-lg font-semibold text-gray-900">Delete this list?</h3>
+            <p className="text-sm text-gray-600 mt-1">This will remove the list and its items. Leads remain intact.</p>
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                onClick={() => {
+                  setConfirmDeleteListOpen(false);
+                  setDeletingListId(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                onClick={async () => {
+                  if (!deletingListId) return;
+                  try {
+                    const res = await fetch('/api/tl/lists', {
+                      method: 'DELETE',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ listId: deletingListId }),
+                    });
+                    if (!res.ok) throw new Error('Failed');
+                    toast.success('List deleted');
+                    setLists(prev => prev.filter(l => l.id !== deletingListId));
+                    if (currentView === `list-${deletingListId}`) {
+                      setCurrentView('all');
+                    }
+                  } catch {
+                    toast.error('Failed to delete list');
+                  } finally {
+                    setConfirmDeleteListOpen(false);
+                    setDeletingListId(null);
+                  }
+                }}
               >
                 Delete
               </button>
