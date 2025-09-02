@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Users, Globe, Calendar, CheckCircle, XCircle, ExternalLink, Trash2 } from "lucide-react";
+import { Users, Globe, Calendar, CheckCircle, XCircle, ExternalLink, Trash2, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Tenant {
@@ -134,6 +134,15 @@ export default function AdminTenantsPage() {
                 <h1 className="text-3xl font-bold text-gray-900">Client Management and Onboardings</h1>
                 <p className="text-gray-600">Manage all client environments and their status</p>
               </div>
+            </div>
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => router.push("/onboarding")}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add New Client
+              </button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
