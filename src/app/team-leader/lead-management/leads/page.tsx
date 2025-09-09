@@ -73,7 +73,7 @@ export default function LeadsPage() {
   const [rows, setRows] = useState<LeadRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const pageSize = 25;
+  const [pageSize, setPageSize] = useState(25);
   const [loading, setLoading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -310,6 +310,11 @@ export default function LeadsPage() {
       setRows(d.rows || []);
       setTotal(d.total || 0);
     });
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setPage(1); // Reset to first page when changing page size
   };
 
   const createCustomView = () => {
@@ -1041,27 +1046,46 @@ export default function LeadsPage() {
         </div>
 
         {/* Pagination */}
-        {total > pageSize && (
+        {total > 0 && (
           <div className="bg-white border-t border-gray-200 px-6 py-3">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">
                 Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total}
               </div>
-              <div className="flex gap-2">
-                <button
-                  className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 hover:bg-gray-50"
-                  disabled={page === 1}
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                >
-                  Previous
-                </button>
-                <button
-                  className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 hover:bg-gray-50"
-                  disabled={page * pageSize >= total}
-                  onClick={() => setPage(p => p + 1)}
-                >
-                  Next
-                </button>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600">Show:</label>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                    className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={15}>15</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span className="text-sm text-gray-600">per page</span>
+                </div>
+                {total > pageSize && (
+                  <div className="flex gap-2">
+                    <button
+                      className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 hover:bg-gray-50"
+                      disabled={page === 1}
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 hover:bg-gray-50"
+                      disabled={page * pageSize >= total}
+                      onClick={() => setPage(p => p + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
