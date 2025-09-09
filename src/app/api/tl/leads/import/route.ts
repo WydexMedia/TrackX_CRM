@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/db/client";
-import { leads, leadEvents } from "@/db/schema";
+import { leads, leadEvents, leadListItems } from "@/db/schema";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
 
 // Normalize phone by extracting the first 10+ digit run, and cap to 15 digits
@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const rows = Array.isArray(body?.rows) ? body.rows : [];
+    const listId = body?.listId;
     let tenantId: number;
     try {
       tenantId = await requireTenantIdFromRequest(req as any);
@@ -66,6 +67,26 @@ export async function POST(req: NextRequest) {
         .filter((r) => r.phone)
         .map((r: { phone: string; source: string | null }) => ({ leadPhone: r.phone, type: "CREATED", data: { source: r.source }, at: new Date(), tenantId: tenantId }));
       if (ev.length) await db.insert(leadEvents).values(ev as any);
+      
+      // Add to list if listId is provided
+      if (listId && typeof listId === "number" && inserted.length > 0) {
+        try {
+          const listItems = inserted
+            .filter((r) => r.phone)
+            .map((r: { phone: string }) => ({
+              listId: listId,
+              leadPhone: r.phone,
+              tenantId: tenantId,
+            }));
+          
+          if (listItems.length > 0) {
+            await db.insert(leadListItems).values(listItems as any).onConflictDoNothing();
+          }
+        } catch (listError) {
+          console.error("Failed to add leads to list:", listError);
+          // Don't fail the entire operation if list addition fails
+        }
+      }
     }
 
     return new Response(
