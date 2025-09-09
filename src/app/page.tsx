@@ -298,7 +298,7 @@ export default function HomePage() {
             <div className="flex items-center gap-4">
               {/* Demo Button */}
               <Link
-                href="/form"
+                href="/signup"
                 className="hidden sm:block px-4 py-2 text-blue-600 font-semibold hover:text-blue-700 transition-colors"
               >
                 Get Demo
@@ -325,6 +325,15 @@ export default function HomePage() {
                   Get CRM
                 </Link>
               )}
+              
+              {/* Signup Button */}
+              <Link
+                href="/signup"
+                className="px-6 py-2.5 bg-green-600 text-white rounded-xl font-semibold shadow-lg hover:bg-green-700 transition-all duration-300 flex items-center gap-2"
+              >
+                <User className="w-4 h-4" />
+                Sign Up
+              </Link>
               
               {/* Login Button with Enhanced Design */}
               <Link
@@ -412,6 +421,13 @@ export default function HomePage() {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row gap-4">
+                  <Link
+                    href="/signup"
+                    className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-300 flex items-center gap-2 justify-center shadow-lg hover:shadow-xl"
+                  >
+                    <Rocket className="w-5 h-5" />
+                    Get Started
+                  </Link>
                   <Link
                     href="/form"
                     className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 flex items-center gap-2 justify-center shadow-lg hover:shadow-xl"
@@ -730,7 +746,7 @@ export default function HomePage() {
                     <span className="text-slate-700">Email support</span>
                   </li>
                 </ul>
-                <Link href="/form" className="w-full block text-center py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors">
+                <Link href="/signup" className="w-full block text-center py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors">
                   Get Started
                 </Link>
               </div>
@@ -817,7 +833,7 @@ export default function HomePage() {
                 Book a Demo
               </Link>
               <Link
-                href="/leaderboard"
+                href="/signup"
                 className="px-8 py-4 border-2 border-white text-white rounded-lg font-semibold text-lg hover:bg-white/10 transition-colors"
               >
                 Start 14-day free trial

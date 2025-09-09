@@ -5,6 +5,35 @@ import { eq } from "drizzle-orm";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { getMongoDb } from "@/lib/mongoClient";
+
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const subdomain = url.searchParams.get('subdomain');
+    
+    if (!subdomain) {
+      return NextResponse.json({ error: "Subdomain parameter is required" }, { status: 400 });
+    }
+
+    const normalizedSubdomain = subdomain.trim().toLowerCase();
+    
+    // Check if subdomain already exists
+    const existing = await db
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.subdomain, normalizedSubdomain))
+      .limit(1);
+
+    return NextResponse.json({ 
+      exists: !!existing[0]?.id,
+      subdomain: normalizedSubdomain 
+    });
+  } catch (err: any) {
+    console.error("Subdomain check error:", err);
+    return NextResponse.json({ error: err?.message || "Failed to check subdomain" }, { status: 500 });
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -81,16 +110,27 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ tenant: inserted[0] }, { status: 201 });
     } else {
-      // Handle JSON request (backward compatibility)
+      // Handle JSON request (signup form data)
       const body = await req.json();
       const subdomain = String(body.subdomain || "").trim().toLowerCase();
-      const name = String(body.name || subdomain);
-      const metadata = body.metadata ?? null;
+      const companyName = String(body.companyName || "");
+      const contactName = String(body.contactName || "");
+      const email = String(body.email || "");
+      const phone = String(body.phone || "");
+      const website = String(body.website || "");
+      const password = String(body.password || "");
 
-      if (!subdomain || !/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(subdomain)) {
-        return NextResponse.json({ error: "Invalid subdomain" }, { status: 400 });
+      // Validate required fields
+      if (!subdomain || !companyName || !contactName || !email || !password) {
+        return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
       }
 
+      // Validate subdomain format (minimum 4 characters, alphanumeric and hyphens)
+      if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(subdomain) || subdomain.length < 4) {
+        return NextResponse.json({ error: "Invalid subdomain format" }, { status: 400 });
+      }
+
+      // Check if subdomain already exists
       const existing = await db
         .select({ id: tenants.id })
         .from(tenants)
@@ -100,12 +140,64 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Subdomain already exists" }, { status: 409 });
       }
 
+      // Create tenant with signup data
+      const metadata = {
+        companyName,
+        contactName,
+        email,
+        phone,
+        website,
+        password, // Note: In production, this should be hashed
+        createdAt: new Date().toISOString()
+      };
+
       const inserted = await db
         .insert(tenants)
-        .values({ subdomain, name, metadata })
+        .values({ 
+          subdomain, 
+          name: companyName, 
+          metadata 
+        })
         .returning();
 
-      return NextResponse.json({ tenant: inserted[0] }, { status: 201 });
+      const tenantId = inserted[0].id;
+
+      // Create team leader user in MongoDB
+      try {
+        const mongoDb = await getMongoDb();
+        const users = mongoDb.collection('users');
+        
+        const teamLeader = {
+          name: contactName,
+          code: email, // Use email as the employee code
+          email: email,
+          password: password, // Note: In production, this should be hashed
+          role: "teamleader",
+          target: 0,
+          tenantSubdomain: subdomain,
+          tenantId: tenantId,
+          createdAt: new Date()
+        };
+        
+        await users.insertOne(teamLeader);
+        
+        console.log(`Team leader created for tenant ${subdomain}:`, {
+          name: teamLeader.name,
+          code: teamLeader.code, // This is now the email
+          email: teamLeader.email,
+          role: teamLeader.role
+        });
+        
+      } catch (mongoError) {
+        console.error("Failed to create team leader user:", mongoError);
+        // Don't fail the entire request if user creation fails
+        // The tenant was created successfully
+      }
+
+      return NextResponse.json({ 
+        tenant: inserted[0],
+        message: "Account created successfully"
+      }, { status: 201 });
     }
   } catch (err: any) {
     console.error("Tenant creation error:", err);
