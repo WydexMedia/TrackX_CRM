@@ -75,6 +75,17 @@ export default function LoginAndDashboard() {
         return;
       }
       const user = await res.json();
+      
+      // Check if user needs to be redirected to their tenant subdomain
+      if (user.needsRedirect && user.redirectTo) {
+        console.log('Redirecting user to tenant subdomain:', user.redirectTo);
+        // Store user data temporarily for the redirect
+        localStorage.setItem("user", JSON.stringify(user));
+        // Redirect to tenant subdomain
+        window.location.href = user.redirectTo;
+        return;
+      }
+      
       localStorage.setItem("user", JSON.stringify(user));
       setUser(user);
       

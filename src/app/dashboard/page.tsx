@@ -125,43 +125,78 @@ export default function DashboardPage() {
 
   // ------------- bootstrap -------------
   useEffect(() => {
-    const u = getUserFromStorage();
-    if (!u) {
-      router.push("/login");
-      return;
-    }
+    const authenticateUser = async () => {
+      // First check if we have a sessionId parameter (from redirect)
+      const urlParams = new URLSearchParams(window.location.search);
+      const sessionId = urlParams.get('sessionId');
+      
+      if (sessionId) {
+        try {
+          // Validate the session and get user data
+          const response = await fetch('/api/users/validate-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId })
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            localStorage.setItem("user", JSON.stringify(userData));
+            setUser(userData);
+            
+            // Clean up the URL by removing the sessionId parameter
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('sessionId');
+            window.history.replaceState({}, '', newUrl.toString());
+            
+            return;
+          }
+        } catch (error) {
+          console.error('Session validation failed:', error);
+        }
+      }
+      
+      // Fallback to localStorage check
+      const u = getUserFromStorage();
+      if (!u) {
+        router.push("/login");
+        return;
+      }
 
-    // Team leaders redirect
-    if (u.role === "teamleader") {
-      router.push("/team-leader");
-      return;
-    }
+      // Team leaders redirect
+      if (u.role === "teamleader") {
+        router.push("/team-leader");
+        return;
+      }
 
-    // Load current user from API (fresh target, etc.)
-    const loadUser = fetch(`/api/users/current?code=${u.code}`)
-      .then((res) => res.json())
-      .then((userData) => {
-        const updated = userData?.success ? { ...u, ...userData.user } : u;
-        localStorage.setItem("user", JSON.stringify(updated));
-        setUser(updated);
-      })
-      .catch(() => setUser(u));
+      // Load current user from API (fresh target, etc.)
+      const loadUser = fetch(`/api/users/current?code=${u.code}`)
+        .then((res) => res.json())
+        .then((userData) => {
+          const updated = userData?.success ? { ...u, ...userData.user } : u;
+          localStorage.setItem("user", JSON.stringify(updated));
+          setUser(updated);
+        })
+        .catch(() => setUser(u));
 
-    const loadSales = fetch("/api/sales")
-      .then((res) => res.json())
-      .then((data: Sale[]) => {
-        const filteredSales = data.filter((s) => {
-          const exactMatch = s.ogaName === u.name;
-          const caseInsensitiveMatch = s.ogaName.toLowerCase() === u.name.toLowerCase();
-          const partialMatch = s.ogaName.toLowerCase().includes(u.name.toLowerCase()) || 
-                             u.name.toLowerCase().includes(s.ogaName.toLowerCase());
-          return exactMatch || caseInsensitiveMatch || partialMatch;
-        });
-        setSales(filteredSales);
-      })
-      .catch(() => toast.error("Failed to load sales"));
+      const loadSales = fetch("/api/sales")
+        .then((res) => res.json())
+        .then((data: Sale[]) => {
+          const filteredSales = data.filter((s) => {
+            const exactMatch = s.ogaName === u.name;
+            const caseInsensitiveMatch = s.ogaName.toLowerCase() === u.name.toLowerCase();
+            const partialMatch = s.ogaName.toLowerCase().includes(u.name.toLowerCase()) || 
+                               u.name.toLowerCase().includes(s.ogaName.toLowerCase());
+            return exactMatch || caseInsensitiveMatch || partialMatch;
+          });
+          setSales(filteredSales);
+        })
+        .catch(() => toast.error("Failed to load sales"));
 
-    Promise.all([loadUser, loadSales]).finally(() => setIsLoading(false));
+      Promise.all([loadUser, loadSales]).finally(() => setIsLoading(false));
+    };
+
+    authenticateUser();
   }, [router]);
 
   const today = new Date();
