@@ -1242,11 +1242,13 @@ export default function LeadsPage() {
         open={showAdd}
         onClose={() => setShowAdd(false)}
         onCreated={refreshData}
+        onListCreated={(l) => setLists((prev) => [...prev, l])}
       />
       <ImportLeadsModal
         open={showImport}
         onClose={() => setShowImport(false)}
         onImported={refreshData}
+        onListCreated={(l) => setLists((prev) => [...prev, l])}
       />
 
       <ListCreateModal

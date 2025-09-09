@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, startTransition } from "react";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 
-export function AddLeadModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
+export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open: boolean; onClose: () => void; onCreated: () => void; onListCreated?: (list: { id: number; name: string }) => void }) {
   const [form, setForm] = useState<{ phone: string; name?: string; email?: string; source?: string; stage?: string; score?: number }>({ phone: "" });
   const [submitting, setSubmitting] = useState(false);
   const [lists, setLists] = useState<Array<{ id: number; name: string }>>([]);
@@ -35,14 +35,26 @@ export function AddLeadModal({ open, onClose, onCreated }: { open: boolean; onCl
       const data = await res.json();
       if (res.ok && data?.list) {
         const newList = data.list;
-        setLists(prev => {
-          const updated = [...prev, newList];
-          console.log("Updated lists state:", updated);
-          return updated;
+        startTransition(() => {
+          setLists(prev => {
+            const updated = [...prev, newList];
+            console.log("Updated lists state:", updated);
+            return updated;
+          });
+          setSelectedListId(String(newList.id));
         });
-        setSelectedListId(String(newList.id));
         setShowCreateList(false);
         setNewListName("");
+        
+        // Notify parent component about the new list
+        if (onListCreated) {
+          onListCreated(newList);
+        }
+        
+        // Force a small delay to ensure React processes the state update
+        setTimeout(() => {
+          console.log("Lists after timeout:", lists);
+        }, 100);
       }
     } catch {
       toast.error("Failed to create list");
@@ -67,7 +79,7 @@ export function AddLeadModal({ open, onClose, onCreated }: { open: boolean; onCl
             <label className="text-sm font-medium text-gray-700">Add to List</label>
             <div className="flex gap-2">
               <select
-                key={`list-select-${lists.length}-${selectedListId}`}
+                key={`list-select-${lists.map(l => l.id).join('-')}-${selectedListId}`}
                 value={selectedListId}
                 onChange={(e) => setSelectedListId(e.target.value)}
                 className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -164,7 +176,7 @@ const FORM_FIELDS = [
   { key: 'utm', label: 'UTM Parameters', required: false, description: 'Campaign tracking parameters' }
 ];
 
-export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean; onClose: () => void; onImported: () => void }) {
+export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: { open: boolean; onClose: () => void; onImported: () => void; onListCreated?: (list: { id: number; name: string }) => void }) {
   const [step, setStep] = useState<'upload' | 'mapping' | 'preview'>('upload');
   const [fileData, setFileData] = useState<any[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
@@ -203,14 +215,26 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
       const data = await res.json();
       if (res.ok && data?.list) {
         const newList = data.list;
-        setLists(prev => {
-          const updated = [...prev, newList];
-          console.log("Updated lists state:", updated);
-          return updated;
+        startTransition(() => {
+          setLists(prev => {
+            const updated = [...prev, newList];
+            console.log("Updated lists state:", updated);
+            return updated;
+          });
+          setSelectedListId(String(newList.id));
         });
-        setSelectedListId(String(newList.id));
         setShowCreateList(false);
         setNewListName("");
+        
+        // Notify parent component about the new list
+        if (onListCreated) {
+          onListCreated(newList);
+        }
+        
+        // Force a small delay to ensure React processes the state update
+        setTimeout(() => {
+          console.log("Lists after timeout:", lists);
+        }, 100);
       }
     } catch {
       toast.error("Failed to create list");
@@ -561,7 +585,7 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
         </div>
         <div className="flex gap-2">
           <select
-            key={`mapping-list-select-${lists.length}-${selectedListId}`}
+            key={`mapping-list-select-${lists.map(l => l.id).join('-')}-${selectedListId}`}
             value={selectedListId}
             onChange={(e) => setSelectedListId(e.target.value)}
             className="flex-1 border border-blue-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
@@ -658,7 +682,7 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
         </div>
         <div className="flex gap-2">
           <select
-            key={`import-list-select-${lists.length}-${selectedListId}`}
+            key={`import-list-select-${lists.map(l => l.id).join('-')}-${selectedListId}`}
             value={selectedListId}
             onChange={(e) => setSelectedListId(e.target.value)}
             className="flex-1 border border-blue-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
