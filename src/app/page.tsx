@@ -270,7 +270,7 @@ export default function HomePage() {
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
                   TrackX
                 </h1>
-                <p className="text-xs text-slate-500 -mt-1 font-medium">Sales CRM Platform - Main Site</p>
+                <p className="text-xs text-slate-500 -mt-1 font-medium">Sales CRM Platform</p>
               </div>
             </div>
 
@@ -303,17 +303,6 @@ export default function HomePage() {
               >
                 Get Demo
               </Link>
-              
-              {/* Admin Button - Only show on main domain */}
-              {isMainDomain && (
-                <Link
-                  href="admin/tenants"
-                  className="hidden sm:flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg font-medium hover:bg-red-200 transition-colors"
-                >
-                  <Shield className="w-4 h-4" />
-                  Admin
-                </Link>
-              )}
               
               {/* Get CRM Button - Only show on main domain */}
               {isMainDomain && (

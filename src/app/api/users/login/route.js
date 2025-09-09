@@ -62,7 +62,7 @@ export async function POST(request) {
     // Determine the base domain based on environment
     const baseDomain = process.env.NODE_ENV === 'development' 
       ? 'localhost:3000' 
-      : 'wydex.c';
+      : 'wydex.co';
     const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
     
     // Determine the dashboard path based on user role
