@@ -24,11 +24,18 @@ export function useTenant() {
         } else {
           // Production environment
           const parts = hostname.split(".");
-          if (parts.length >= 2) {
-            // For domains like wydex.wydex.co, the first part is the subdomain
-            setSubdomain(parts[0]);
-          } else {
+          if (parts.length <= 2) {
+            // example.com → no subdomain
             setSubdomain(null);
+          } else {
+            // For multi-level domains like tenant.wydex.co, take the left-most label as subdomain
+            const potentialSubdomain = parts[0];
+            // Treat 'www' as main domain (not a tenant)
+            if (potentialSubdomain === 'www') {
+              setSubdomain(null);
+            } else {
+              setSubdomain(potentialSubdomain || null);
+            }
           }
         }
       } catch (error) {

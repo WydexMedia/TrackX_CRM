@@ -86,9 +86,9 @@ export default function HomePage() {
         return;
       }
       
-      // Check if we have a subdomain (more than 2 parts)
+      // Check if we have a subdomain (more than 2 parts, excluding www)
       const parts = hostname.split(".");
-      const hasSubdomain = parts.length > 2;
+      const hasSubdomain = parts.length > 2 && parts[0] !== 'www';
       setIsMainDomain(!hasSubdomain);
     }
   }, []);
