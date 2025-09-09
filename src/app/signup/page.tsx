@@ -602,7 +602,7 @@ export default function SignupPage() {
                 </Link>
               </p>
               <p className="text-xs text-gray-500 mt-4">
-                By creating an account, you agree to nurture's{" "}
+                By creating an account, you agree to trackx's{" "}
                 <Link href="#" className="text-blue-600 hover:text-blue-700">
                   Terms of Service
                 </Link>{" "}

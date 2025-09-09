@@ -103,9 +103,9 @@ function AnimatedChart() {
         <div className="flex items-center gap-2 text-slate-700">
           <BarChart3 className="w-5 h-5" />
           <span className="font-medium">Lead Analytics</span>
-        </div>
-        <div className="text-xs text-slate-500">Last 30 days</div>
       </div>
+        <div className="text-xs text-slate-500">Last 30 days</div>
+                </div>
       <div className="relative h-36">
         {/* Bars */}
         <div className="absolute inset-0 flex items-end gap-2">
@@ -118,7 +118,7 @@ function AnimatedChart() {
               transition={{ delay: i * 0.05, type: "spring", stiffness: 100, damping: 18 }}
             />
           ))}
-        </div>
+              </div>
         {/* Line */}
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
           <motion.path
@@ -134,20 +134,20 @@ function AnimatedChart() {
         </svg>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
-        <div>
+              <div>
           <div className="text-slate-500">New Leads</div>
           <div className="font-semibold text-slate-900">1,221</div>
-                </div>
+              </div>
         <div>
           <div className="text-slate-500">CPL</div>
           <div className="font-semibold text-slate-900">₹4.85</div>
-              </div>
+            </div>
               <div>
           <div className="text-slate-500">Conversions</div>
           <div className="font-semibold text-slate-900">312</div>
-        </div>
-      </div>
-    </div>
+                </div>
+            </div>
+          </div>
   );
 }
 
@@ -168,9 +168,9 @@ function AppScreens() {
           <div className="flex items-center gap-2 text-slate-700">
             <LayoutDashboard className="w-5 h-5" />
             <span className="font-semibold">Pipeline Overview</span>
-          </div>
+            </div>
           <span className="text-xs text-slate-500">Today</span>
-        </div>
+          </div>
         <div className="grid grid-cols-3 gap-3">
           {["New", "Qualified", "Won"].map((col, i) => (
             <div key={col} className="rounded-xl border p-3">
@@ -178,13 +178,13 @@ function AppScreens() {
               <div className="text-2xl font-bold">{[56, 34, 18][i]}</div>
               <div className="mt-2 h-1.5 rounded bg-slate-100">
                 <div className="h-1.5 rounded bg-gradient-to-r from-indigo-500 to-violet-500" style={{ width: `${[68, 42, 88][i]}%` }} />
-              </div>
-            </div>
-          ))}
         </div>
+          </div>
+          ))}
+          </div>
         <div className="mt-4">
           <AnimatedChart />
-        </div>
+                </div>
       </motion.div>
 
       <motion.div
@@ -198,9 +198,9 @@ function AppScreens() {
           <div className="flex items-center gap-2 text-slate-700">
             <Workflow className="w-5 h-5" />
             <span className="font-semibold">Automations</span>
-          </div>
+                </div>
           <span className="text-xs text-slate-500">Active: 7</span>
-            </div>
+                </div>
         <ul className="space-y-3">
           {[
             { t: "Round-robin Lead Assignment", i: CheckCircle2 },
@@ -218,9 +218,9 @@ function AppScreens() {
         <div className="mt-4 rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 p-4 border">
           <div className="flex items-center gap-2 text-slate-800 font-medium">
             <Rocket className="w-4 h-4" /> Boost conversions by 27% with Playbooks
-          </div>
+              </div>
           <p className="text-sm text-slate-600 mt-1">Drag‑and‑drop sequences for calls, WhatsApp, and follow‑ups.</p>
-        </div>
+            </div>
       </motion.div>
           </div>
   );
@@ -237,11 +237,11 @@ function Navbar({ onOpenMobile }: { onOpenMobile: () => void }) {
           <Link href="#" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg grid place-items-center">
               <span className="text-white font-bold text-lg">TX</span>
-          </div>
+                </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-900">TrackX</h1>
               <p className="text-[10px] leading-none text-slate-500 -mt-0.5">Built for Institutes & Online Trainers</p>
-                </div>
+              </div>
                   </Link>
           <nav className="hidden md:flex items-center gap-8">
             <Link href="#features" className="text-slate-700 hover:text-blue-600 font-medium transition-colors">Features</Link>
@@ -258,7 +258,7 @@ function Navbar({ onOpenMobile }: { onOpenMobile: () => void }) {
               <Menu className="w-5 h-5" />
             </button>
                 </div>
-                </div>
+              </div>
               </div>
     </header>
   );
@@ -276,11 +276,11 @@ function Footer() {
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg grid place-items-center">
                 <span className="text-white font-bold text-sm">TX</span>
-              </div>
+                </div>
               <span className="text-xl font-bold">TrackX</span>
-            </div>
+              </div>
             <p className="text-sm text-slate-400">The CRM built for lead‑heavy businesses — training institutes, academies, and modern sales teams.</p>
-          </div>
+            </div>
 
           <div>
             <h3 className="font-semibold mb-4">Products</h3>
@@ -290,8 +290,8 @@ function Footer() {
               <li><Link href="#features" className="hover:text-white transition-colors">Task & SLA</Link></li>
               <li><Link href="#features" className="hover:text-white transition-colors">Integrations</Link></li>
             </ul>
-              </div>
-              
+            </div>
+            
           <div>
             <h3 className="font-semibold mb-4">Resources</h3>
             <ul className="space-y-2 text-sm text-slate-400">
@@ -300,20 +300,20 @@ function Footer() {
               <li><Link href="#" className="hover:text-white transition-colors">Terms & Conditions</Link></li>
               <li><Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link></li>
             </ul>
-              </div>
+                    </div>
               
-          <div>
+                    <div>
             <h3 className="font-semibold mb-4">Contact</h3>
             <div className="space-y-2 text-sm text-slate-300">
               <div className="flex items-center gap-2"><Mail className="w-4 h-4" /><span>support@thetrackx.com</span></div>
               <div className="flex items-center gap-2"><Globe className="w-4 h-4" /><span>www.thetrackx.com</span></div>
-            </div>
-          </div>
+                    </div>
+                  </div>
             </div>
         <div className="border-t border-slate-800 pt-8 text-center">
           <p className="text-slate-500 text-sm">© {new Date().getFullYear()} All rights reserved. thetrackx</p>
-                    </div>
-                  </div>
+          </div>
+            </div>
     </footer>
   );
 }
@@ -328,7 +328,7 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
       <div className="flex items-center justify-between px-6 py-4 border-b">
         <TenantLogo name="TrackX" />
         <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100"><X className="w-5 h-5" /></button>
-      </div>
+                  </div>
       <nav className="p-6 space-y-4">
         {[
           ["Features", "#features"],
@@ -400,17 +400,17 @@ function Hero() {
                 <div key={t} className="rounded-xl border bg-white p-3 text-center">
                   <div className="text-2xl font-bold">{t === "Leads" ? "50k+" : t === "Calls" ? "1.2M" : t === "WhatsApp" ? "3.4M" : "24k"}</div>
                   <div className="text-slate-500">{t} tracked</div>
-                </div>
+                    </div>
               ))}
-            </div>
-          </div>
+                  </div>
+                    </div>
           <div className="relative">
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
               <AppScreens />
             </motion.div>
-              </div>
-            </div>
-          </div>
+                  </div>
+                    </div>
+                  </div>
         </section>
   );
 }
@@ -459,7 +459,7 @@ function Features() {
         <div className="text-center mb-14">
           <h2 className="text-4xl font-bold text-slate-900">Everything you need to scale</h2>
           <p className="text-slate-600 mt-2">From first touch to closed won — TrackX has your entire journey covered.</p>
-            </div>
+                    </div>
         <div className="grid md:grid-cols-3 gap-6">
           {items.map(({ icon: Icon, title, desc }) => (
             <motion.div key={title} initial={{ y: 20, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.4 }} className="rounded-2xl border p-6 bg-white shadow-sm">
@@ -476,42 +476,57 @@ function Features() {
   );
 }
 
+
 // -----------------------------
-// SOLUTIONS / INDUSTRIES
+// WHY CHOOSE TRACKX
 // -----------------------------
-function Solutions() {
-  const cards = [
+function WhyChooseTrackX() {
+  const benefits = [
     {
-      title: "Training Institutes",
-      bullets: ["Batch & course pipeline", "Fee milestones & receipts", "Tutor assignment"],
+      icon: Rocket,
+      title: "Boost Sales Performance",
+      description: "Increase your team's productivity by 40% with streamlined workflows and automated follow-ups",
+      gradient: "from-blue-500 to-cyan-500"
     },
     {
-      title: "Edtech & Coaching",
-      bullets: ["Lead funnels by campaign", "Demo class workflows", "Parent follow‑ups"],
+      icon: BarChart3,
+      title: "Hit Your Targets",
+      description: "Track progress in real-time and get insights to consistently exceed your sales goals",
+      gradient: "from-green-500 to-emerald-500"
     },
     {
-      title: "Agencies & B2B",
-      bullets: ["Client‑wise deals", "CSAT & SLAs", "Teammate productivity"],
-    },
+      icon: Users,
+      title: "Team Collaboration",
+      description: "Foster better teamwork with shared dashboards, team leaderboards, and performance insights",
+      gradient: "from-purple-500 to-pink-500"
+    }
   ];
 
   return (
-    <section id="solutions" className="py-20 px-6 bg-slate-50">
+    <section className="py-20 px-6 bg-gradient-to-br from-slate-50 to-blue-50">
           <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-14">
-          <h2 className="text-4xl font-bold text-slate-900">Built for high‑velocity teams</h2>
-          <p className="text-slate-600 mt-2">Plug‑and‑play blueprints for your use case.</p>
+            <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold text-slate-900 mb-4">Why Choose TrackX?</h2>
+              <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+            Join thousands of successful sales teams who trust TrackX to drive their growth
+              </p>
             </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          {cards.map(({ title, bullets }) => (
-            <motion.div key={title} className="rounded-2xl border bg-white p-6 shadow-sm" initial={{ y: 20, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }}>
-              <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
-              <ul className="mt-4 space-y-2 text-slate-600 text-sm">
-                {bullets.map((b) => (
-                  <li key={b} className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 mt-0.5 text-green-600" /> <span>{b}</span></li>
-                ))}
-              </ul>
-              <Link href="#" className="mt-4 inline-flex items-center gap-2 text-indigo-700 font-medium">Explore <ArrowRight className="w-4 h-4" /></Link>
+            
+            <div className="grid md:grid-cols-3 gap-8">
+          {benefits.map((benefit, index) => (
+            <motion.div 
+              key={index} 
+              className="group text-center"
+              initial={{ y: 20, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: index * 0.1 }}
+            >
+              <div className={`inline-flex p-6 rounded-3xl bg-gradient-to-r ${benefit.gradient} text-white mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                <benefit.icon className="w-8 h-8" />
+                  </div>
+              <h3 className="text-2xl font-bold text-slate-900 mb-4">{benefit.title}</h3>
+              <p className="text-slate-600 leading-relaxed">{benefit.description}</p>
             </motion.div>
               ))}
             </div>
@@ -564,7 +579,7 @@ function Pricing() {
                 {t.highlighted && (
                   <span className="text-xs px-2 py-1 rounded bg-indigo-600 text-white">Popular</span>
                 )}
-              </div>
+                </div>
               <div className="mt-4 flex items-end gap-1">
                 <div className="text-4xl font-extrabold">{t.price}</div>
                 <div className="text-slate-500">{t.period}</div>
@@ -588,10 +603,10 @@ function Pricing() {
                   {t.cta}
                 </Link>
               )}
-            </div>
+              </div>
           ))}
-            </div>
-          </div>
+                </div>
+                </div>
         </section>
   );
 }
@@ -633,9 +648,9 @@ function FAQ() {
               <p className="mt-3 text-slate-600">{a}</p>
             </details>
           ))}
-                  </div>
-                </div>
-    </section>
+            </div>
+          </div>
+        </section>
   );
 }
 
@@ -658,9 +673,9 @@ function FinalCTA() {
           >
             Talk to Sales
           </a>
-              </div>
             </div>
-    </section>
+          </div>
+        </section>
   );
 }
 
@@ -680,7 +695,7 @@ export default function HomePage() {
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Loading...</p>
               </div>
-            </div>
+              </div>
     );
   }
 
@@ -701,7 +716,7 @@ export default function HomePage() {
       <main className="flex-1">
         <Hero />
         <Features />
-        <Solutions />
+        <WhyChooseTrackX />
         <Pricing />
         <FAQ />
         <FinalCTA />
