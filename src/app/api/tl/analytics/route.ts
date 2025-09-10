@@ -2,9 +2,19 @@ import { NextRequest } from "next/server";
 import { db } from "@/db/client";
 import { leads, leadEvents, callLogs } from "@/db/schema";
 import { eq, and, gte, lte, sql, desc, asc } from "drizzle-orm";
+import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 
 export async function GET(req: NextRequest) {
   try {
+    const { tenantId } = await getTenantContextFromRequest(req as any);
+    
+    if (!tenantId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Tenant not found" }), 
+        { status: 404 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const range = searchParams.get("range") || "30d";
     
@@ -29,23 +39,32 @@ export async function GET(req: NextRequest) {
         startDate.setDate(now.getDate() - 30);
     }
 
-    // Fetch leads within date range
+    // Fetch leads within date range and tenant
     const leadsData = await db
       .select()
       .from(leads)
-      .where(gte(leads.createdAt, startDate));
+      .where(and(
+        gte(leads.createdAt, startDate),
+        eq(leads.tenantId, tenantId)
+      ));
 
-    // Fetch call logs within date range
+    // Fetch call logs within date range and tenant
     const callLogsData = await db
       .select()
       .from(callLogs)
-      .where(gte(callLogs.createdAt, startDate));
+      .where(and(
+        gte(callLogs.createdAt, startDate),
+        eq(callLogs.tenantId, tenantId)
+      ));
 
-    // Fetch lead events within date range
+    // Fetch lead events within date range and tenant
     const eventsData = await db
       .select()
       .from(leadEvents)
-      .where(gte(leadEvents.at, startDate));
+      .where(and(
+        gte(leadEvents.at, startDate),
+        eq(leadEvents.tenantId, tenantId)
+      ));
 
     // Calculate funnel data
     const totalLeads = leadsData.length;
@@ -186,6 +205,7 @@ export async function GET(req: NextRequest) {
     }), { status: 200, headers: { "Cache-Control": "no-store" } });
 
   } catch (e: any) {
+    console.error("Analytics API error:", e);
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to fetch analytics" }), { status: 500 });
   }
 } 

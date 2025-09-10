@@ -73,21 +73,63 @@ export default function JuniorLeaderPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (!user) {
-      router.push("/login");
-      return;
-    }
+    const authenticateUser = async () => {
+      // First check if we have a sessionId parameter (from redirect)
+      const urlParams = new URLSearchParams(window.location.search);
+      const sessionId = urlParams.get('sessionId');
+      
+      if (sessionId) {
+        try {
+          // Validate the session and get user data
+          const response = await fetch('/api/users/validate-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId })
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            localStorage.setItem("user", JSON.stringify(userData));
+            
+            // Clean up the URL by removing the sessionId parameter
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('sessionId');
+            window.history.replaceState({}, '', newUrl.toString());
+            
+            if (userData.role === "jl") {
+              fetchTeamData(userData.email);
+              fetchAnalytics();
+              fetchCalls();
+              return;
+            } else {
+              router.push("/dashboard");
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Session validation failed:', error);
+        }
+      }
+      
+      // Fallback to localStorage check
+      const user = localStorage.getItem("user");
+      if (!user) {
+        router.push("/login");
+        return;
+      }
 
-    const userData = JSON.parse(user);
-    if (userData.role !== "jl") {
-      router.push("/dashboard");
-      return;
-    }
+      const userData = JSON.parse(user);
+      if (userData.role !== "jl") {
+        router.push("/dashboard");
+        return;
+      }
 
-    fetchTeamData(userData.email);
-    fetchAnalytics();
-    fetchCalls();
+      fetchTeamData(userData.email);
+      fetchAnalytics();
+      fetchCalls();
+    };
+
+    authenticateUser();
   }, [router]);
 
   const fetchTeamData = async (userEmail: string) => {

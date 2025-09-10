@@ -15,7 +15,10 @@ function extractSubdomain(host?: string | null): string | null {
   const parts = hostname.split(".");
   if (parts.length <= 2) return null; // example.com → no subdomain
   // For multi-level domains like app.staging.example.com take the left-most label as subdomain
-  return parts[0] || null;
+  const potentialSubdomain = parts[0];
+  // Treat 'www' as main domain (not a tenant)
+  if (potentialSubdomain === 'www') return null;
+  return potentialSubdomain || null;
 }
 
 export function middleware(req: NextRequest) {

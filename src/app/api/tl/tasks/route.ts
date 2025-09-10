@@ -1,10 +1,20 @@
 import { NextRequest } from "next/server";
 import { db } from "@/db/client";
 import { tasks } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, and } from "drizzle-orm";
+import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 
 export async function GET(req: NextRequest) {
   try {
+    const { tenantId } = await getTenantContextFromRequest(req as any);
+    
+    if (!tenantId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Tenant not found" }), 
+        { status: 404 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const ownerId = searchParams.get('ownerId');
     
@@ -14,25 +24,39 @@ export async function GET(req: NextRequest) {
       rows = await db
         .select()
         .from(tasks)
-        .where(eq(tasks.ownerId, ownerId))
+        .where(and(
+          eq(tasks.tenantId, tenantId),
+          eq(tasks.ownerId, ownerId)
+        ))
         .orderBy(desc(tasks.createdAt))
         .limit(100);
     } else {
       rows = await db
         .select()
         .from(tasks)
+        .where(eq(tasks.tenantId, tenantId))
         .orderBy(desc(tasks.createdAt))
         .limit(100);
     }
     
     return new Response(JSON.stringify({ success: true, rows }), { status: 200 });
   } catch (e: any) {
+    console.error("Tasks API error:", e);
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to fetch tasks" }), { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const { tenantId } = await getTenantContextFromRequest(req as any);
+    
+    if (!tenantId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Tenant not found" }), 
+        { status: 404 }
+      );
+    }
+
     const body = await req.json();
     const { leadPhone, title, dueAt, ownerId, priority, type } = body || {};
     
@@ -46,7 +70,8 @@ export async function POST(req: NextRequest) {
       title,
       status: "OPEN",
       dueAt: dueAt ? new Date(dueAt) : null,
-      type: type || "OTHER"
+      type: type || "OTHER",
+      tenantId: tenantId
     };
     
     // Only add leadPhone if provided (for special tasks, this might be empty)
@@ -74,20 +99,40 @@ export async function POST(req: NextRequest) {
     
     return new Response(JSON.stringify({ success: true, id: inserted[0]?.id }), { status: 201 });
   } catch (e: any) {
+    console.error("Task creation error:", e);
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to create task" }), { status: 500 });
   }
 }
 
 export async function PATCH(req: NextRequest) {
   try {
+    const { tenantId } = await getTenantContextFromRequest(req as any);
+    
+    if (!tenantId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Tenant not found" }), 
+        { status: 404 }
+      );
+    }
+
     const body = await req.json();
     const { id, status } = body || {};
     if (!id || !status) {
       return new Response(JSON.stringify({ success: false, error: "id and status required" }), { status: 400 });
     }
-    await db.update(tasks).set({ status }).where(eq(tasks.id, id));
+    
+    // Update task only if it belongs to the current tenant
+    await db
+      .update(tasks)
+      .set({ status })
+      .where(and(
+        eq(tasks.id, id),
+        eq(tasks.tenantId, tenantId)
+      ));
+    
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (e: any) {
+    console.error("Task update error:", e);
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to update task" }), { status: 500 });
   }
 }

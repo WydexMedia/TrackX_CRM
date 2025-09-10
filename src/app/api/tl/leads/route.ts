@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { and, or, desc, eq, ilike, gte, lte, sql, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
-import { leads, leadEvents } from "@/db/schema";
+import { leads, leadEvents, leadListItems } from "@/db/schema";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
 
 export async function GET(req: NextRequest) {
@@ -210,7 +210,7 @@ export async function POST(req: NextRequest) {
     } catch {
       return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
     }
-    const { phone, name, email, source, stage, score } = body || {};
+    const { phone, name, email, source, stage, score, listId } = body || {};
     if (!phone || typeof phone !== "string" || phone.trim() === "") {
       return new Response(JSON.stringify({ success: false, error: "phone is required" }), { status: 400 });
     }
@@ -228,6 +228,20 @@ export async function POST(req: NextRequest) {
     // timeline event for creation
     if (inserted[0]?.phone) {
       await db.insert(leadEvents).values({ leadPhone: inserted[0].phone, type: "CREATED", data: { source: inserted[0].source }, at: new Date(), tenantId: tenantId } as any);
+      
+      // Add to list if listId is provided
+      if (listId && typeof listId === "number") {
+        try {
+          await db.insert(leadListItems).values({
+            listId: listId,
+            leadPhone: inserted[0].phone,
+            tenantId: tenantId,
+          } as any).onConflictDoNothing();
+        } catch (listError) {
+          console.error("Failed to add lead to list:", listError);
+          // Don't fail the entire operation if list addition fails
+        }
+      }
     }
     return new Response(JSON.stringify({ success: true, phone: inserted[0]?.phone }), { status: 201 });
   } catch (e: any) {

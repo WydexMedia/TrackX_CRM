@@ -1,12 +1,68 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback, startTransition } from "react";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 
-export function AddLeadModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
+export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open: boolean; onClose: () => void; onCreated: () => void; onListCreated?: (list: { id: number; name: string }) => void }) {
   const [form, setForm] = useState<{ phone: string; name?: string; email?: string; source?: string; stage?: string; score?: number }>({ phone: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [lists, setLists] = useState<Array<{ id: number; name: string }>>([]);
+  const [selectedListId, setSelectedListId] = useState<string>("");
+  const [showCreateList, setShowCreateList] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [creatingList, setCreatingList] = useState(false);
+
+  // Load lists when modal opens
+  useEffect(() => {
+    if (open) {
+      fetch("/api/tl/lists")
+        .then((r) => r.json())
+        .then((d) => setLists(d?.rows || []))
+        .catch(() => {});
+    }
+  }, [open]);
+
+  const createNewList = async () => {
+    if (!newListName.trim()) return;
+    try {
+      setCreatingList(true);
+      const res = await fetch("/api/tl/lists", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ name: newListName }) 
+      });
+      const data = await res.json();
+      if (res.ok && data?.list) {
+        const newList = data.list;
+        startTransition(() => {
+          setLists(prev => {
+            const updated = [...prev, newList];
+            console.log("Updated lists state:", updated);
+            return updated;
+          });
+          setSelectedListId(String(newList.id));
+        });
+        setShowCreateList(false);
+        setNewListName("");
+        
+        // Notify parent component about the new list
+        if (onListCreated) {
+          onListCreated(newList);
+        }
+        
+        // Force a small delay to ensure React processes the state update
+        setTimeout(() => {
+          console.log("Lists after timeout:", lists);
+        }, 100);
+      }
+    } catch {
+      toast.error("Failed to create list");
+    } finally {
+      setCreatingList(false);
+    }
+  };
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -17,6 +73,33 @@ export function AddLeadModal({ open, onClose, onCreated }: { open: boolean; onCl
           <input className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" placeholder="Name" value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <input className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" placeholder="Email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <input className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" placeholder="Source" value={form.source || ""} onChange={(e) => setForm({ ...form, source: e.target.value })} />
+          
+          {/* List Selection */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Add to List</label>
+            <div className="flex gap-2">
+              <select
+                key={`list-select-${lists.map(l => l.id).join('-')}-${selectedListId}`}
+                value={selectedListId}
+                onChange={(e) => setSelectedListId(e.target.value)}
+                className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">No list</option>
+                {lists.map((list) => (
+                  <option key={list.id} value={String(list.id)}>
+                    {list.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowCreateList(true)}
+                className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md border border-gray-300"
+              >
+                New
+              </button>
+            </div>
+          </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button className="px-4 py-2 text-sm" onClick={onClose}>Cancel</button>
@@ -25,7 +108,11 @@ export function AddLeadModal({ open, onClose, onCreated }: { open: boolean; onCl
             disabled={submitting || !form.phone.trim()}
             onClick={async () => {
               setSubmitting(true);
-              const res = await fetch("/api/tl/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+              const payload: any = { ...form };
+              if (selectedListId) {
+                payload.listId = Number(selectedListId);
+              }
+              const res = await fetch("/api/tl/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
               if (res.ok) toast.success("Lead added"); else toast.error("Failed to add lead");
               setSubmitting(false);
               onCreated();
@@ -36,6 +123,43 @@ export function AddLeadModal({ open, onClose, onCreated }: { open: boolean; onCl
           </button>
         </div>
       </div>
+
+      {/* Create New List Modal */}
+      {showCreateList && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
+            <h3 className="text-lg font-semibold text-gray-900">Create New List</h3>
+            <p className="text-sm text-gray-600 mt-1">Give your list a name.</p>
+            <div className="mt-4">
+              <input
+                type="text"
+                value={newListName}
+                onChange={(e) => setNewListName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g. Hot leads"
+              />
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button 
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg" 
+                onClick={() => {
+                  setShowCreateList(false);
+                  setNewListName("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                onClick={createNewList}
+                disabled={creatingList || !newListName.trim()}
+              >
+                {creatingList ? "Creating..." : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -52,7 +176,7 @@ const FORM_FIELDS = [
   { key: 'utm', label: 'UTM Parameters', required: false, description: 'Campaign tracking parameters' }
 ];
 
-export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean; onClose: () => void; onImported: () => void }) {
+export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: { open: boolean; onClose: () => void; onImported: () => void; onListCreated?: (list: { id: number; name: string }) => void }) {
   const [step, setStep] = useState<'upload' | 'mapping' | 'preview'>('upload');
   const [fileData, setFileData] = useState<any[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
@@ -61,6 +185,63 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
   const [error, setError] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  
+  // List selection state
+  const [lists, setLists] = useState<Array<{ id: number; name: string }>>([]);
+  const [selectedListId, setSelectedListId] = useState<string>("");
+  const [showCreateList, setShowCreateList] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [creatingList, setCreatingList] = useState(false);
+
+  // Load lists when modal opens
+  useEffect(() => {
+    if (open) {
+      fetch("/api/tl/lists")
+        .then((r) => r.json())
+        .then((d) => setLists(d?.rows || []))
+        .catch(() => {});
+    }
+  }, [open]);
+
+  const createNewList = async () => {
+    if (!newListName.trim()) return;
+    try {
+      setCreatingList(true);
+      const res = await fetch("/api/tl/lists", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ name: newListName }) 
+      });
+      const data = await res.json();
+      if (res.ok && data?.list) {
+        const newList = data.list;
+        startTransition(() => {
+          setLists(prev => {
+            const updated = [...prev, newList];
+            console.log("Updated lists state:", updated);
+            return updated;
+          });
+          setSelectedListId(String(newList.id));
+        });
+        setShowCreateList(false);
+        setNewListName("");
+        
+        // Notify parent component about the new list
+        if (onListCreated) {
+          onListCreated(newList);
+        }
+        
+        // Force a small delay to ensure React processes the state update
+        setTimeout(() => {
+          console.log("Lists after timeout:", lists);
+        }, 100);
+      }
+    } catch {
+      toast.error("Failed to create list");
+    } finally {
+      setCreatingList(false);
+    }
+  };
   
   if (!open) return null;
 
@@ -88,6 +269,9 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
     setMappedData([]);
     setError("");
     setValidationErrors([]);
+    setSelectedListId("");
+    setShowCreateList(false);
+    setNewListName("");
     if (fileRef.current) {
       fileRef.current.value = "";
     }
@@ -285,10 +469,14 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
     
     setUploading(true);
     try {
+      const payload: any = { rows: mappedData };
+      if (selectedListId) {
+        payload.listId = Number(selectedListId);
+      }
       const res = await fetch("/api/tl/leads/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: mappedData }),
+        body: JSON.stringify(payload),
       });
       
       if (res.ok) {
@@ -387,6 +575,43 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
         ))}
       </div>
       
+      {/* List Selection */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 text-blue-800 mb-3">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+          <span className="font-medium">Add to List (Optional)</span>
+        </div>
+        <div className="flex gap-2">
+          <select
+            key={`mapping-list-select-${lists.map(l => l.id).join('-')}-${selectedListId}`}
+            value={selectedListId}
+            onChange={(e) => setSelectedListId(e.target.value)}
+            className="flex-1 border border-blue-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          >
+            <option value="">No list</option>
+            {lists.map((list) => (
+              <option key={list.id} value={String(list.id)}>
+                {list.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setShowCreateList(true)}
+            className="px-3 py-2 text-sm bg-blue-100 hover:bg-blue-200 rounded-md border border-blue-300 text-blue-700"
+          >
+            New List
+          </button>
+        </div>
+        {selectedListId && (
+          <p className="text-blue-700 text-xs mt-2">
+            ✓ Leads will be added to "{lists.find(l => String(l.id) === selectedListId)?.name}"
+          </p>
+        )}
+      </div>
+      
       <div className="flex justify-between pt-4">
         <button
           onClick={() => setStep('upload')}
@@ -445,6 +670,43 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
             </div>
           ))}
         </div>
+      </div>
+      
+      {/* List Selection */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 text-blue-800 mb-3">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+          <span className="font-medium">Add to List (Optional)</span>
+        </div>
+        <div className="flex gap-2">
+          <select
+            key={`import-list-select-${lists.map(l => l.id).join('-')}-${selectedListId}`}
+            value={selectedListId}
+            onChange={(e) => setSelectedListId(e.target.value)}
+            className="flex-1 border border-blue-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          >
+            <option value="">No list</option>
+            {lists.map((list) => (
+              <option key={list.id} value={String(list.id)}>
+                {list.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setShowCreateList(true)}
+            className="px-3 py-2 text-sm bg-blue-100 hover:bg-blue-200 rounded-md border border-blue-300 text-blue-700"
+          >
+            New List
+          </button>
+        </div>
+        {selectedListId && (
+          <p className="text-blue-700 text-xs mt-2">
+            ✓ Leads will be added to "{lists.find(l => String(l.id) === selectedListId)?.name}"
+          </p>
+        )}
       </div>
       
       <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
@@ -513,10 +775,14 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
             const handleImportUnique = async () => {
               setUploading(true);
               try {
+                const payload: any = { rows: uniqueValidRows };
+                if (selectedListId) {
+                  payload.listId = Number(selectedListId);
+                }
                 const res = await fetch("/api/tl/leads/import", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ rows: uniqueValidRows }),
+                  body: JSON.stringify(payload),
                 });
                 if (res.ok) {
                   toast.success("Unique leads imported successfully");
@@ -606,6 +872,43 @@ export function ImportLeadsModal({ open, onClose, onImported }: { open: boolean;
           {step === 'preview' && renderPreviewStep()}
         </div>
       </div>
+
+      {/* Create New List Modal */}
+      {showCreateList && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
+            <h3 className="text-lg font-semibold text-gray-900">Create New List</h3>
+            <p className="text-sm text-gray-600 mt-1">Give your list a name.</p>
+            <div className="mt-4">
+              <input
+                type="text"
+                value={newListName}
+                onChange={(e) => setNewListName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g. Hot leads"
+              />
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button 
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg" 
+                onClick={() => {
+                  setShowCreateList(false);
+                  setNewListName("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                onClick={createNewList}
+                disabled={creatingList || !newListName.trim()}
+              >
+                {creatingList ? "Creating..." : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

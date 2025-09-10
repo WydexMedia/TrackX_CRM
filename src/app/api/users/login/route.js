@@ -6,20 +6,31 @@ export async function POST(request) {
   console.log('LOGIN API HIT');
   const { code, password } = await request.json();
   const { tenantSubdomain } = await getTenantContextFromRequest(request);
-  console.log('Received:', { code, password });
+  console.log('Received:', { code, password, tenantSubdomain });
 
   const db = await getMongoDb();
 
   // Validate credentials
-  const criteria = tenantSubdomain ? { code, password, tenantSubdomain } : { code, password };
-  const user = await db.collection('users').findOne(criteria);
+  let user;
+  if (tenantSubdomain) {
+    // Login from tenant subdomain - find user with tenant match
+    user = await db.collection('users').findOne({ code, password, tenantSubdomain });
+  } else {
+    // Login from main domain - find user by code/password only, then check their tenant
+    user = await db.collection('users').findOne({ code, password });
+  }
+  
   console.log('User found:', user);
   if (!user) {
     return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
   }
 
+  // If logging in from main domain and user has a tenant, we need to redirect them
+  const needsRedirect = !tenantSubdomain && user.tenantSubdomain;
+
   // Enforce single active session
   const sessions = db.collection('sessions');
+  const userTenantSubdomain = user.tenantSubdomain || '';
   const activeFilter = tenantSubdomain
     ? { userId: user._id, tenantSubdomain, revokedAt: { $exists: false } }
     : { userId: user._id, revokedAt: { $exists: false } };
@@ -35,7 +46,7 @@ export async function POST(request) {
   await sessions.insertOne({
     sessionId,
     userId: user._id,
-    tenantSubdomain: tenantSubdomain || '',
+    tenantSubdomain: tenantSubdomain || userTenantSubdomain,
     createdAt: new Date(),
     lastSeenAt: new Date(),
   });
@@ -44,6 +55,32 @@ export async function POST(request) {
   const { password: _, ...userData } = user;
   if (!userData.role) {
     userData.role = 'sales';
+  }
+
+  // If user needs redirect to their tenant subdomain, include that info
+  if (needsRedirect) {
+    // Determine the base domain based on environment
+    const baseDomain = process.env.NODE_ENV === 'development' 
+      ? 'localhost:3000' 
+      : 'wydex.co';
+    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+    
+    // Determine the dashboard path based on user role
+    let dashboardPath = '/dashboard'; // default for sales users
+    if (userData.role === 'CEO') {
+      dashboardPath = '/ceo';
+    } else if (userData.role === 'teamleader') {
+      dashboardPath = '/team-leader';
+    } else if (userData.role === 'jl') {
+      dashboardPath = '/junior-leader';
+    }
+    
+    return new Response(JSON.stringify({ 
+      ...userData, 
+      sessionId,
+      needsRedirect: true,
+      redirectTo: `${protocol}://${userTenantSubdomain}.${baseDomain}${dashboardPath}?sessionId=${sessionId}`
+    }), { status: 200 });
   }
 
   // Include sessionId so client can manage logout
