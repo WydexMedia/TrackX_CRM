@@ -40,10 +40,18 @@ export async function POST(request) {
   
   console.log('Creating user with data:', data); // Debug log
   
-  // Check if user with same code already exists
-  const existingUser = await users.findOne(tenantSubdomain ? { code: data.code, tenantSubdomain } : { code: data.code });
+  // Force code to equal email for new users
+  if (typeof data.email === 'string' && data.email.trim().length > 0) {
+    data.code = data.email;
+  }
+
+  // Check if user with same code or email already exists
+  const uniqueFilter = tenantSubdomain
+    ? { tenantSubdomain, $or: [{ code: data.code }, { email: data.email }] }
+    : { $or: [{ code: data.code }, { email: data.email }] };
+  const existingUser = await users.findOne(uniqueFilter);
   if (existingUser) {
-    return NextResponse.json({ success: false, error: 'User with this code already exists' }, { status: 400 });
+    return NextResponse.json({ success: false, error: 'User with this email already exists' }, { status: 400 });
   }
   
   data.createdAt = new Date();

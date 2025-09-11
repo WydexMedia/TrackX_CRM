@@ -8,12 +8,20 @@ export async function GET(req: NextRequest) {
     const users = mdb.collection("users");
     const { tenantSubdomain } = await getTenantContextFromRequest(req as any);
     const filter = tenantSubdomain ? { tenantSubdomain } : {};
-    const docs = await users.find(filter, { projection: { code: 1, name: 1 } }).toArray();
+    const docs = await users.find(filter, { projection: { code: 1, email: 1, name: 1 } }).toArray();
     
     const userMap: Record<string, string> = {};
     for (const u of docs) {
-      if (typeof (u as any).code === "string" && typeof (u as any).name === "string") {
-        userMap[String((u as any).code)] = String((u as any).name);
+      const code = (u as any).code;
+      const email = (u as any).email;
+      const name = (u as any).name;
+      if (typeof name === "string") {
+        if (typeof email === "string" && email.trim().length > 0) {
+          userMap[String(email)] = String(name);
+        }
+        if (typeof code === "string" && code.trim().length > 0) {
+          userMap[String(code)] = String(name);
+        }
       }
     }
     

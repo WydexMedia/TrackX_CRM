@@ -170,7 +170,8 @@ export default function DashboardPage() {
       }
 
       // Load current user from API (fresh target, etc.)
-      const loadUser = fetch(`/api/users/current?code=${u.code}`)
+      const identifier = encodeURIComponent(u.email || u.code);
+      const loadUser = fetch(`/api/users/current?identifier=${identifier}`)
         .then((res) => res.json())
         .then((userData) => {
           const updated = userData?.success ? { ...u, ...userData.user } : u;
@@ -368,7 +369,7 @@ export default function DashboardPage() {
                       <path d="M10 6H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-5" />
                       <path d="M10 6V5a2 2 0 1 1 4 0v1" />
                     </svg>
-                    {user.code}
+                    {user.email || user.code}
                   </span>
                   <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs sm:text-sm">
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -74,7 +74,20 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const limit = Number(searchParams.get("limit") || 10);
-    const { tenantSubdomain, tenantId } = await getTenantContextFromRequest(req as any);
+    let { tenantSubdomain, tenantId } = await getTenantContextFromRequest(req as any);
+
+    // If tenantId missing but subdomain present, resolve tenantId from DB
+    if (!tenantId && tenantSubdomain) {
+      try {
+        const tenantRow = await db.select({ id: (await import("@/db/schema")).tenants.id })
+          .from((await import("@/db/schema")).tenants)
+          .where(eq((await import("@/db/schema")).tenants.subdomain, tenantSubdomain))
+          .limit(1);
+        if (Array.isArray(tenantRow) && tenantRow.length > 0) {
+          tenantId = tenantRow[0].id as any;
+        }
+      } catch {}
+    }
 
     // Optional: load users to resolve codes -> names
     let nameByCode: Map<string, string> | null = null;
@@ -99,6 +112,11 @@ export async function GET(req: NextRequest) {
       nameByCode = null;
     }
 
+    // If we still don't have a tenantId, return empty to avoid cross-tenant leakage
+    if (!tenantId) {
+      return new Response(JSON.stringify({ success: true, items: [] }), { status: 200 });
+    }
+
     const rows = await db
       .select({
         id: leadEvents.id,
@@ -112,7 +130,7 @@ export async function GET(req: NextRequest) {
       .from(leadEvents)
       .leftJoin(leads, eq(leads.phone, leadEvents.leadPhone))
       .where(
-        tenantId ? and(eq(leadEvents.tenantId, tenantId)) : undefined as any
+        and(eq(leadEvents.tenantId, tenantId))
       )
       .orderBy(desc(leadEvents.at))
       .limit(limit);

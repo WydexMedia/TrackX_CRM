@@ -39,7 +39,7 @@ function filterSalesByMonth(sales: any[], date: Date) {
 }
 
 export default function LoginAndDashboard() {
-  const [code, setCode] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [user, setUser] = useState<any>(null);
@@ -62,13 +62,13 @@ export default function LoginAndDashboard() {
       const res = await fetch("/api/users/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, password }),
+        body: JSON.stringify({ email, password }),
       });
       if (!res.ok) {
         if (res.status === 409) {
           setError("Active session detected. Please log out from the other device or contact admin.");
         } else if (res.status === 401) {
-          setError("Invalid employee code or password");
+          setError("Invalid email or password");
         } else {
           setError("Login failed. Please try again.");
         }
@@ -238,11 +238,12 @@ export default function LoginAndDashboard() {
 
           <div className="space-y-6">
             <div>
-              <label className="block text-white/90 font-medium mb-2">Employee Code</label>
+              <label className="block text-white/90 font-medium mb-2">UserId or Email</label>
               <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="Enter your employee code"
+                type="text"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email or code"
                 className="modern-input text-black"
               />
             </div>
@@ -392,7 +393,7 @@ export default function LoginAndDashboard() {
     // Clean up local storage and state after API call
     localStorage.removeItem("user");
     setUser(null);
-    setCode("");
+    setEmail("");
     setPassword("");
     console.log('🧹 Local logout completed');
   };

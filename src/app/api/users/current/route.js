@@ -14,16 +14,32 @@ export async function GET(request) {
     
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
+    const identifier = searchParams.get('identifier') || code;
     const { tenantSubdomain } = await getTenantContextFromRequest(request);
     
-    if (!code) {
+    if (!identifier) {
       return NextResponse.json({ 
         success: false, 
-        error: "User code is required" 
+        error: "User identifier is required" 
       }, { status: 400 });
     }
     
-    const user = await users.findOne(tenantSubdomain ? { code: code, tenantSubdomain } : { code: code });
+    let user = null;
+    if (tenantSubdomain) {
+      if (/@/.test(identifier)) {
+        user = await users.findOne({ email: identifier, tenantSubdomain });
+      }
+      if (!user) {
+        user = await users.findOne({ code: identifier, tenantSubdomain });
+      }
+    } else {
+      if (/@/.test(identifier)) {
+        user = await users.findOne({ email: identifier });
+      }
+      if (!user) {
+        user = await users.findOne({ code: identifier });
+      }
+    }
     
     if (!user) {
       return NextResponse.json({ 
