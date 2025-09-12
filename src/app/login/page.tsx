@@ -79,9 +79,7 @@ export default function LoginAndDashboard() {
       // Check if user needs to be redirected to their tenant subdomain
       if (user.needsRedirect && user.redirectTo) {
         console.log('Redirecting user to tenant subdomain:', user.redirectTo);
-        // Store user data temporarily for the redirect
-        localStorage.setItem("user", JSON.stringify(user));
-        // Redirect to tenant subdomain
+        // Do not store user on main domain to avoid stale localStorage issues
         window.location.href = user.redirectTo;
         return;
       }
@@ -159,21 +157,29 @@ export default function LoginAndDashboard() {
 
   // Load user from localStorage
   useEffect(() => {
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+    const parts = hostname.split('.');
+    const hasSubdomain = parts.length > 2 && parts[0] !== 'www';
+
     const u = typeof window !== 'undefined' ? localStorage.getItem("user") : null;
-    if (u) {
-      const userData = JSON.parse(u);
-      setUser(userData);
-      
-      // Redirect based on role if user is already logged in
-      if (userData.role === 'CEO') {
-        window.location.href = '/ceo';
-      } else if (userData.role === 'teamleader') {
-        router.push('/team-leader');
-      } else if (userData.role === 'jl') {
-        router.push('/junior-leader');
-      } else {
-        router.push('/dashboard');
-      }
+    if (!u) return;
+    const userData = JSON.parse(u);
+    setUser(userData);
+
+    // If on main domain, do not redirect based on stale localStorage
+    if (!hasSubdomain) {
+      return;
+    }
+
+    // On tenant domain, allow role-based redirect within the tenant
+    if (userData.role === 'CEO') {
+      window.location.href = '/ceo';
+    } else if (userData.role === 'teamleader') {
+      router.push('/team-leader');
+    } else if (userData.role === 'jl') {
+      router.push('/junior-leader');
+    } else {
+      router.push('/dashboard');
     }
   }, [router]);
 

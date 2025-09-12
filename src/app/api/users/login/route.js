@@ -6,30 +6,33 @@ export async function POST(request) {
   console.log('LOGIN API HIT');
   const body = await request.json();
   const { email, password } = body;
-  const identifier = body.identifier || email || body.code;
   const { tenantSubdomain } = await getTenantContextFromRequest(request);
-  console.log('Received:', { identifier, tenantSubdomain });
+  console.log('Received:', { email, tenantSubdomain });
 
   const db = await getMongoDb();
 
   // Validate credentials
   let user;
   const usersCol = db.collection('users');
+  // Enforce email-based login only
+  if (!email || typeof email !== 'string' || !/@/.test(email)) {
+    return new Response(
+      JSON.stringify({ error: 'Email is required for login' }),
+      { status: 400 }
+    );
+  }
+  if (!password || typeof password !== 'string') {
+    return new Response(
+      JSON.stringify({ error: 'Password is required for login' }),
+      { status: 400 }
+    );
+  }
+
   if (tenantSubdomain) {
-    // Prefer email match if identifier looks like email; otherwise fall back to code
-    if (identifier && /@/.test(identifier)) {
-      user = await usersCol.findOne({ email: identifier, password, tenantSubdomain });
-    }
-    if (!user && identifier) {
-      user = await usersCol.findOne({ code: identifier, password, tenantSubdomain });
-    }
+    user = await usersCol.findOne({ email, password, tenantSubdomain });
   } else {
-    if (identifier && /@/.test(identifier)) {
-      user = await usersCol.findOne({ email: identifier, password });
-    }
-    if (!user && identifier) {
-      user = await usersCol.findOne({ code: identifier, password });
-    }
+    // Global unique email → no tenant filter needed
+    user = await usersCol.findOne({ email, password });
   }
   
   console.log('User found:', user);
