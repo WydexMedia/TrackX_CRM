@@ -607,7 +607,7 @@ export default function TasksPage() {
     }
   };
 
-  // Function to scroll to special tasks section
+  // Function to scroll to tasks section
   const scrollToSpecialTasksSection = () => {
     specialTasksSectionRef.current?.scrollIntoView({ 
       behavior: 'smooth',
@@ -705,7 +705,7 @@ export default function TasksPage() {
     }
     setFollowUps(mergedFollowUps);
 
-    // tl/tasks merged and filter special tasks for current user (match either email or code)
+    // tl/tasks merged and filter tasks for current user (match either email or code)
     let allTlRows: any[] = [];
     for (const res of tlTaskResults) {
       const rows = Array.isArray(res?.rows) ? res.rows : [];
@@ -799,13 +799,13 @@ export default function TasksPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Special Tasks</p>
+                <p className="text-sm font-medium text-gray-600">Tasks</p>
                 <p 
                   className="text-3xl font-bold text-blue-600 cursor-pointer hover:text-blue-700 transition-colors"
                   onClick={() => {
                     setSpecialTasksModalOpen(true);
                   }}
-                  title="Click to view special tasks"
+                  title="Click to view tasks"
                 >
                   {specialTasks.length}
                 </p>
@@ -919,25 +919,25 @@ export default function TasksPage() {
 
         
 
-        {/* Special Tasks Section */}
+        {/* Tasks Section */}
         <section className="mb-8" ref={specialTasksSectionRef}>
-          <SectionHeader icon={ListTodo} title="Special Tasks" count={specialTasks.length} color="blue" />
+          <SectionHeader icon={ListTodo} title="Tasks" count={specialTasks.length} color="blue" />
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-lg font-semibold text-gray-900">
                 <CheckCircle2 size={20} className="text-blue-600 mr-2" />
-                Special Tasks
+                Tasks
               </h4>
             </div>
             <div className="space-y-3">
               {loading ? (
                 <div className="text-center py-4">
                   <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-sm text-gray-500">Loading special tasks...</p>
+                  <p className="text-sm text-gray-500">Loading tasks...</p>
                 </div>
               ) : specialTasks.length === 0 ? (
                 <div className="bg-gray-100 rounded-lg p-4 text-center text-gray-600">
-                  No special tasks assigned yet.
+                  No tasks assigned yet.
                 </div>
               ) : (
                 specialTasks.map((task) => (
@@ -1494,13 +1494,13 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Special Tasks Modal */}
+      {/* Tasks Modal */}
       {specialTasksModalOpen && (
         <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center p-4 z-50">
           <div className="bg-white/95 backdrop-blur-md rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200/50">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-white/50">
-              <h2 className="text-xl font-bold text-gray-900">Special Tasks</h2>
+              <h2 className="text-xl font-bold text-gray-900">Tasks</h2>
               <button
                 onClick={() => setSpecialTasksModalOpen(false)}
                 className="p-2 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-105"
@@ -1509,11 +1509,11 @@ export default function TasksPage() {
               </button>
             </div>
 
-            {/* Special Tasks List */}
+            {/* Tasks List */}
             <div className="p-6">
               {specialTasks.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500">No special tasks found.</p>
+                  <p className="text-gray-500">No tasks found.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
