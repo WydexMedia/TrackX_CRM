@@ -4,20 +4,32 @@ import crypto from 'crypto';
 
 export async function POST(request) {
   console.log('LOGIN API HIT');
-  const { code, password } = await request.json();
+  const body = await request.json();
+  const { email, password } = body;
+  const identifier = body.identifier || email || body.code;
   const { tenantSubdomain } = await getTenantContextFromRequest(request);
-  console.log('Received:', { code, password, tenantSubdomain });
+  console.log('Received:', { identifier, tenantSubdomain });
 
   const db = await getMongoDb();
 
   // Validate credentials
   let user;
+  const usersCol = db.collection('users');
   if (tenantSubdomain) {
-    // Login from tenant subdomain - find user with tenant match
-    user = await db.collection('users').findOne({ code, password, tenantSubdomain });
+    // Prefer email match if identifier looks like email; otherwise fall back to code
+    if (identifier && /@/.test(identifier)) {
+      user = await usersCol.findOne({ email: identifier, password, tenantSubdomain });
+    }
+    if (!user && identifier) {
+      user = await usersCol.findOne({ code: identifier, password, tenantSubdomain });
+    }
   } else {
-    // Login from main domain - find user by code/password only, then check their tenant
-    user = await db.collection('users').findOne({ code, password });
+    if (identifier && /@/.test(identifier)) {
+      user = await usersCol.findOne({ email: identifier, password });
+    }
+    if (!user && identifier) {
+      user = await usersCol.findOne({ code: identifier, password });
+    }
   }
   
   console.log('User found:', user);

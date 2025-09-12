@@ -140,7 +140,7 @@ function LeadDetailsModal({
       const updateData: any = {
         stage,
         stageNotes: stageNotes.trim() || undefined,
-        actorId: getUser()?.code || "system"
+        actorId: getUser()?.email || getUser()?.code || "system"
       };
 
       // Add followup information if needed
@@ -558,7 +558,9 @@ export default function TasksPage() {
     };
   }, []); // Remove dependency array to run only once
 
-  const ownerId = user?.code || "";
+  const ownerIdEmail = user?.email || "";
+  const ownerIdCode = user?.code || "";
+  const ownerId = ownerIdEmail || ownerIdCode;
   const ownerName = user?.name || "";
 
   // Function to scroll to leads section
@@ -638,31 +640,106 @@ export default function TasksPage() {
   const load = useCallback(async () => {
     if (!ownerId) return;
     setLoading(true);
-    const qs = `ownerId=${encodeURIComponent(ownerId)}&ownerName=${encodeURIComponent(ownerName)}`;
-    const [a, b, c] = await Promise.all([
-      fetch(`/api/tasks/due-calls?${qs}`).then((r) => r.json()),
-      fetch(`/api/tasks/today?${qs}`).then((r) => r.json()),
-      fetch(`/api/tl/tasks?ownerId=${encodeURIComponent(ownerId)}`).then((r) => r.json()),
+    const qsEmail = ownerIdEmail ? `ownerId=${encodeURIComponent(ownerIdEmail)}&ownerName=${encodeURIComponent(ownerName)}` : "";
+    const qsCode = ownerIdCode && ownerIdCode !== ownerIdEmail ? `ownerId=${encodeURIComponent(ownerIdCode)}&ownerName=${encodeURIComponent(ownerName)}` : "";
+
+    // Build fetches for due-calls and today (email + code if available)
+    const dueCallsFetches: Promise<any>[] = [];
+    const todayFetches: Promise<any>[] = [];
+    const tlTasksFetches: Promise<any>[] = [];
+
+    if (qsEmail) {
+      dueCallsFetches.push(fetch(`/api/tasks/due-calls?${qsEmail}`).then((r) => r.json()));
+      todayFetches.push(fetch(`/api/tasks/today?${qsEmail}`).then((r) => r.json()));
+      tlTasksFetches.push(fetch(`/api/tl/tasks?ownerId=${encodeURIComponent(ownerIdEmail)}`).then((r) => r.json()));
+    }
+    if (qsCode) {
+      dueCallsFetches.push(fetch(`/api/tasks/due-calls?${qsCode}`).then((r) => r.json()));
+      todayFetches.push(fetch(`/api/tasks/today?${qsCode}`).then((r) => r.json()));
+      tlTasksFetches.push(fetch(`/api/tl/tasks?ownerId=${encodeURIComponent(ownerIdCode)}`).then((r) => r.json()));
+    }
+
+    // Execute in parallel
+    const [dueResults, todayResults, tlTaskResults] = await Promise.all([
+      Promise.all(dueCallsFetches),
+      Promise.all(todayFetches),
+      Promise.all(tlTasksFetches),
     ]);
-    setDueCalls(a.rows || []);
-    setFollowUps(b.followUps || []);
-    
-    // Filter special tasks for the current user
-    const userSpecialTasks = (c.rows || []).filter((task: any) => 
-      task.ownerId === ownerId && task.type === "OTHER" && task.status === "OPEN"
+
+    // Merge and dedupe by task.id for due calls and follow-ups
+    const mergedDue: Array<{ task: TaskRow; lead: Lead }> = [];
+    const dueSeen = new Set<number>();
+    for (const res of dueResults) {
+      const rows = Array.isArray(res?.rows) ? res.rows : [];
+      for (const row of rows) {
+        const id = row?.task?.id;
+        if (typeof id === "number" && !dueSeen.has(id)) {
+          dueSeen.add(id);
+          mergedDue.push(row);
+        }
+      }
+    }
+    setDueCalls(mergedDue);
+
+    const mergedFollowUps: Array<{ task: TaskRow; lead: Lead }> = [];
+    const fuSeen = new Set<number>();
+    let mergedNewLeads: Lead[] = [];
+    for (const res of todayResults) {
+      const followUps = Array.isArray(res?.followUps) ? res.followUps : [];
+      const newLeadsPart = Array.isArray(res?.newLeads) ? res.newLeads : [];
+      for (const row of followUps) {
+        const id = row?.task?.id;
+        if (typeof id === "number" && !fuSeen.has(id)) {
+          fuSeen.add(id);
+          mergedFollowUps.push(row);
+        }
+      }
+      // Merge leads by phone
+      const phoneSeen = new Set(mergedNewLeads.map((l) => l.phone));
+      for (const lead of newLeadsPart) {
+        if (!phoneSeen.has(lead.phone)) {
+          phoneSeen.add(lead.phone);
+          mergedNewLeads.push(lead);
+        }
+      }
+    }
+    setFollowUps(mergedFollowUps);
+
+    // tl/tasks merged and filter special tasks for current user (match either email or code)
+    let allTlRows: any[] = [];
+    for (const res of tlTaskResults) {
+      const rows = Array.isArray(res?.rows) ? res.rows : [];
+      allTlRows = allTlRows.concat(rows);
+    }
+    const special = allTlRows.filter((task: any) =>
+      (task.ownerId === ownerIdEmail || task.ownerId === ownerIdCode) && task.type === "OTHER" && task.status === "OPEN"
     );
-    setSpecialTasks(userSpecialTasks);
-    
-    let leadsList = b.newLeads || [];
-    if ((!Array.isArray(leadsList) || leadsList.length === 0) && ownerId) {
+    setSpecialTasks(special);
+
+    // If no new leads yet, try tl/leads with both identifiers
+    if ((!Array.isArray(mergedNewLeads) || mergedNewLeads.length === 0) && (ownerIdEmail || ownerIdCode)) {
       try {
-        const tl = await fetch(`/api/tl/leads?owner=${encodeURIComponent(ownerId)}&limit=200`).then((r) => r.json());
-        if (Array.isArray(tl.rows) && tl.rows.length > 0) leadsList = tl.rows;
+        const leadFetches: Promise<any>[] = [];
+        if (ownerIdEmail) leadFetches.push(fetch(`/api/tl/leads?owner=${encodeURIComponent(ownerIdEmail)}&limit=200`).then((r) => r.json()));
+        if (ownerIdCode && ownerIdCode !== ownerIdEmail) leadFetches.push(fetch(`/api/tl/leads?owner=${encodeURIComponent(ownerIdCode)}&limit=200`).then((r) => r.json()));
+        const leadResults = await Promise.all(leadFetches);
+        let combined: Lead[] = [];
+        for (const r of leadResults) {
+          const rows = Array.isArray(r?.rows) ? r.rows : [];
+          const seen = new Set(combined.map((l) => l.phone));
+          for (const l of rows) {
+            if (!seen.has(l.phone)) {
+              seen.add(l.phone);
+              combined.push(l);
+            }
+          }
+        }
+        mergedNewLeads = combined;
       } catch {}
     }
-    setNewLeads(leadsList);
+    setNewLeads(mergedNewLeads);
     setLoading(false);
-  }, [ownerId, ownerName]);
+  }, [ownerId, ownerIdEmail, ownerIdCode, ownerName]);
 
   useEffect(() => { load(); }, [load]);
 

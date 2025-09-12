@@ -173,7 +173,8 @@ const FORM_FIELDS = [
   { key: 'stage', label: 'Lead Stage', required: false, description: 'Current stage in sales process' },
   { key: 'score', label: 'Lead Score', required: false, description: 'Numerical score for lead quality' },
   { key: 'consent', label: 'Marketing Consent', required: false, description: 'Whether lead consented to marketing' },
-  { key: 'utm', label: 'UTM Parameters', required: false, description: 'Campaign tracking parameters' }
+  { key: 'utm', label: 'UTM Parameters', required: false, description: 'Campaign tracking parameters' },
+  { key: 'owner', label: 'Owner', required: false, description: 'Assign to salesperson by email (preferred) or code' }
 ];
 
 export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: { open: boolean; onClose: () => void; onImported: () => void; onListCreated?: (list: { id: number; name: string }) => void }) {

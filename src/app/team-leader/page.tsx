@@ -82,7 +82,6 @@ export default function TeamLeaderPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUser, setNewUser] = useState({
     name: "",
-    code: "",
     email: "",
     password: "",
     target: 0
@@ -408,7 +407,7 @@ export default function TeamLeaderPage() {
       if (res.ok) {
         toast.success("User created successfully");
         setShowAddUser(false);
-        setNewUser({ name: "", code: "", email: "", password: "", target: 0 });
+        setNewUser({ name: "", email: "", password: "", target: 0 });
         fetchData();
       } else {
         const error = await res.json();
@@ -1537,16 +1536,7 @@ export default function TeamLeaderPage() {
                   className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
-                <input
-                  type="text"
-                  required
-                  value={newUser.code}
-                  onChange={(e) => setNewUser({ ...newUser, code: e.target.value })}
-                  className="w-full text-black  px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              {/* Removed Code field; code will be set to email in API */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
