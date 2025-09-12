@@ -52,10 +52,14 @@ interface CallPerformance {
 }
 
 interface TeamLeader {
+  _id?: string;
   name: string;
   code: string;
   email: string;
   role: string;
+  phone?: string;
+  address?: string;
+  about?: string;
 }
 
 function getTeamLeader() {
@@ -100,6 +104,24 @@ export default function TeamLeaderPage() {
   const [showCallDetailsModal, setShowCallDetailsModal] = useState(false);
   const [selectedCallPerson, setSelectedCallPerson] = useState<string | null>(null);
   const [callDetails, setCallDetails] = useState<Call[]>([]);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [activeProfileTab, setActiveProfileTab] = useState("institute");
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [profileData, setProfileData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    about: "",
+    subdomain: ""
+  });
   const router = useRouter();
   const { subdomain } = useTenant();
 
@@ -150,6 +172,37 @@ export default function TeamLeaderPage() {
 
     authenticateUser();
   }, [router]);
+
+  // Initialize profile data when teamLeader changes
+  useEffect(() => {
+    if (teamLeader) {
+      setProfileData({
+        name: teamLeader.name || "",
+        email: teamLeader.email || "",
+        phone: teamLeader.phone || "",
+        address: teamLeader.address || "",
+        about: teamLeader.about || "",
+        subdomain: subdomain ? `https://${subdomain}.nurturecrm.in` : ""
+      });
+    }
+  }, [teamLeader, subdomain]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showProfileDropdown) {
+        const target = event.target as HTMLElement;
+        if (!target.closest('.profile-dropdown')) {
+          setShowProfileDropdown(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileDropdown]);
 
   const fetchData = async () => {
     try {
@@ -252,6 +305,94 @@ export default function TeamLeaderPage() {
     // Clean up local storage and navigate after API call
     localStorage.removeItem("user");
     router.push("/login");
+  };
+
+  const handleProfileSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Make API call to save profile data
+      const response = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          _id: teamLeader?._id,
+          name: profileData.name,
+          email: profileData.email,
+          phone: profileData.phone,
+          address: profileData.address,
+          about: profileData.about
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("Profile updated successfully");
+        setIsEditingProfile(false);
+        
+        // Update teamLeader state with new data
+        if (teamLeader) {
+          const updatedTeamLeader = {
+            ...teamLeader,
+            name: profileData.name,
+            email: profileData.email,
+            phone: profileData.phone,
+            address: profileData.address,
+            about: profileData.about
+          };
+          setTeamLeader(updatedTeamLeader);
+          
+          // Update localStorage as well
+          localStorage.setItem("user", JSON.stringify(updatedTeamLeader));
+        }
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to update profile");
+      }
+    } catch (error) {
+      toast.error("Failed to update profile");
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate passwords
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("New passwords don't match");
+      return;
+    }
+    
+    if (passwordData.newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters long");
+      return;
+    }
+    
+    try {
+      // Make API call to change password
+      const response = await fetch("/api/users/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          _id: teamLeader?._id,
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("Password changed successfully");
+        setActiveProfileTab("institute");
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        });
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to change password");
+      }
+    } catch (error) {
+      toast.error("Failed to change password");
+    }
   };
 
   const handleAddUser = async (e: React.FormEvent) => {
@@ -663,6 +804,39 @@ export default function TeamLeaderPage() {
               </svg>
               <span className="text-sm font-medium">Add Member</span>
             </button>
+            
+            {/* Profile Dropdown */}
+            <div className="relative profile-dropdown">
+              <button
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                className="bg-gray-100 cursor-pointer hover:bg-gray-200 text-gray-700 p-2 rounded-lg transition-colors duration-200"
+                title="Profile"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </button>
+              
+              {showProfileDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <div className="py-2">
+                    <div className="px-4 py-2 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900">{teamLeader?.name}</p>
+                      <p className="text-xs text-gray-500">{teamLeader?.email}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowEditProfile(true);
+                        setShowProfileDropdown(false);
+                      }}
+                      className="w-full cursor-pointer text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      Edit Profile
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             
             <button
               onClick={handleLogout}
@@ -1882,6 +2056,319 @@ export default function TeamLeaderPage() {
           </div>
         </div>
       )}
+
+      {/* Edit Profile Modal */}
+      {showEditProfile && (
+        <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex shadow-2xl border border-gray-200">
+            {/* Sidebar */}
+            <div className="w-64 bg-gray-50 p-6 border-r border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">Manage</h2>
+                             <nav className="space-y-2">
+                 <div 
+                   onClick={() => setActiveProfileTab("institute")}
+                   className={`py-2 px-3 rounded-md cursor-pointer ${
+                     activeProfileTab === "institute" 
+                       ? "text-teal-600 font-medium bg-white shadow-sm" 
+                       : "text-gray-600 hover:bg-white"
+                   }`}
+                 >
+                   Institute Profile
+                 </div>
+                
+                 <div className="text-gray-600 py-2 px-3 hover:bg-white rounded-md cursor-pointer">
+                   Courses
+                 </div>
+                 <div className="text-gray-600 py-2 px-3 hover:bg-white rounded-md cursor-pointer">
+                   Batches
+                 </div>
+                 <div className="text-gray-600 py-2 px-3 hover:bg-white rounded-md cursor-pointer">
+                   Billing
+                 </div>
+               </nav>
+              
+              <h3 className="text-lg font-semibold text-gray-900 mt-8 mb-4">My Profile</h3>
+              <nav className="space-y-2">
+                <div className="text-gray-600 py-2 px-3 hover:bg-white rounded-md cursor-pointer">
+                  User Details
+                </div>
+                <div 
+                  onClick={() => setActiveProfileTab("changePassword")}
+                  className={`py-2 px-3 hover:bg-white rounded-md cursor-pointer ${
+                    activeProfileTab === "changePassword" 
+                      ? "text-teal-600 font-medium bg-white shadow-sm" 
+                      : "text-gray-600"
+                  }`}
+                >
+                  Change Password
+                </div>
+                <div className="text-gray-600 py-2 px-3 hover:bg-white rounded-md cursor-pointer">
+                  Notifications
+                </div>
+              </nav>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Header with background pattern */}
+              <div className="h-32 bg-gradient-to-r from-gray-100 to-gray-200 relative">
+                <div className="absolute inset-0 bg-white bg-opacity-50"></div>
+                                 <div className="absolute top-4 right-4">
+                   <button
+                     onClick={() => {
+                       setShowEditProfile(false);
+                       setIsEditingProfile(false);
+                     }}
+                     className="text-gray-500 hover:text-gray-700 p-2"
+                   >
+                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                     </svg>
+                   </button>
+                 </div>
+              </div>
+
+                             <div className="p-8">
+                 {/* Institute Profile Content */}
+                 {activeProfileTab === "institute" && (
+                   <form onSubmit={handleProfileSave} className="space-y-8">
+                     {/* Profile Title and Edit Button */}
+                     <div className="flex items-center justify-between">
+                       <h1 className="text-2xl font-bold text-gray-900">{profileData.name || 'Profile'}</h1>
+                       <button
+                         type="button"
+                         onClick={() => setIsEditingProfile(!isEditingProfile)}
+                         className="text-gray-400 hover:text-gray-600 p-2"
+                       >
+                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                         </svg>
+                       </button>
+                     </div>
+
+                     {/* Contact Information */}
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="flex items-center space-x-3">
+                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                         </svg>
+                         {isEditingProfile ? (
+                           <input
+                             type="email"
+                             value={profileData.email}
+                             onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                             className="flex-1 text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                             placeholder="Email"
+                           />
+                         ) : (
+                           <span className="flex-1 text-gray-600">{profileData.email || 'No email provided'}</span>
+                         )}
+                       </div>
+                       
+                       <div className="flex items-center space-x-3">
+                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                         </svg>
+                         {isEditingProfile ? (
+                           <input
+                             type="tel"
+                             value={profileData.phone}
+                             onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                             className="flex-1 text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                             placeholder="Phone"
+                           />
+                         ) : (
+                           <span className="flex-1 text-gray-600">{profileData.phone || 'No phone provided'}</span>
+                         )}
+                       </div>
+                     </div>
+
+                     {/* Subdomain and Address */}
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-2">Subdomain:</label>
+                         <div className="w-full text-blue-600 bg-transparent">
+                           {profileData.subdomain || 'No subdomain configured'}
+                         </div>
+                       </div>
+                       
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-2">Address:</label>
+                         {isEditingProfile ? (
+                           <textarea
+                             value={profileData.address}
+                             onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
+                             rows={2}
+                             className="w-full text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                             placeholder="Enter address"
+                           />
+                         ) : (
+                           <div className="w-full text-gray-600">
+                             {profileData.address || 'No address provided'}
+                           </div>
+                         )}
+                       </div>
+                     </div>
+
+                     {/* About and Social Media */}
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       <div>
+                         <div className="flex items-center justify-between mb-4">
+                           <h3 className="text-lg font-semibold text-gray-900">About</h3>
+                           <button
+                             type="button"
+                             onClick={() => setIsEditingProfile(!isEditingProfile)}
+                             className="text-gray-400 hover:text-gray-600 p-1"
+                           >
+                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                             </svg>
+                           </button>
+                         </div>
+                         {isEditingProfile ? (
+                           <textarea
+                             value={profileData.about}
+                             onChange={(e) => setProfileData({ ...profileData, about: e.target.value })}
+                             rows={4}
+                             className="w-full text-gray-900 bg-white border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                             placeholder="Tell us about yourself..."
+                           />
+                         ) : (
+                           <div className="w-full text-gray-600 border border-gray-200 rounded-md p-3 min-h-[100px]">
+                             {profileData.about || 'No information provided'}
+                           </div>
+                         )}
+                       </div>
+
+                       <div>
+                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Social Media</h3>
+                         <div className="space-y-4">
+                           <div className="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 rounded-lg">
+                             <div className="text-center">
+                               <button
+                                 type="button"
+                                 className="text-teal-600 hover:text-teal-700 font-medium"
+                               >
+                                 Add Social Media
+                               </button>
+                             </div>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+
+                     {/* Save Button - Only show when editing */}
+                     {isEditingProfile && (
+                       <div className="flex justify-end pt-6 border-t border-gray-200">
+                         <div className="flex space-x-3">
+                           <button
+                             type="button"
+                             onClick={() => {
+                               setIsEditingProfile(false);
+                               // Reset form data to original values
+                               if (teamLeader) {
+                                 setProfileData({
+                                   name: teamLeader.name || "",
+                                   email: teamLeader.email || "",
+                                   phone: teamLeader.phone || "",
+                                   address: teamLeader.address || "",
+                                   about: teamLeader.about || "",
+                                   subdomain: subdomain ? `https://${subdomain}.nurturecrm.in` : ""
+                                 });
+                               }
+                             }}
+                             className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
+                           >
+                             Cancel
+                           </button>
+                           <button
+                             type="submit"
+                             className="px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors"
+                           >
+                             Save Changes
+                           </button>
+                         </div>
+                       </div>
+                     )}
+                   </form>
+                 )}
+
+                 {/* Change Password Content */}
+                 {activeProfileTab === "changePassword" && (
+                   <div className="space-y-8">
+                     <div className="flex items-center justify-between">
+                       <h1 className="text-2xl font-bold text-gray-900">Change Password</h1>
+                     </div>
+
+                     <form onSubmit={handlePasswordChange} className="max-w-md space-y-6">
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                         <input
+                           type="password"
+                           required
+                           value={passwordData.currentPassword}
+                           onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                           className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                         />
+                       </div>
+                       
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                         <input
+                           type="password"
+                           required
+                           minLength={6}
+                           value={passwordData.newPassword}
+                           onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                           className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                         />
+                         <p className="text-sm text-gray-500 mt-1">Password must be at least 6 characters long</p>
+                       </div>
+                       
+                       <div>
+                         <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                         <input
+                           type="password"
+                           required
+                           minLength={6}
+                           value={passwordData.confirmPassword}
+                           onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                           className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                         />
+                       </div>
+
+                       <div className="flex space-x-3 pt-4">
+                         <button
+                           type="button"
+                           onClick={() => {
+                             setActiveProfileTab("institute");
+                             setPasswordData({
+                               currentPassword: "",
+                               newPassword: "",
+                               confirmPassword: ""
+                             });
+                           }}
+                           className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
+                         >
+                           Cancel
+                         </button>
+                         <button
+                           type="submit"
+                           className="px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors"
+                         >
+                           Change Password
+                         </button>
+                       </div>
+                     </form>
+                   </div>
+                 )}
+               </div>
+            </div>
+                     </div>
+         </div>
+       )}
+
+      
     </div>
   );
 }
