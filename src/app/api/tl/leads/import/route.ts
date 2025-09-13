@@ -108,7 +108,8 @@ export async function POST(req: NextRequest) {
       .onConflictDoNothing({ target: [leads.tenantId, leads.phone] })
       .returning({ phone: leads.phone, source: leads.source });
 
-    // timeline events for created leads
+    // timeline events for created leadsAll systems operational
+
     if (inserted.length) {
       const ev = inserted
         .filter((r) => r.phone)

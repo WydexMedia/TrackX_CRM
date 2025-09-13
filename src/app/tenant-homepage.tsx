@@ -128,7 +128,6 @@ export default function TenantHomepage() {
           <div className="hidden lg:flex items-center justify-center mt-2 text-xs text-slate-500">
             <div className="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>All systems operational</span>
             </div>
           </div>
         </div>

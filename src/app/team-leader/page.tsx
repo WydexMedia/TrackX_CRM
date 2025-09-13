@@ -181,7 +181,7 @@ export default function TeamLeaderPage() {
         phone: teamLeader.phone || "",
         address: teamLeader.address || "",
         about: teamLeader.about || "",
-        subdomain: subdomain ? `https://${subdomain}.nurturecrm.in` : ""
+        subdomain: subdomain ? `https://${subdomain}.wydex.co` : ""
       });
     }
   }, [teamLeader, subdomain]);
@@ -2263,7 +2263,7 @@ export default function TeamLeaderPage() {
                                    phone: teamLeader.phone || "",
                                    address: teamLeader.address || "",
                                    about: teamLeader.about || "",
-                                   subdomain: subdomain ? `https://${subdomain}.nurturecrm.in` : ""
+                                   subdomain: subdomain ? `https://${subdomain}.wydex.co` : ""
                                  });
                                }
                              }}
