@@ -3,6 +3,7 @@ import { getMongoDb } from '@/lib/mongoClient';
 export async function POST(request) {
   try {
     const { sessionId } = await request.json();
+    const requestSubdomain = (request.headers.get('x-tenant-subdomain') || '').trim().toLowerCase();
     
     if (!sessionId) {
       return new Response(JSON.stringify({ error: 'Session ID is required' }), { status: 400 });
@@ -20,6 +21,12 @@ export async function POST(request) {
 
     if (!session) {
       return new Response(JSON.stringify({ error: 'Invalid or expired session' }), { status: 401 });
+    }
+
+    // Enforce tenant scoping: when a subdomain is present on the request,
+    // it must match the session's tenantSubdomain
+    if (requestSubdomain && session.tenantSubdomain && requestSubdomain !== session.tenantSubdomain) {
+      return new Response(JSON.stringify({ error: 'Session does not belong to this tenant' }), { status: 401 });
     }
 
     // Find the user

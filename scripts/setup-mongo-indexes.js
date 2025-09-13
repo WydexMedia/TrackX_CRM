@@ -23,7 +23,8 @@ async function main() {
     await Promise.all([
       db.collection("users").createIndex({ tenantSubdomain: 1 }),
       db.collection("users").createIndex({ tenantSubdomain: 1, code: 1 }, { unique: true }),
-      db.collection("users").createIndex({ tenantSubdomain: 1, email: 1 }),
+      // Make email globally unique across tenants to unambiguously resolve tenant on main-domain login
+      db.collection("users").createIndex({ email: 1 }, { unique: true }),
       db.collection("users").createIndex({ tenantSubdomain: 1, role: 1 }),
       db.collection("teamAssignments").createIndex({ tenantSubdomain: 1, status: 1 }),
       db.collection("teamAssignments").createIndex({ tenantSubdomain: 1, salespersonId: 1, status: 1 }),
