@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from 'react-hot-toast';
 import Link from "next/link";
+import { setupPeriodicTokenValidation } from '@/lib/tokenValidation';
 import TenantLogo from "@/components/TenantLogo";
 import { useTenant } from "@/hooks/useTenant";
 
@@ -126,31 +127,52 @@ export default function TeamLeaderPage() {
 
   useEffect(() => {
     const authenticateUser = async () => {
-      // First check if we have a sessionId parameter (from redirect)
+      // First check if we have a token parameter (from redirect)
       const urlParams = new URLSearchParams(window.location.search);
-      const sessionId = urlParams.get('sessionId');
+      const token = urlParams.get('token');
       
-      if (sessionId) {
+      if (token) {
         try {
-          // Validate the session and get user data
+          // Validate the token and get user data
           const response = await fetch('/api/users/validate-session', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId })
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ token })
           });
           
           if (response.ok) {
             const userData = await response.json();
             localStorage.setItem("user", JSON.stringify(userData));
+            localStorage.setItem("token", userData.token);
             
-            // Clean up the URL by removing the sessionId parameter
+            // Clean up the URL by removing the token parameter
             const newUrl = new URL(window.location.href);
-            newUrl.searchParams.delete('sessionId');
+            newUrl.searchParams.delete('token');
             window.history.replaceState({}, '', newUrl.toString());
             
             if (userData.role === 'teamleader') {
               setTeamLeader(userData);
               fetchData();
+              return;
+            }
+          } else if (response.status === 401) {
+            const errorData = await response.json();
+            if (errorData.code === 'TOKEN_REVOKED_NEW_LOGIN') {
+              // User logged in from another device
+              localStorage.removeItem("user");
+              localStorage.removeItem("token");
+              toast.error('You have been logged out because you logged in from another device.', {
+                duration: 5000,
+                style: {
+                  background: '#fee2e2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca'
+                }
+              });
+              router.push("/login");
               return;
             }
           }
@@ -170,6 +192,14 @@ export default function TeamLeaderPage() {
     };
 
     authenticateUser();
+    
+    // Set up periodic token validation
+    const redirectToLogin = () => router.push("/login");
+    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 5000);
+    
+    return () => {
+      clearInterval(validationInterval);
+    };
   }, [router]);
 
   // Initialize profile data when teamLeader changes
@@ -273,29 +303,32 @@ export default function TeamLeaderPage() {
   };
   const handleLogout = async () => {
     try {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-      const parsed = stored ? JSON.parse(stored) : null;
-      const sessionId = parsed?.sessionId;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       
-      if (sessionId) {
-        console.log('🔐 Logging out with sessionId:', sessionId);
+      if (token) {
+        console.log('🔐 Logging out with token');
         try {
           // Wait for the logout API to complete
           const response = await fetch('/api/users/logout', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId })
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ token })
           });
           
           const result = await response.json();
           if (response.ok && result.success) {
-            console.log('✅ Session successfully revoked');
+            console.log('✅ Token successfully blacklisted');
           } else {
             console.warn('⚠️ Logout API warning:', result.error || 'Unknown error');
           }
         } catch (error) {
           console.error('❌ Error calling logout API:', error);
         }
+      } else {
+        console.log('ℹ️ No token found, skipping API call');
       }
     } catch (error) {
       console.error('❌ Error in logout handler:', error);
@@ -303,6 +336,7 @@ export default function TeamLeaderPage() {
     
     // Clean up local storage and navigate after API call
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
     router.push("/login");
   };
 

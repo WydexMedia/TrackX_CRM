@@ -73,30 +73,30 @@ export default function AdminLayout({
     }
   };
 
-  const killSession = async (sessionId: string) => {
-    setKillingSession(sessionId);
+  const killSession = async (userId: string) => {
+    setKillingSession(userId);
     try {
       const response = await fetch('/api/admin/sessions', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId })
+        body: JSON.stringify({ userId })
       });
       const data = await response.json();
       if (data.success) {
         // Refresh sessions list
         await fetchActiveSessions();
       } else {
-        console.error('Failed to kill session:', data.error);
+        console.error('Failed to revoke user tokens:', data.error);
       }
     } catch (error) {
-      console.error('Error killing session:', error);
+      console.error('Error revoking user tokens:', error);
     } finally {
       setKillingSession(null);
     }
   };
 
   const killAllSessions = async () => {
-    if (!confirm('Are you sure you want to kill ALL active sessions? This will log out all users.')) {
+    if (!confirm('Are you sure you want to revoke ALL user tokens? This will log out all users.')) {
       return;
     }
     
@@ -208,7 +208,7 @@ export default function AdminLayout({
                 className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
               >
                 {showSessions ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                {showSessions ? 'Hide Sessions' : 'View Active Sessions'}
+                {showSessions ? 'Hide Users' : 'View User Tokens'}
               </button>
               
               <button
@@ -222,16 +222,16 @@ export default function AdminLayout({
         </div>
       </header>
 
-      {/* Active Sessions Panel */}
+      {/* User Token Management Panel */}
       {showSessions && (
         <div className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <Monitor className="w-5 h-5 text-gray-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Active Sessions</h2>
+                <h2 className="text-lg font-semibold text-gray-900">User Token Management</h2>
                 <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                  {sessions.length} active
+                  {sessions.length} users
                 </span>
               </div>
               
@@ -252,7 +252,7 @@ export default function AdminLayout({
                     className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                   >
                     <Trash2 className="w-4 h-4" />
-                    Kill All Sessions
+                    Revoke All Tokens
                   </button>
                 )}
               </div>
@@ -277,15 +277,15 @@ export default function AdminLayout({
                         <th className="px-4 py-3 text-left font-medium text-gray-900">User</th>
                         <th className="px-4 py-3 text-left font-medium text-gray-900">Role</th>
                         <th className="px-4 py-3 text-left font-medium text-gray-900">Tenant</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-900">Session ID</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-900">Duration</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-900">Last Seen</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-900">User ID</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-900">Status</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-900">Last Login</th>
                         <th className="px-4 py-3 text-center font-medium text-gray-900">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {sessions.map((session) => (
-                        <tr key={session.sessionId} className="hover:bg-gray-50">
+                        <tr key={session.userId} className="hover:bg-gray-50">
                           <td className="px-4 py-3">
                             <div>
                               <div className="font-medium text-gray-900">{session.userName}</div>
@@ -310,28 +310,32 @@ export default function AdminLayout({
                           </td>
                           <td className="px-4 py-3">
                             <code className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">
-                              {session.sessionId.substring(0, 8)}...
+                              {session.userId.substring(0, 8)}...
                             </code>
                           </td>
                           <td className="px-4 py-3 text-gray-600">
-                            {session.duration} min
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              session.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {session.status}
+                            </span>
                           </td>
                           <td className="px-4 py-3 text-gray-600">
-                            {new Date(session.lastSeenAt).toLocaleString()}
+                            {session.lastLogin !== 'Unknown' ? new Date(session.lastLogin).toLocaleString() : 'Unknown'}
                           </td>
                           <td className="px-4 py-3 text-center">
                             <button
-                              onClick={() => killSession(session.sessionId)}
-                              disabled={killingSession === session.sessionId}
+                              onClick={() => killSession(session.userId)}
+                              disabled={killingSession === session.userId}
                               className="inline-flex items-center gap-1 px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                              title="Kill this session"
+                              title="Revoke all tokens for this user"
                             >
-                              {killingSession === session.sessionId ? (
+                              {killingSession === session.userId ? (
                                 <RefreshCw className="w-3 h-3 animate-spin" />
                               ) : (
                                 <X className="w-3 h-3" />
                               )}
-                              Kill
+                              Revoke
                             </button>
                           </td>
                         </tr>

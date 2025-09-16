@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { MongoClient, ObjectId } from 'mongodb';
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
+import { authenticateToken, createUnauthorizedResponse } from '@/lib/authMiddleware';
 
 const uri = process.env.MONGODB_URI;
 let client;
@@ -12,6 +13,12 @@ if (!clientPromise) {
 }
 
 export async function POST(request) {
+  // Authenticate the request - creating sales requires login
+  const authResult = await authenticateToken(request);
+  if (!authResult.success) {
+    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+  }
+
   const raw = await request.json();
   const { tenantSubdomain } = await getTenantContextFromRequest(request);
   console.log('Raw sales data received:', raw);
@@ -45,6 +52,12 @@ export async function GET(request) {
 }
 
 export async function PUT(request) {
+  // Authenticate the request - editing sales requires login
+  const authResult = await authenticateToken(request);
+  if (!authResult.success) {
+    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+  }
+
   const { tenantSubdomain } = await getTenantContextFromRequest(request);
   const client = await clientPromise;
   const db = client.db();
@@ -77,6 +90,12 @@ export async function PUT(request) {
 }
 
 export async function DELETE(request) {
+  // Authenticate the request - deleting sales requires login
+  const authResult = await authenticateToken(request);
+  if (!authResult.success) {
+    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+  }
+
   const { tenantSubdomain } = await getTenantContextFromRequest(request);
   const client = await clientPromise;
   const db = client.db();

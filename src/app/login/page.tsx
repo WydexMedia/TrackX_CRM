@@ -1,8 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import Link from "next/link";
+import { authenticatedFetch, setupPeriodicTokenValidation } from '@/lib/tokenValidation';
+import * as Dialog from '@radix-ui/react-dialog';
 
 function filterSalesByDate(sales: any[], date: Date) {
   const y = date.getFullYear();
@@ -50,12 +52,27 @@ export default function LoginAndDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [showCeoSetup, setShowCeoSetup] = useState(false);
   const [selectedPortal, setSelectedPortal] = useState<string>("");
+  const [showSessionConfirm, setShowSessionConfirm] = useState(false);
+  const [blockLogin, setBlockLogin] = useState(false);
+  const [pendingLoginData, setPendingLoginData] = useState<{email: string, password: string} | null>(null);
+
+  // Debug dialog state
+  useEffect(() => {
+    console.log('Dialog state changed:', showSessionConfirm);
+    console.log('Current showSessionConfirm value:', showSessionConfirm);
+    console.log('Type of showSessionConfirm:', typeof showSessionConfirm);
+  }, [showSessionConfirm]);
 
   const router = useRouter();
 
   // Login handler
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    // If confirmation is visible or login is blocked, ignore submit
+    if (showSessionConfirm || blockLogin) {
+      console.log('Ignoring submit because confirmation dialog is open');
+      return;
+    }
     setError("");
     setIsLoading(true);
     try {
@@ -66,7 +83,21 @@ export default function LoginAndDashboard() {
       });
       if (!res.ok) {
         if (res.status === 409) {
-          setError("Active session detected. Please log out from the other device or contact admin.");
+          const errorData = await res.json();
+          console.log('409 Error received:', errorData);
+          if (errorData.code === 'ACTIVE_SESSION_CONFIRMATION_REQUIRED') {
+            // Show confirmation dialog
+            console.log('Showing session confirmation dialog');
+            console.log('Error data:', errorData);
+            setPendingLoginData({ email, password });
+            setShowSessionConfirm(true);
+            setBlockLogin(true);
+            setError(errorData.message); // Show the message on screen
+            console.log('Dialog state should be true now');
+            return;
+          } else {
+            setError(errorData.message || "Active session detected. Please log out from the other device or contact admin.");
+          }
         } else if (res.status === 401) {
           setError("Invalid email or password");
         } else {
@@ -75,6 +106,8 @@ export default function LoginAndDashboard() {
         return;
       }
       const user = await res.json();
+      // Broadcast immediate validation to other tabs/devices
+      try { localStorage.setItem('tokenRevokedAt', String(Date.now())); } catch {}
       
       // Check if user needs to be redirected to their tenant subdomain
       if (user.needsRedirect && user.redirectTo) {
@@ -84,7 +117,9 @@ export default function LoginAndDashboard() {
         return;
       }
       
+      // Store user data and token separately
       localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token", user.token);
       setUser(user);
       
       // If CEO, check if setup is required
@@ -131,6 +166,98 @@ export default function LoginAndDashboard() {
       }
     } catch (error) {
       setError("An error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle session confirmation
+  const handleSessionConfirm = async (proceed: boolean) => {
+    console.log('handleSessionConfirm called with proceed:', proceed);
+    console.log('pendingLoginData:', pendingLoginData);
+    
+    setShowSessionConfirm(false);
+    
+    if (!proceed || !pendingLoginData) {
+      console.log('Not proceeding or no pending login data');
+      setPendingLoginData(null);
+      return;
+    }
+
+    console.log('Proceeding with login confirmation...');
+    setIsLoading(true);
+    setError("");
+
+    try {
+      console.log('Calling /api/users/login-confirm with:', pendingLoginData);
+      const res = await fetch("/api/users/login-confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pendingLoginData),
+      });
+
+      console.log('Login confirm response status:', res.status);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log('Login confirm error:', errorText);
+        setError("Login confirmation failed. Please try again.");
+        setPendingLoginData(null);
+        return;
+      }
+
+      const user = await res.json();
+      
+      // Check if user needs to be redirected to their tenant subdomain
+      if (user.needsRedirect && user.redirectTo) {
+        console.log('Redirecting user to tenant subdomain:', user.redirectTo);
+        // Do not store user on main domain to avoid stale localStorage issues
+        window.location.href = user.redirectTo;
+        return;
+      }
+      
+      // Store user data and token separately
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token", user.token);
+      setUser(user);
+      
+      // If CEO, check if setup is required
+      if (user.role === 'CEO') {
+        console.log('CEO login detected, checking setup status...');
+        try {
+          const settingsRes = await fetch('/api/ceo/settings');
+          const settings = await settingsRes.json();
+          console.log('CEO settings response:', settings);
+          const needsSetup = !settings?.portalType;
+          console.log('CEO needs setup:', needsSetup);
+          if (needsSetup) {
+            console.log('Showing CEO setup modal');
+            setShowCeoSetup(true);
+            return; // pause navigation until setup done
+          }
+          console.log('CEO setup complete, redirecting to /ceo');
+          console.log('CEO setup complete, using window.location redirect');
+          window.location.href = '/ceo';
+          return;
+        } catch (error) {
+          console.log('CEO settings fetch error:', error);
+          router.push('/ceo');
+          console.log('CEO error fallback redirect to /ceo');
+          setIsLoading(false);
+          window.location.href = '/ceo';
+          return;
+        }
+      }
+      
+      if (user.role === 'teamleader') {
+        router.push('/team-leader');
+      } else if (user.role === 'jl') {
+        router.push('/junior-leader');
+      } else {
+        router.push('/dashboard');
+      }
+    } catch (error) {
+      setError("An error occurred. Please try again.");
+      setPendingLoginData(null);
     } finally {
       setIsLoading(false);
     }
@@ -183,12 +310,36 @@ export default function LoginAndDashboard() {
     }
   }, [router]);
 
+  // Set up periodic token validation when user is logged in
+  useEffect(() => {
+    if (!user) return;
+    
+    const redirectToLogin = () => {
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      router.push("/login");
+    };
+    
+    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 5000);
+    
+    return () => {
+      clearInterval(validationInterval);
+    };
+  }, [user, router]);
+
   // Fetch sales for user
   useEffect(() => {
     if (!user) return;
     fetch("/api/sales")
       .then(res => res.json())
       .then(data => {
+        // Ensure data is an array before filtering
+        if (!Array.isArray(data)) {
+          console.error('Expected array but got:', data);
+          setSales([]);
+          return;
+        }
+        
         console.log('All sales data:', data);
         console.log('Current user:', user);
         console.log('User name:', user.name);
@@ -288,6 +439,57 @@ export default function LoginAndDashboard() {
             {error && (
               <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl text-sm">
                 {error}
+                {error.includes("already logged in") && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Fallback button clicked - confirming login');
+                        setShowSessionConfirm(false);
+                        setBlockLogin(true);
+                        setPendingLoginData({ email, password });
+                        // Call confirm flow directly
+                        try {
+                          const res = await fetch('/api/users/login-confirm', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email, password })
+                          });
+                          if (!res.ok) {
+                            const t = await res.text();
+                            console.log('Confirm via fallback failed:', t);
+                            setError('Login confirmation failed. Please try again.');
+                            setBlockLogin(false);
+                            return;
+                          }
+                          const user = await res.json();
+                          // Broadcast to other tabs/devices to validate token now
+                          try { localStorage.setItem('tokenRevokedAt', String(Date.now())); } catch {}
+                          localStorage.setItem('user', JSON.stringify(user));
+                          localStorage.setItem('token', user.token);
+                          setUser(user);
+                          if (user.needsRedirect && user.redirectTo) {
+                            window.location.href = user.redirectTo;
+                            return;
+                          }
+                          if (user.role === 'CEO') router.push('/ceo');
+                          else if (user.role === 'teamleader') router.push('/team-leader');
+                          else if (user.role === 'jl') router.push('/junior-leader');
+                          else router.push('/dashboard');
+                        } catch (err) {
+                          console.error(err);
+                          setError('Login confirmation failed. Please try again.');
+                          setBlockLogin(false);
+                        }
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Continue with logout from other device
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -312,8 +514,11 @@ export default function LoginAndDashboard() {
                 'Sign In'
               )}
             </button>
+            
           </div>
         </form>
+        
+        
 
         <style jsx>{`
           .login-bg {
@@ -366,23 +571,24 @@ export default function LoginAndDashboard() {
   // Logout handler
   const handleLogout = async () => {
     try {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-      const parsed = stored ? JSON.parse(stored) : null;
-      const sessionId = parsed?.sessionId;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       
-      if (sessionId) {
-        console.log('🔐 Logging out with sessionId:', sessionId);
+      if (token) {
+        console.log('🔐 Logging out with token');
         try {
           // Wait for the logout API to complete
           const response = await fetch('/api/users/logout', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId })
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ token })
           });
           
           const result = await response.json();
           if (response.ok && result.success) {
-            console.log('✅ Session successfully revoked');
+            console.log('✅ Token successfully blacklisted');
           } else {
             console.warn('⚠️ Logout API warning:', result.error || 'Unknown error');
           }
@@ -390,7 +596,7 @@ export default function LoginAndDashboard() {
           console.error('❌ Error calling logout API:', error);
         }
       } else {
-        console.log('ℹ️ No sessionId found, skipping API call');
+        console.log('ℹ️ No token found, skipping API call');
       }
     } catch (error) {
       console.error('❌ Error in logout handler:', error);
@@ -398,6 +604,7 @@ export default function LoginAndDashboard() {
     
     // Clean up local storage and state after API call
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
     setUser(null);
     setEmail("");
     setPassword("");
@@ -431,11 +638,37 @@ const daysPending = lastDayOfMonth.getDate() - today.getDate();
   // Edit/delete handlers
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this sale?')) return;
-    await fetch(`/api/sales?id=${id}`, { method: 'DELETE' });
+    await authenticatedFetch(`/api/sales?id=${id}`, { method: 'DELETE' });
     // Refresh sales
-    fetch("/api/sales")
-      .then(res => res.json())
+    authenticatedFetch("/api/sales")
+      .then(res => {
+        if (!res.ok && res.status === 401) {
+          return res.json().then(errorData => {
+            if (errorData.errorCode === 'TOKEN_REVOKED_NEW_LOGIN') {
+              localStorage.removeItem("user");
+              localStorage.removeItem("token");
+              toast.error('You have been logged out because you logged in from another device.', {
+                duration: 5000,
+                style: {
+                  background: '#fee2e2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca'
+                }
+              });
+              router.push("/login");
+              return [];
+            }
+            throw new Error(errorData.error || 'Authentication failed');
+          });
+        }
+        return res.json();
+      })
       .then(data => {
+        if (!Array.isArray(data)) {
+          console.error('Expected array but got:', data);
+          setSales([]);
+          return;
+        }
         const filteredSales = data.filter((s: any) => {
           const saleOga = (s.ogaName ?? '').toString();
           const userName = (user.name ?? '').toString();
@@ -461,7 +694,7 @@ const daysPending = lastDayOfMonth.getDate() - today.getDate();
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId || !editData) return;
-    await fetch(`/api/sales`, {
+    await authenticatedFetch(`/api/sales`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ _id: editingId, ...editData }),
@@ -469,9 +702,35 @@ const daysPending = lastDayOfMonth.getDate() - today.getDate();
     setEditingId(null);
     setEditData(null);
     // Refresh sales
-    fetch("/api/sales")
-      .then(res => res.json())
+    authenticatedFetch("/api/sales")
+      .then(res => {
+        if (!res.ok && res.status === 401) {
+          return res.json().then(errorData => {
+            if (errorData.errorCode === 'TOKEN_REVOKED_NEW_LOGIN') {
+              localStorage.removeItem("user");
+              localStorage.removeItem("token");
+              toast.error('You have been logged out because you logged in from another device.', {
+                duration: 5000,
+                style: {
+                  background: '#fee2e2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca'
+                }
+              });
+              router.push("/login");
+              return [];
+            }
+            throw new Error(errorData.error || 'Authentication failed');
+          });
+        }
+        return res.json();
+      })
       .then(data => {
+        if (!Array.isArray(data)) {
+          console.error('Expected array but got:', data);
+          setSales([]);
+          return;
+        }
         const filteredSales = data.filter((s: any) => {
           const saleOga = (s.ogaName ?? '').toString();
           const userName = (user.name ?? '').toString();
@@ -814,6 +1073,228 @@ const daysPending = lastDayOfMonth.getDate() - today.getDate();
           </div>
         </div>
       )}
+
+      
+
+      
+
+      {/* Session Confirmation Modal - Simple HTML Modal */}
+      {showSessionConfirm && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowSessionConfirm(false);
+            }
+          }}
+        >
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '24px',
+            maxWidth: '400px',
+            width: '100%',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }} onClick={(e) => { e.stopPropagation(); }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '16px'
+            }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                backgroundColor: '#fef3c7',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg style={{width: '24px', height: '24px', color: '#d97706'}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h2 style={{
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  color: '#0f172a',
+                  margin: 0
+                }}>Active Session Detected</h2>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#64748b',
+                  margin: '4px 0 0 0'
+                }}>
+                  You're already logged in on another device
+                </p>
+              </div>
+            </div>
+            
+            <div style={{marginBottom: '24px'}}>
+              <p style={{
+                color: '#334155',
+                lineHeight: '1.6',
+                margin: 0
+              }}>
+                To continue here, please log out from the other session. This will end the other session and allow you to proceed with this login.
+              </p>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              gap: '12px'
+            }}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Cancel button clicked');
+                  handleSessionConfirm(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  color: '#334155',
+                  backgroundColor: '#f1f5f9',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#e2e8f0'}
+                onMouseOut={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#f1f5f9'}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Continue button clicked');
+                  handleSessionConfirm(true);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#1d4ed8'}
+                onMouseOut={(e) => (e.target as HTMLButtonElement).style.backgroundColor = '#2563eb'}
+              >
+                Logout from other device and continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW WORKING MODAL - With proper event handling */}
+      {showSessionConfirm && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            zIndex: 100000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div 
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '30px',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{margin: '0 0 10px 0', fontSize: '24px', color: '#333'}}>
+              ⚠️ Active Session Detected
+            </h2>
+            <p style={{margin: '0 0 20px 0', color: '#666', lineHeight: '1.5'}}>
+              You're already logged in on another device. To continue here, please log out from the other session.
+            </p>
+            <div style={{display: 'flex', gap: '15px'}}>
+              <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Cancel button clicked - NEW MODAL');
+                  setShowSessionConfirm(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px 20px',
+                  backgroundColor: '#f5f5f5',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '16px'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Continue button clicked - NEW MODAL');
+                  handleSessionConfirm(true);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '12px 20px',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '16px'
+                }}
+              >
+                Logout from other device and continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
 
       <style jsx>{`
         .table-input {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
+import { setupPeriodicTokenValidation } from '@/lib/tokenValidation';
 
 interface User {
   _id: string;
@@ -74,26 +75,30 @@ export default function JuniorLeaderPage() {
 
   useEffect(() => {
     const authenticateUser = async () => {
-      // First check if we have a sessionId parameter (from redirect)
+      // First check if we have a token parameter (from redirect)
       const urlParams = new URLSearchParams(window.location.search);
-      const sessionId = urlParams.get('sessionId');
+      const token = urlParams.get('token');
       
-      if (sessionId) {
+      if (token) {
         try {
-          // Validate the session and get user data
+          // Validate the token and get user data
           const response = await fetch('/api/users/validate-session', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId })
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ token })
           });
           
           if (response.ok) {
             const userData = await response.json();
             localStorage.setItem("user", JSON.stringify(userData));
+            localStorage.setItem("token", userData.token);
             
-            // Clean up the URL by removing the sessionId parameter
+            // Clean up the URL by removing the token parameter
             const newUrl = new URL(window.location.href);
-            newUrl.searchParams.delete('sessionId');
+            newUrl.searchParams.delete('token');
             window.history.replaceState({}, '', newUrl.toString());
             
             if (userData.role === "jl") {
@@ -103,6 +108,23 @@ export default function JuniorLeaderPage() {
               return;
             } else {
               router.push("/dashboard");
+              return;
+            }
+          } else if (response.status === 401) {
+            const errorData = await response.json();
+            if (errorData.code === 'TOKEN_REVOKED_NEW_LOGIN') {
+              // User logged in from another device
+              localStorage.removeItem("user");
+              localStorage.removeItem("token");
+              toast.error('You have been logged out because you logged in from another device.', {
+                duration: 5000,
+                style: {
+                  background: '#fee2e2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca'
+                }
+              });
+              router.push("/login");
               return;
             }
           }
@@ -130,6 +152,14 @@ export default function JuniorLeaderPage() {
     };
 
     authenticateUser();
+    
+    // Set up periodic token validation
+    const redirectToLogin = () => router.push("/login");
+    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 5000);
+    
+    return () => {
+      clearInterval(validationInterval);
+    };
   }, [router]);
 
   const fetchTeamData = async (userEmail: string) => {

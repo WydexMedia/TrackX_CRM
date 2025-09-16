@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
+import { authenticateToken, createUnauthorizedResponse } from '@/lib/authMiddleware';
 
 const uri = process.env.MONGODB_URI;
 
 export async function GET(request) {
+  // Authenticate the request
+  const authResult = await authenticateToken(request);
+  if (!authResult.success) {
+    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+  }
+
   const client = new MongoClient(uri);
   
   try {

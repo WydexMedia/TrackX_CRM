@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from "react-hot-toast";
+import { setupPeriodicTokenValidation, authenticatedFetch } from '@/lib/tokenValidation';
 import Link from "next/link";
 import TenantLogo from "@/components/TenantLogo";
 import { useTenant } from "@/hooks/useTenant";
@@ -126,30 +127,51 @@ export default function DashboardPage() {
   // ------------- bootstrap -------------
   useEffect(() => {
     const authenticateUser = async () => {
-      // First check if we have a sessionId parameter (from redirect)
+      // First check if we have a token parameter (from redirect)
       const urlParams = new URLSearchParams(window.location.search);
-      const sessionId = urlParams.get('sessionId');
+      const token = urlParams.get('token');
       
-      if (sessionId) {
+      if (token) {
         try {
-          // Validate the session and get user data
+          // Validate the token and get user data
           const response = await fetch('/api/users/validate-session', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId })
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ token })
           });
           
           if (response.ok) {
             const userData = await response.json();
             localStorage.setItem("user", JSON.stringify(userData));
+            localStorage.setItem("token", userData.token);
             setUser(userData);
             
-            // Clean up the URL by removing the sessionId parameter
+            // Clean up the URL by removing the token parameter
             const newUrl = new URL(window.location.href);
-            newUrl.searchParams.delete('sessionId');
+            newUrl.searchParams.delete('token');
             window.history.replaceState({}, '', newUrl.toString());
             
             return;
+          } else if (response.status === 401) {
+            const errorData = await response.json();
+            if (errorData.code === 'TOKEN_REVOKED_NEW_LOGIN') {
+              // User logged in from another device
+              localStorage.removeItem("user");
+              localStorage.removeItem("token");
+              toast.error('You have been logged out because you logged in from another device.', {
+                duration: 5000,
+                style: {
+                  background: '#fee2e2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca'
+                }
+              });
+              router.push("/login");
+              return;
+            }
           }
         } catch (error) {
           console.error('Session validation failed:', error);
@@ -161,6 +183,48 @@ export default function DashboardPage() {
       if (!u) {
         router.push("/login");
         return;
+      }
+
+      // Validate stored token
+      const storedToken = localStorage.getItem("token");
+      if (storedToken) {
+        try {
+          const response = await fetch('/api/users/validate-session', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${storedToken}`
+            },
+            body: JSON.stringify({ token: storedToken })
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            localStorage.setItem("user", JSON.stringify(userData));
+            localStorage.setItem("token", userData.token);
+            setUser(userData);
+            return;
+          } else if (response.status === 401) {
+            const errorData = await response.json();
+            if (errorData.code === 'TOKEN_REVOKED_NEW_LOGIN') {
+              // User logged in from another device
+              localStorage.removeItem("user");
+              localStorage.removeItem("token");
+              toast.error('You have been logged out because you logged in from another device.', {
+                duration: 5000,
+                style: {
+                  background: '#fee2e2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca'
+                }
+              });
+              router.push("/login");
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Token validation failed:', error);
+        }
       }
 
       // Team leaders redirect
@@ -186,7 +250,7 @@ export default function DashboardPage() {
           const filteredSales = data.filter((s) => {
             const exactMatch = s.ogaName === u.name;
             const caseInsensitiveMatch = s.ogaName.toLowerCase() === u.name.toLowerCase();
-            const partialMatch = s.ogaName.toLowerCase().includes(u.name.toLowerCase()) || 
+            const partialMatch = s.ogaName.toLowerCase().includes(u.name.toLowerCase()) ||
                                u.name.toLowerCase().includes(s.ogaName.toLowerCase());
             return exactMatch || caseInsensitiveMatch || partialMatch;
           });
@@ -198,6 +262,15 @@ export default function DashboardPage() {
     };
 
     authenticateUser();
+    
+    // Set up periodic token validation
+    const redirectToLogin = () => router.push("/login");
+    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 5000); // Check every 5 seconds
+    
+    // Cleanup interval on unmount
+    return () => {
+      clearInterval(validationInterval);
+    };
   }, [router]);
 
   const today = new Date();
@@ -252,7 +325,7 @@ export default function DashboardPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this sale?")) return;
     await toast.promise(
-      fetch(`/api/sales?id=${id}`, { method: "DELETE" })
+      authenticatedFetch(`/api/sales?id=${id}`, { method: "DELETE" })
         .then(() => refreshSales()),
       {
         loading: "Deleting...",
@@ -275,7 +348,7 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!editingId || !editData) return;
     await toast.promise(
-      fetch(`/api/sales`, {
+      authenticatedFetch(`/api/sales`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ _id: editingId, ...editData }),
@@ -290,36 +363,42 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     try {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-      const parsed = stored ? JSON.parse(stored) : null;
-      const sessionId = parsed?.sessionId;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       
-      if (sessionId) {
-        console.log('🔐 Logging out with sessionId:', sessionId);
+      if (token) {
+        console.log('🔐 Logging out with token');
         try {
           // Wait for the logout API to complete
           const response = await fetch('/api/users/logout', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId })
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ token })
           });
           
           const result = await response.json();
           if (response.ok && result.success) {
-            console.log('✅ Session successfully revoked');
+            console.log('✅ Token successfully blacklisted');
           } else {
             console.warn('⚠️ Logout API warning:', result.error || 'Unknown error');
           }
         } catch (error) {
           console.error('❌ Error calling logout API:', error);
         }
+      } else {
+        console.log('ℹ️ No token found, skipping API call');
       }
     } catch (error) {
       console.error('❌ Error in logout handler:', error);
     }
     
     // Clean up local storage and navigate after API call
-    if (typeof window !== "undefined") localStorage.removeItem("user");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+    }
     router.push("/login");
   };
 

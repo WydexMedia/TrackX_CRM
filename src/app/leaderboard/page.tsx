@@ -124,9 +124,9 @@ function getYesterday(date: Date) {
 
 export default function CompetitiveLeaderboard() {
   const [sales, setSales] = useState<Sale[]>([]);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [pulseEffect, setPulseEffect] = useState<number | null>(null);
-  const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
   const [popper, setPopper] = useState<{ ogaName: string; amount: number } | null>(null);
   const lastSaleId = useRef<string | null>(null);
 
@@ -139,7 +139,6 @@ export default function CompetitiveLeaderboard() {
         console.log('Fetched sales data:', data);
         console.log('Sales with newAdmission:', data.filter((s: Sale) => s.newAdmission));
         setSales(data);
-        setLastUpdateTime(new Date());
         setPulseEffect(Date.now());
         setTimeout(() => setPulseEffect(null), 2000);
         // Popper logic: show when new sale comes in
@@ -159,8 +158,12 @@ export default function CompetitiveLeaderboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Update current time every second for live feel
+  // Initialize time on client side and update current time every second for live feel
   useEffect(() => {
+    // Set initial time on client side
+    setCurrentTime(new Date());
+    setLastUpdateTime(new Date());
+    
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -224,7 +227,7 @@ export default function CompetitiveLeaderboard() {
               <span className="text-4xl font-extrabold text-green-400">₹{totalSalesToday.toLocaleString()}</span>
               <span className="text-xl font-bold text-white/80">Total Sales</span>
             </div>
-            <div>{currentTime.toLocaleTimeString()}</div>
+            <div>{currentTime ? currentTime.toLocaleTimeString() : '--:--:--'}</div>
           </div>
         </motion.div>
 
@@ -378,7 +381,7 @@ export default function CompetitiveLeaderboard() {
           🎯 Every Sale Counts • Push Harder • Climb Higher! 🚀
         </div>
         <div className="text-white/60 text-sm">
-          Last updated: {lastUpdateTime.toLocaleTimeString()} • Next update in real-time
+          Last updated: {lastUpdateTime ? lastUpdateTime.toLocaleTimeString() : '--:--:--'} • Next update in real-time
         </div>
       </motion.div>
     </div>
