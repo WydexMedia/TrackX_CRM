@@ -371,7 +371,7 @@ export default function SignupPage() {
                       onChange={handleInputChange}
                       required
                       className="w-full pl-10 pr-4 py-3 border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="eg: React learning Hub"
+                      placeholder="eg: proskill edu"
                     />
                   </div>
                 </div>
@@ -379,7 +379,7 @@ export default function SignupPage() {
                 {/* Institute Email */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Institute Email *
+                    Company Email *
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -390,7 +390,7 @@ export default function SignupPage() {
                       onChange={handleInputChange}
                       required
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="eg: contact@institute.com"
+                      placeholder="eg: contact@company.com"
                     />
                   </div>
                 </div>
@@ -398,7 +398,7 @@ export default function SignupPage() {
                 {/* Website */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Website
+                    Company Website
                   </label>
                   <div className="relative">
                     <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -408,7 +408,7 @@ export default function SignupPage() {
                       value={formData.website}
                       onChange={handleInputChange}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="eg: www.reactlearninghub.com"
+                      placeholder="eg: www.proskilledu.com"
                     />
                   </div>
                 </div>
