@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     // Authenticate the request
     const authResult = await authenticateToken(req as any);
     if (!authResult.success) {
-      return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
     }
 
     const { tenantId } = await getTenantContextFromRequest(req as any);
