@@ -3,7 +3,7 @@ import { getMongoDb } from '@/lib/mongoClient';
 import { generateToken, revokeAllUserTokens } from '@/lib/jwt';
 
 export async function POST(request) {
-  console.log('LOGIN API HIT');
+  console.log('LOGIN CONFIRM API HIT');
   const body = await request.json();
   const { email, password } = body;
   const { tenantSubdomain } = await getTenantContextFromRequest(request);
@@ -14,13 +14,7 @@ export async function POST(request) {
   // Validate credentials
   let user;
   const usersCol = db.collection('users');
-  // Enforce email-based login only
-  if (!email || typeof email !== 'string' || !/@/.test(email)) {
-    return new Response(
-      JSON.stringify({ error: 'Email is required for login' }),
-      { status: 400 }
-    );
-  }
+  
   if (!password || typeof password !== 'string') {
     return new Response(
       JSON.stringify({ error: 'Password is required for login' }),
@@ -40,62 +34,25 @@ export async function POST(request) {
     return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
   }
 
-  // If logging in from main domain and user has a tenant, we need to redirect them
-  const needsRedirect = !tenantSubdomain && user.tenantSubdomain;
+  // Force revoke all existing tokens (user confirmed they want to proceed)
+  await revokeAllUserTokens(user._id.toString());
 
-  // Check for existing active sessions
-  const userTenantSubdomain = user.tenantSubdomain || '';
-  
-  // Check if user has any recent login (within last 2 hours) - this indicates an active session
-  const usersCollection = db.collection('users');
-  const userWithLogin = await usersCollection.findOne({ _id: user._id });
-  
-  // If user has a recent login timestamp (within last 2 hours), they likely have an active session
-  // But only if there wasn't a clean logout after that login
-  const hasRecentSession = userWithLogin?.lastLogin && 
-    (new Date() - new Date(userWithLogin.lastLogin)) < (2 * 60 * 60 * 1000) && // 2 hours
-    (!userWithLogin.lastLogout || new Date(userWithLogin.lastLogin) > new Date(userWithLogin.lastLogout)); // login was after last logout
-  
-  console.log('Session check:', {
-    userId: user._id,
-    lastLogin: userWithLogin?.lastLogin,
-    lastLogout: userWithLogin?.lastLogout,
-    hasRecentSession,
-    timeDiff: userWithLogin?.lastLogin ? (new Date() - new Date(userWithLogin.lastLogin)) : 'no lastLogin',
-    loginAfterLogout: userWithLogin?.lastLogin && userWithLogin?.lastLogout ? 
-      (new Date(userWithLogin.lastLogin) > new Date(userWithLogin.lastLogout)) : 'no logout'
-  });
-  
-  if (hasRecentSession) {
-    // Don't automatically revoke, instead return a confirmation request
-    console.log('Active session detected, returning 409');
-    return new Response(
-      JSON.stringify({ 
-        error: 'User already has an active session', 
-        code: 'ACTIVE_SESSION_CONFIRMATION_REQUIRED',
-        message: 'You\'re already logged in on another device. To continue here, please log out from the other session.'
-      }),
-      { status: 409 }
-    );
-  }
-  
   // Update last login timestamp
-  await usersCollection.updateOne(
+  await usersCol.updateOne(
     { _id: user._id },
     { $set: { lastLogin: new Date() } }
   );
-  
-
-  // Revoke all existing tokens for this user to enforce single active session
-  await revokeAllUserTokens(user._id.toString());
 
   // Generate new JWT token
   const token = generateToken({
     userId: user._id.toString(),
     email: user.email,
     role: user.role || 'sales',
-    tenantSubdomain: tenantSubdomain || userTenantSubdomain
+    tenantSubdomain: tenantSubdomain || user.tenantSubdomain || ''
   });
+
+  // If logging in from main domain and user has a tenant, we need to redirect them
+  const needsRedirect = !tenantSubdomain && user.tenantSubdomain;
 
   // Do not send password back
   const { password: _, ...userData } = user;
@@ -125,7 +82,7 @@ export async function POST(request) {
       ...userData, 
       token,
       needsRedirect: true,
-      redirectTo: `${protocol}://${userTenantSubdomain}.${baseDomain}${dashboardPath}?token=${token}`
+      redirectTo: `${protocol}://${user.tenantSubdomain}.${baseDomain}${dashboardPath}?token=${token}`
     }), { status: 200 });
   }
 

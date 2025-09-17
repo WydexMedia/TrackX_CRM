@@ -46,18 +46,42 @@ export default function FormPage() {
       toast.error('You must be logged in!');
       return;
     }
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('Authentication token not found. Please log in again.');
+      router.push('/login');
+      return;
+    }
+    
     // Normalize newAdmission values to match dashboard expectations (Yes/No)
     const normalized = {
       ...data,
       newAdmission: data.newAdmission?.toLowerCase() === 'yes' ? 'Yes' : 'No',
     };
-    await fetch('/api/sales', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...normalized, ogaName: user.name }),
-    });
-    reset();
-    toast.success('Sale submitted!');
+    
+    try {
+      const response = await fetch('/api/sales', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ...normalized, ogaName: user.name }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to submit sale');
+        return;
+      }
+      
+      reset();
+      toast.success('Sale submitted!');
+    } catch (error) {
+      console.error('Error submitting sale:', error);
+      toast.error('Failed to submit sale. Please try again.');
+    }
   };
 
   if (!user) return null;

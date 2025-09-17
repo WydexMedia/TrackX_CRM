@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { MongoClient, ObjectId } from 'mongodb';
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
+import { authenticateToken, createUnauthorizedResponse } from '@/lib/authMiddleware';
 
 const uri = process.env.MONGODB_URI;
 let client;
@@ -13,6 +14,12 @@ if (!clientPromise) {
 
 // Get all users (for team leader)
 export async function GET(request) {
+  // Authenticate the request
+  const authResult = await authenticateToken(request);
+  if (!authResult.success) {
+    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+  }
+
   const { tenantSubdomain } = await getTenantContextFromRequest(request);
   const client = await clientPromise;
   const db = client.db();
@@ -32,6 +39,12 @@ export async function GET(request) {
 
 // Create new user (for team leader)
 export async function POST(request) {
+  // Authenticate the request
+  const authResult = await authenticateToken(request);
+  if (!authResult.success) {
+    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+  }
+
   const client = await clientPromise;
   const db = client.db();
   const users = db.collection('users');
@@ -69,6 +82,12 @@ export async function POST(request) {
 
 // Update user (for team leader)
 export async function PUT(request) {
+  // Authenticate the request
+  const authResult = await authenticateToken(request);
+  if (!authResult.success) {
+    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+  }
+
   const client = await clientPromise;
   const db = client.db();
   const users = db.collection('users');
@@ -97,6 +116,12 @@ export async function PUT(request) {
 
 // Delete user (for team leader)
 export async function DELETE(request) {
+  // Authenticate the request
+  const authResult = await authenticateToken(request);
+  if (!authResult.success) {
+    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+  }
+
   const client = await clientPromise;
   const db = client.db();
   const users = db.collection('users');

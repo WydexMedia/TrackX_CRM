@@ -3,9 +3,16 @@ import { and, or, desc, eq, ilike, gte, lte, sql, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { leads, leadEvents, leadListItems } from "@/db/schema";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
+import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
 
 export async function GET(req: NextRequest) {
   try {
+    // Authenticate the request
+    const authResult = await authenticateToken(req as any);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+    }
+
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q") || "";
     const stage = searchParams.get("stage") || undefined;
@@ -203,6 +210,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // Authenticate the request
+    const authResult = await authenticateToken(req as any);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+    }
+
     const body = await req.json();
     let tenantId: number;
     try {
@@ -256,6 +269,12 @@ export async function POST(req: NextRequest) {
 // Bulk delete leads by phone list
 export async function DELETE(req: NextRequest) {
   try {
+    // Authenticate the request
+    const authResult = await authenticateToken(req as any);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+    }
+
     const body = await req.json().catch(() => ({}));
     const phones: string[] = Array.isArray(body?.phones) ? body.phones : [];
     if (!phones.length) {

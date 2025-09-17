@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from 'react-hot-toast';
 import Link from "next/link";
+import { setupPeriodicTokenValidation } from '@/lib/tokenValidation';
 import TenantLogo from "@/components/TenantLogo";
 import { useTenant } from "@/hooks/useTenant";
 
@@ -33,23 +34,6 @@ interface Analytics {
   thisMonthSales: number;
 }
 
-interface Call {
-  _id: string;
-  ogaName: string;
-  callCompleted: string;
-  callType: string;
-  callStatus: string;
-  notes: string;
-  createdAt: string;
-}
-
-interface CallPerformance {
-  ogaName: string;
-  totalCalls: number;
-  completedCalls: number;
-  convertedCalls: number;
-  conversionPercentage: number;
-}
 
 interface TeamLeader {
   _id?: string;
@@ -72,8 +56,6 @@ export default function TeamLeaderPage() {
   const [analytics, setAnalytics] = useState<Analytics[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [credentials, setCredentials] = useState<User[]>([]);
-  const [calls, setCalls] = useState<Call[]>([]);
-  const [callPerformance, setCallPerformance] = useState<CallPerformance[]>([]);
   const [teamLeader, setTeamLeader] = useState<TeamLeader | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddUser, setShowAddUser] = useState(false);
@@ -100,9 +82,6 @@ export default function TeamLeaderPage() {
     startDate: '',
     endDate: ''
   });
-  const [showCallDetailsModal, setShowCallDetailsModal] = useState(false);
-  const [selectedCallPerson, setSelectedCallPerson] = useState<string | null>(null);
-  const [callDetails, setCallDetails] = useState<Call[]>([]);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -126,31 +105,52 @@ export default function TeamLeaderPage() {
 
   useEffect(() => {
     const authenticateUser = async () => {
-      // First check if we have a sessionId parameter (from redirect)
+      // First check if we have a token parameter (from redirect)
       const urlParams = new URLSearchParams(window.location.search);
-      const sessionId = urlParams.get('sessionId');
+      const token = urlParams.get('token');
       
-      if (sessionId) {
+      if (token) {
         try {
-          // Validate the session and get user data
+          // Validate the token and get user data
           const response = await fetch('/api/users/validate-session', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId })
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ token })
           });
           
           if (response.ok) {
             const userData = await response.json();
             localStorage.setItem("user", JSON.stringify(userData));
+            localStorage.setItem("token", userData.token);
             
-            // Clean up the URL by removing the sessionId parameter
+            // Clean up the URL by removing the token parameter
             const newUrl = new URL(window.location.href);
-            newUrl.searchParams.delete('sessionId');
+            newUrl.searchParams.delete('token');
             window.history.replaceState({}, '', newUrl.toString());
             
             if (userData.role === 'teamleader') {
               setTeamLeader(userData);
               fetchData();
+              return;
+            }
+          } else if (response.status === 401) {
+            const errorData = await response.json();
+            if (errorData.code === 'TOKEN_REVOKED_NEW_LOGIN') {
+              // User logged in from another device
+              localStorage.removeItem("user");
+              localStorage.removeItem("token");
+              toast.error('You have been logged out because you logged in from another device.', {
+                duration: 5000,
+                style: {
+                  background: '#fee2e2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca'
+                }
+              });
+              router.push("/login");
               return;
             }
           }
@@ -170,6 +170,14 @@ export default function TeamLeaderPage() {
     };
 
     authenticateUser();
+    
+    // Set up periodic token validation
+    const redirectToLogin = () => router.push("/login");
+    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 60000); // Check every 60 seconds
+    
+    return () => {
+      clearInterval(validationInterval);
+    };
   }, [router]);
 
   // Initialize profile data when teamLeader changes
@@ -205,64 +213,25 @@ export default function TeamLeaderPage() {
 
   const fetchData = async () => {
     try {
-      const [analyticsRes, usersRes, credentialsRes, callsRes] = await Promise.all([
-        fetch("/api/analytics"),
-        fetch("/api/users"),
-        fetch("/api/users/credentials"),
-        fetch("/api/calls")
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
+      
+      const [analyticsRes, usersRes, credentialsRes] = await Promise.all([
+        fetch("/api/analytics", { headers }),
+        fetch("/api/users", { headers }),
+        fetch("/api/users/credentials", { headers })
       ]);
 
-      if (analyticsRes.ok && usersRes.ok && credentialsRes.ok && callsRes.ok) {
+      if (analyticsRes.ok && usersRes.ok && credentialsRes.ok) {
         const analyticsData = await analyticsRes.json();
         const usersData = await usersRes.json();
         const credentialsData = await credentialsRes.json();
-        const callsData = await callsRes.json();
         
         setAnalytics(analyticsData);
         setUsers(usersData.filter((user: User) => user.role !== 'teamleader'));
         setCredentials(credentialsData);
-        setCalls(callsData);
-        
-        // Calculate call performance metrics
-        const performanceMap = new Map<string, CallPerformance>();
-        
-        callsData.forEach((call: Call) => {
-          // Skip NATC calls from total count
-          if (call.callStatus === 'NATC') {
-            return;
-          }
-          
-          const existing = performanceMap.get(call.ogaName) || {
-            ogaName: call.ogaName,
-            totalCalls: 0,
-            completedCalls: 0,
-            convertedCalls: 0,
-            conversionPercentage: 0
-          };
-          
-          existing.totalCalls += 1;
-          
-          // Count QUALIFIED, CONNECTED_TO_WHATSAPP, and POSITIVE as completed calls
-          if (call.callStatus === 'QUALIFIED' || call.callStatus === 'CONNECTED_TO_WHATSAPP' || call.callStatus === 'POSITIVE') {
-            existing.completedCalls += 1;
-          }
-          
-          // Only count POSITIVE as converted calls
-          if (call.callStatus === 'POSITIVE') {
-            existing.convertedCalls += 1;
-          }
-          
-          performanceMap.set(call.ogaName, existing);
-        });
-        
-        // Calculate conversion percentages
-        const performanceArray = Array.from(performanceMap.values()).map(perf => ({
-          ...perf,
-          conversionPercentage: perf.completedCalls > 0 ? 
-            ((perf.convertedCalls / perf.completedCalls) * 100) : 0
-        }));
-        
-        setCallPerformance(performanceArray);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -273,29 +242,32 @@ export default function TeamLeaderPage() {
   };
   const handleLogout = async () => {
     try {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-      const parsed = stored ? JSON.parse(stored) : null;
-      const sessionId = parsed?.sessionId;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       
-      if (sessionId) {
-        console.log('🔐 Logging out with sessionId:', sessionId);
+      if (token) {
+        console.log('🔐 Logging out with token');
         try {
           // Wait for the logout API to complete
           const response = await fetch('/api/users/logout', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId })
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ token })
           });
           
           const result = await response.json();
           if (response.ok && result.success) {
-            console.log('✅ Session successfully revoked');
+            console.log('✅ Token successfully blacklisted');
           } else {
             console.warn('⚠️ Logout API warning:', result.error || 'Unknown error');
           }
         } catch (error) {
           console.error('❌ Error calling logout API:', error);
         }
+      } else {
+        console.log('ℹ️ No token found, skipping API call');
       }
     } catch (error) {
       console.error('❌ Error in logout handler:', error);
@@ -303,6 +275,7 @@ export default function TeamLeaderPage() {
     
     // Clean up local storage and navigate after API call
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
     router.push("/login");
   };
 
@@ -310,9 +283,13 @@ export default function TeamLeaderPage() {
     e.preventDefault();
     try {
       // Make API call to save profile data
+      const token = localStorage.getItem('token');
       const response = await fetch("/api/users", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           _id: teamLeader?._id,
           name: profileData.name,
@@ -367,9 +344,13 @@ export default function TeamLeaderPage() {
     
     try {
       // Make API call to change password
+      const token = localStorage.getItem('token');
       const response = await fetch("/api/users/change-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           _id: teamLeader?._id,
           currentPassword: passwordData.currentPassword,
@@ -398,9 +379,13 @@ export default function TeamLeaderPage() {
     e.preventDefault();
     setIsAddingUser(true);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch("/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(newUser),
       });
 
@@ -426,9 +411,13 @@ export default function TeamLeaderPage() {
 
     setIsUpdatingUser(true);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch("/api/users", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(editingUser),
       });
 
@@ -452,8 +441,12 @@ export default function TeamLeaderPage() {
 
     setIsDeletingUser(userId);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`/api/users?id=${userId}`, {
         method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
       });
 
       if (res.ok) {
@@ -486,9 +479,14 @@ export default function TeamLeaderPage() {
     
     try {
       // Fetch both daily reports and sales data
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
+      
       const [dailyReportsResponse, salesResponse] = await Promise.all([
-        fetch('/api/daily-reports'),
-        fetch('/api/sales')
+        fetch('/api/daily-reports', { headers }),
+        fetch('/api/sales', { headers })
       ]);
       
       const dailyReportsData = await dailyReportsResponse.json();
@@ -621,14 +619,6 @@ export default function TeamLeaderPage() {
     }
   };
 
-  const handleCallPersonClick = (ogaName: string) => {
-    setSelectedCallPerson(ogaName);
-    setShowCallDetailsModal(true);
-    
-    // Filter calls for the selected sales person, including NATC calls for display
-    const personCalls = calls.filter(call => call.ogaName === ogaName);
-    setCallDetails(personCalls);
-  };
 
   const filteredAndSortedAnalytics = analytics
     .filter(user =>
@@ -1318,98 +1308,6 @@ export default function TeamLeaderPage() {
         )}
       </div>
 
-      {/* Call Performance Table */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Call Performance Overview</h3>
-            <p className="text-sm text-gray-600 mt-1">Track call completion and conversion rates for all sales people</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Sales Person
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Calls
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Completed Calls
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Converted Calls
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Conversion %
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {callPerformance.length > 0 ? (
-                  callPerformance.map((performance, index) => (
-                    <tr key={performance.ogaName} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
-                              <span className="text-sm font-medium text-white">
-                                {(performance.ogaName || '').split(' ').map(n => n[0]).join('').toUpperCase()}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="ml-4">
-                            <div 
-                              className="text-sm font-medium text-gray-900 cursor-pointer hover:text-indigo-600 transition-colors"
-                              onClick={() => handleCallPersonClick(performance.ogaName)}
-                            >
-                              {performance.ogaName}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-gray-900">{performance.totalCalls}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-blue-600">{performance.completedCalls}</div>
-                        <div className="text-xs text-gray-500">
-                          {performance.totalCalls > 0 ? ((performance.completedCalls / performance.totalCalls) * 100).toFixed(1) : 0}% completion rate
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-green-600">{performance.convertedCalls}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-purple-600">{performance.conversionPercentage.toFixed(1)}%</div>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                          <div
-                            className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(performance.conversionPercentage, 100)}%` }}
-                          ></div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                      <div className="flex flex-col items-center">
-                        <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        <p className="text-lg font-medium">No call data available</p>
-                        <p className="text-sm">Call performance data will appear here once sales people start logging calls.</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
 
       {/* Credentials Modal */}
       {showCredentials && (
@@ -1938,117 +1836,6 @@ export default function TeamLeaderPage() {
         </div>
       )}
 
-      {/* Call Details Modal */}
-      {showCallDetailsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Call Details - {selectedCallPerson}
-              </h2>
-              <button
-                onClick={() => setShowCallDetailsModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {callDetails.length > 0 ? (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Call Completed
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Call Type
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Call Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Notes
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {callDetails.map((call, index) => (
-                        <tr key={call._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {new Date(call.createdAt).toLocaleDateString('en-IN', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              call.callStatus === 'QUALIFIED' || call.callStatus === 'CONNECTED_TO_WHATSAPP' || call.callStatus === 'POSITIVE'
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {call.callStatus === 'QUALIFIED' || call.callStatus === 'CONNECTED_TO_WHATSAPP' || call.callStatus === 'POSITIVE' ? 'Completed' : 'Not Completed'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              call.callType === 'new' 
-                                ? 'bg-blue-100 text-blue-800' 
-                                : 'bg-purple-100 text-purple-800'
-                            }`}>
-                              {call.callType === 'new' ? 'New' : 'Follow-up'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              call.callStatus === 'QUALIFIED' 
-                                ? 'bg-green-100 text-green-800'
-                                : call.callStatus === 'CONNECTED_TO_WHATSAPP'
-                                ? 'bg-green-100 text-green-800'
-                                : call.callStatus === 'POSITIVE'
-                                ? 'bg-blue-100 text-blue-800'
-                                : call.callStatus === 'Junk'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {call.callStatus}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm text-gray-900 max-w-xs">
-                              {call.notes}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No call details found</h3>
-                <p className="text-sm text-gray-500">
-                  {selectedCallPerson} hasn't logged any calls yet.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Edit Profile Modal */}
       {showEditProfile && (

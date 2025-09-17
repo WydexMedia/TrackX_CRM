@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from "react-hot-toast";
+import { setupPeriodicTokenValidation, authenticatedFetch } from '@/lib/tokenValidation';
 import Link from "next/link";
 import TenantLogo from "@/components/TenantLogo";
 import { useTenant } from "@/hooks/useTenant";
@@ -126,30 +127,51 @@ export default function DashboardPage() {
   // ------------- bootstrap -------------
   useEffect(() => {
     const authenticateUser = async () => {
-      // First check if we have a sessionId parameter (from redirect)
+      // First check if we have a token parameter (from redirect)
       const urlParams = new URLSearchParams(window.location.search);
-      const sessionId = urlParams.get('sessionId');
+      const token = urlParams.get('token');
       
-      if (sessionId) {
+      if (token) {
         try {
-          // Validate the session and get user data
+          // Validate the token and get user data
           const response = await fetch('/api/users/validate-session', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId })
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ token })
           });
           
           if (response.ok) {
             const userData = await response.json();
             localStorage.setItem("user", JSON.stringify(userData));
+            localStorage.setItem("token", userData.token);
             setUser(userData);
             
-            // Clean up the URL by removing the sessionId parameter
+            // Clean up the URL by removing the token parameter
             const newUrl = new URL(window.location.href);
-            newUrl.searchParams.delete('sessionId');
+            newUrl.searchParams.delete('token');
             window.history.replaceState({}, '', newUrl.toString());
             
             return;
+          } else if (response.status === 401) {
+            const errorData = await response.json();
+            if (errorData.code === 'TOKEN_REVOKED_NEW_LOGIN') {
+              // User logged in from another device
+              localStorage.removeItem("user");
+              localStorage.removeItem("token");
+              toast.error('You have been logged out because you logged in from another device.', {
+                duration: 5000,
+                style: {
+                  background: '#fee2e2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca'
+                }
+              });
+              router.push("/login");
+              return;
+            }
           }
         } catch (error) {
           console.error('Session validation failed:', error);
@@ -158,15 +180,66 @@ export default function DashboardPage() {
       
       // Fallback to localStorage check
       const u = getUserFromStorage();
+      console.log('User from storage:', u);
       if (!u) {
+        console.log('No user found, redirecting to login');
         router.push("/login");
         return;
       }
 
-      // Team leaders redirect
-      if (u.role === "teamleader") {
-        router.push("/team-leader");
-        return;
+      // Validate stored token
+      const storedToken = localStorage.getItem("token");
+      console.log('Stored token exists:', !!storedToken);
+      if (storedToken) {
+        try {
+          console.log('Validating token...');
+          const response = await fetch('/api/users/validate-session', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${storedToken}`
+            },
+            body: JSON.stringify({ token: storedToken })
+          });
+          
+          console.log('Token validation response status:', response.status);
+          if (response.ok) {
+            const userData = await response.json();
+            console.log('Token validation successful, user data:', userData);
+            localStorage.setItem("user", JSON.stringify(userData));
+            localStorage.setItem("token", userData.token);
+            setUser(userData);
+            
+            // Continue with loading sales data instead of returning early
+            console.log('Continuing with sales data loading after token validation...');
+            // Don't return here, let it continue to the sales loading logic
+          } else if (response.status === 401) {
+            const errorData = await response.json();
+            console.log('Token validation failed:', errorData);
+            if (errorData.code === 'TOKEN_REVOKED_NEW_LOGIN') {
+              // User logged in from another device
+              localStorage.removeItem("user");
+              localStorage.removeItem("token");
+              toast.error('You have been logged out because you logged in from another device.', {
+                duration: 5000,
+                style: {
+                  background: '#fee2e2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca'
+                }
+              });
+              router.push("/login");
+              return;
+            } else {
+              // Token is invalid/expired, but don't clear localStorage yet
+              // Let the user continue with the stored user data
+              console.log('Token validation failed, but continuing with stored user data');
+            }
+          }
+        } catch (error) {
+          console.error('Token validation failed:', error);
+          // Don't redirect to login on network errors, continue with stored data
+        }
       }
 
       // Load current user from API (fresh target, etc.)
@@ -177,27 +250,80 @@ export default function DashboardPage() {
           const updated = userData?.success ? { ...u, ...userData.user } : u;
           localStorage.setItem("user", JSON.stringify(updated));
           setUser(updated);
+          
+          // Check for team leader redirect after user data is loaded
+          if (updated.role === "teamleader") {
+            router.push("/team-leader");
+            return;
+          }
+          
+          // Return the updated user for the sales API call
+          return updated;
         })
-        .catch(() => setUser(u));
+        .catch(() => {
+          setUser(u);
+          // Check for team leader redirect even if API fails
+          if (u.role === "teamleader") {
+            router.push("/team-leader");
+            return;
+          }
+          // Return the original user for the sales API call
+          return u;
+        });
 
-      const loadSales = fetch("/api/sales")
-        .then((res) => res.json())
-        .then((data: Sale[]) => {
-          const filteredSales = data.filter((s) => {
-            const exactMatch = s.ogaName === u.name;
-            const caseInsensitiveMatch = s.ogaName.toLowerCase() === u.name.toLowerCase();
-            const partialMatch = s.ogaName.toLowerCase().includes(u.name.toLowerCase()) || 
-                               u.name.toLowerCase().includes(s.ogaName.toLowerCase());
-            return exactMatch || caseInsensitiveMatch || partialMatch;
+      const loadSales = loadUser.then((currentUser) => {
+        if (!currentUser) return Promise.resolve([]);
+        
+        console.log('Loading sales for user:', currentUser);
+        return fetch("/api/sales", {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+          .then((res) => {
+            console.log('Sales API response status:', res.status);
+            if (!res.ok) {
+              throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            return res.json();
+          })
+          .then((data) => {
+            console.log('Sales API response data:', data);
+            // Handle the new API response format: {sales: [], pagination: {}}
+            const salesData = data.sales || data; // Fallback to direct array for backward compatibility
+            if (Array.isArray(salesData)) {
+              console.log('Setting sales data:', salesData);
+              setSales(salesData);
+              return salesData;
+            } else {
+              console.error('Unexpected sales data format:', data);
+              setSales([]);
+              return [];
+            }
+          })
+          .catch((error) => {
+            console.error('Failed to load sales:', error);
+            toast.error("Failed to load sales");
+            return [];
           });
-          setSales(filteredSales);
-        })
-        .catch(() => toast.error("Failed to load sales"));
+      });
 
-      Promise.all([loadUser, loadSales]).finally(() => setIsLoading(false));
+      Promise.all([loadUser, loadSales]).finally(() => {
+        console.log('All API calls completed, setting loading to false');
+        setIsLoading(false);
+      });
     };
 
     authenticateUser();
+    
+    // Set up periodic token validation
+    const redirectToLogin = () => router.push("/login");
+    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 60000); // Check every 60 seconds
+    
+    // Cleanup interval on unmount
+    return () => {
+      clearInterval(validationInterval);
+    };
   }, [router]);
 
   const today = new Date();
@@ -234,25 +360,37 @@ export default function DashboardPage() {
   // ------------- handlers -------------
   const refreshSales = () => {
     if (!user) return;
-    fetch("/api/sales")
-      .then((res) => res.json())
-      .then((data: Sale[]) => {
-        const filteredSales = data.filter((s) => {
-          const exactMatch = s.ogaName === user.name;
-          const caseInsensitiveMatch = s.ogaName.toLowerCase() === user.name.toLowerCase();
-          const partialMatch = s.ogaName.toLowerCase().includes(user.name.toLowerCase()) || 
-                             user.name.toLowerCase().includes(s.ogaName.toLowerCase());
-          return exactMatch || caseInsensitiveMatch || partialMatch;
-        });
-        setSales(filteredSales);
+    fetch("/api/sales", {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
       })
-      .catch(() => toast.error("Failed to refresh sales"));
+      .then((data) => {
+        // Handle the new API response format: {sales: [], pagination: {}}
+        const salesData = data.sales || data; // Fallback to direct array for backward compatibility
+        if (Array.isArray(salesData)) {
+          setSales(salesData);
+        } else {
+          console.error('Unexpected sales data format:', data);
+          setSales([]);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to refresh sales:', error);
+        toast.error("Failed to refresh sales");
+      });
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this sale?")) return;
     await toast.promise(
-      fetch(`/api/sales?id=${id}`, { method: "DELETE" })
+      authenticatedFetch(`/api/sales?id=${id}`, { method: "DELETE" })
         .then(() => refreshSales()),
       {
         loading: "Deleting...",
@@ -275,7 +413,7 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!editingId || !editData) return;
     await toast.promise(
-      fetch(`/api/sales`, {
+      authenticatedFetch(`/api/sales`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ _id: editingId, ...editData }),
@@ -290,36 +428,42 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     try {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-      const parsed = stored ? JSON.parse(stored) : null;
-      const sessionId = parsed?.sessionId;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       
-      if (sessionId) {
-        console.log('🔐 Logging out with sessionId:', sessionId);
+      if (token) {
+        console.log('🔐 Logging out with token');
         try {
           // Wait for the logout API to complete
           const response = await fetch('/api/users/logout', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId })
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ token })
           });
           
           const result = await response.json();
           if (response.ok && result.success) {
-            console.log('✅ Session successfully revoked');
+            console.log('✅ Token successfully blacklisted');
           } else {
             console.warn('⚠️ Logout API warning:', result.error || 'Unknown error');
           }
         } catch (error) {
           console.error('❌ Error calling logout API:', error);
         }
+      } else {
+        console.log('ℹ️ No token found, skipping API call');
       }
     } catch (error) {
       console.error('❌ Error in logout handler:', error);
     }
     
     // Clean up local storage and navigate after API call
-    if (typeof window !== "undefined") localStorage.removeItem("user");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+    }
     router.push("/login");
   };
 
@@ -517,7 +661,7 @@ export default function DashboardPage() {
                 <path d="M9 5H7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5" />
                 <path d="M20.59 7.41a2 2 0 0 1 0 2.83L12 18.83 9 19l.17-3 8.59-8.59a2 2 0 0 1 2.83 0z" />
               </svg>
-              All Sales Records
+              All Sales Record
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">{weekly.length} this week • {monthly.length} this month</p>
           </div>

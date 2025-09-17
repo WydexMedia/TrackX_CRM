@@ -1,61 +1,40 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import Link from "next/link";
+import { setupPeriodicTokenValidation } from '@/lib/tokenValidation';
 
-function filterSalesByDate(sales: any[], date: Date) {
-  const y = date.getFullYear();
-  const m = date.getMonth();
-  const d = date.getDate();
-  return sales.filter(sale => {
-    if (!sale.createdAt) return false;
-    const saleDate = new Date(sale.createdAt);
-    return saleDate.getFullYear() === y && saleDate.getMonth() === m && saleDate.getDate() === d;
-  });
-}
-
-function filterSalesByWeek(sales: any[], date: Date) {
-  const start = new Date(date);
-  start.setDate(date.getDate() - start.getDay());
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 7);
-  return sales.filter(sale => {
-    if (!sale.createdAt) return false;
-    const saleDate = new Date(sale.createdAt);
-    return saleDate >= start && saleDate < end;
-  });
-}
-
-function filterSalesByMonth(sales: any[], date: Date) {
-  const y = date.getFullYear();
-  const m = date.getMonth();
-  return sales.filter(sale => {
-    if (!sale.createdAt) return false;
-    const saleDate = new Date(sale.createdAt);
-    return saleDate.getFullYear() === y && saleDate.getMonth() === m;
-  });
-}
-
-export default function LoginAndDashboard() {
+export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [user, setUser] = useState<any>(null);
-  const [sales, setSales] = useState<any[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<{ customerName: string; amount: number; newAdmission: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showCeoSetup, setShowCeoSetup] = useState(false);
   const [selectedPortal, setSelectedPortal] = useState<string>("");
+  const [showSessionConfirm, setShowSessionConfirm] = useState(false);
+  const [blockLogin, setBlockLogin] = useState(false);
+  const [pendingLoginData, setPendingLoginData] = useState<{email: string, password: string} | null>(null);
+
+  // Debug dialog state
+  useEffect(() => {
+    console.log('Dialog state changed:', showSessionConfirm);
+    console.log('Current showSessionConfirm value:', showSessionConfirm);
+    console.log('Type of showSessionConfirm:', typeof showSessionConfirm);
+  }, [showSessionConfirm]);
 
   const router = useRouter();
 
   // Login handler
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    // If confirmation is visible or login is blocked, ignore submit
+    if (showSessionConfirm || blockLogin) {
+      console.log('Ignoring submit because confirmation dialog is open');
+      return;
+    }
     setError("");
     setIsLoading(true);
     try {
@@ -66,7 +45,21 @@ export default function LoginAndDashboard() {
       });
       if (!res.ok) {
         if (res.status === 409) {
-          setError("Active session detected. Please log out from the other device or contact admin.");
+          const errorData = await res.json();
+          console.log('409 Error received:', errorData);
+          if (errorData.code === 'ACTIVE_SESSION_CONFIRMATION_REQUIRED') {
+            // Show confirmation dialog
+            console.log('Showing session confirmation dialog');
+            console.log('Error data:', errorData);
+            setPendingLoginData({ email, password });
+            setShowSessionConfirm(true);
+            setBlockLogin(true);
+            setError(errorData.message); // Show the message on screen
+            console.log('Dialog state should be true now');
+            return;
+          } else {
+            setError(errorData.message || "Active session detected. Please log out from the other device or contact admin.");
+          }
         } else if (res.status === 401) {
           setError("Invalid email or password");
         } else {
@@ -75,6 +68,8 @@ export default function LoginAndDashboard() {
         return;
       }
       const user = await res.json();
+      // Broadcast immediate validation to other tabs/devices
+      try { localStorage.setItem('tokenRevokedAt', String(Date.now())); } catch {}
       
       // Check if user needs to be redirected to their tenant subdomain
       if (user.needsRedirect && user.redirectTo) {
@@ -84,7 +79,9 @@ export default function LoginAndDashboard() {
         return;
       }
       
+      // Store user data and token separately
       localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token", user.token);
       setUser(user);
       
       // If CEO, check if setup is required
@@ -131,6 +128,98 @@ export default function LoginAndDashboard() {
       }
     } catch (error) {
       setError("An error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle session confirmation
+  const handleSessionConfirm = async (proceed: boolean) => {
+    console.log('handleSessionConfirm called with proceed:', proceed);
+    console.log('pendingLoginData:', pendingLoginData);
+    
+    setShowSessionConfirm(false);
+    
+    if (!proceed || !pendingLoginData) {
+      console.log('Not proceeding or no pending login data');
+      setPendingLoginData(null);
+      return;
+    }
+
+    console.log('Proceeding with login confirmation...');
+    setIsLoading(true);
+    setError("");
+
+    try {
+      console.log('Calling /api/users/login-confirm with:', pendingLoginData);
+      const res = await fetch("/api/users/login-confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pendingLoginData),
+      });
+
+      console.log('Login confirm response status:', res.status);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log('Login confirm error:', errorText);
+        setError("Login confirmation failed. Please try again.");
+        setPendingLoginData(null);
+        return;
+      }
+
+      const user = await res.json();
+      
+      // Check if user needs to be redirected to their tenant subdomain
+      if (user.needsRedirect && user.redirectTo) {
+        console.log('Redirecting user to tenant subdomain:', user.redirectTo);
+        // Do not store user on main domain to avoid stale localStorage issues
+        window.location.href = user.redirectTo;
+        return;
+      }
+      
+      // Store user data and token separately
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token", user.token);
+      setUser(user);
+      
+      // If CEO, check if setup is required
+      if (user.role === 'CEO') {
+        console.log('CEO login detected, checking setup status...');
+        try {
+          const settingsRes = await fetch('/api/ceo/settings');
+          const settings = await settingsRes.json();
+          console.log('CEO settings response:', settings);
+          const needsSetup = !settings?.portalType;
+          console.log('CEO needs setup:', needsSetup);
+          if (needsSetup) {
+            console.log('Showing CEO setup modal');
+            setShowCeoSetup(true);
+            return; // pause navigation until setup done
+          }
+          console.log('CEO setup complete, redirecting to /ceo');
+          console.log('CEO setup complete, using window.location redirect');
+          window.location.href = '/ceo';
+          return;
+        } catch (error) {
+          console.log('CEO settings fetch error:', error);
+          router.push('/ceo');
+          console.log('CEO error fallback redirect to /ceo');
+          setIsLoading(false);
+          window.location.href = '/ceo';
+          return;
+        }
+      }
+      
+      if (user.role === 'teamleader') {
+        router.push('/team-leader');
+      } else if (user.role === 'jl') {
+        router.push('/junior-leader');
+      } else {
+        router.push('/dashboard');
+      }
+    } catch (error) {
+      setError("An error occurred. Please try again.");
+      setPendingLoginData(null);
     } finally {
       setIsLoading(false);
     }
@@ -183,48 +272,15 @@ export default function LoginAndDashboard() {
     }
   }, [router]);
 
-  // Fetch sales for user
+  // Redirect to dashboard when user is logged in
   useEffect(() => {
-    if (!user) return;
-    fetch("/api/sales")
-      .then(res => res.json())
-      .then(data => {
-        console.log('All sales data:', data);
-        console.log('Current user:', user);
-        console.log('User name:', user.name);
-        console.log('Filtering by ogaName === user.name');
-        
-        const filteredSales = data.filter((s: any) => {
-          // Normalize names to avoid crashes when fields are missing
-          const saleOga = (s.ogaName ?? '').toString();
-          const userName = (user.name ?? '').toString();
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
-          // Try exact match first
-          const exactMatch = saleOga === userName;
-          
-          // Try case-insensitive match
-          const caseInsensitiveMatch = saleOga.toLowerCase() === userName.toLowerCase();
-          
-          // Try partial match (in case there are extra spaces or slight differences)
-          const partialMatch = saleOga.toLowerCase().includes(userName.toLowerCase()) || 
-                             userName.toLowerCase().includes(saleOga.toLowerCase());
-          
-          const matches = exactMatch || caseInsensitiveMatch || partialMatch;
-          
-          console.log(`Sale: ${s.customerName}, ogaName: "${saleOga}", user.name: "${userName}"`);
-          console.log(`  Exact match: ${exactMatch}, Case-insensitive: ${caseInsensitiveMatch}, Partial: ${partialMatch}, Final: ${matches}`);
-          
-          return matches;
-        });
-        
-        console.log('Filtered sales:', filteredSales);
-        setSales(filteredSales);
-      });
-  }, [user]);
-
-  if (!user) {
-    // Show login form
-    return (
+  // Show login form only
+  return (
       <div className="login-bg">
         <div className="pattern-overlay"></div>
 
@@ -288,6 +344,57 @@ export default function LoginAndDashboard() {
             {error && (
               <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl text-sm">
                 {error}
+                {error.includes("already logged in") && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Fallback button clicked - confirming login');
+                        setShowSessionConfirm(false);
+                        setBlockLogin(true);
+                        setPendingLoginData({ email, password });
+                        // Call confirm flow directly
+                        try {
+                          const res = await fetch('/api/users/login-confirm', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email, password })
+                          });
+                          if (!res.ok) {
+                            const t = await res.text();
+                            console.log('Confirm via fallback failed:', t);
+                            setError('Login confirmation failed. Please try again.');
+                            setBlockLogin(false);
+                            return;
+                          }
+                          const user = await res.json();
+                          // Broadcast to other tabs/devices to validate token now
+                          try { localStorage.setItem('tokenRevokedAt', String(Date.now())); } catch {}
+                          localStorage.setItem('user', JSON.stringify(user));
+                          localStorage.setItem('token', user.token);
+                          setUser(user);
+                          if (user.needsRedirect && user.redirectTo) {
+                            window.location.href = user.redirectTo;
+                            return;
+                          }
+                          if (user.role === 'CEO') router.push('/ceo');
+                          else if (user.role === 'teamleader') router.push('/team-leader');
+                          else if (user.role === 'jl') router.push('/junior-leader');
+                          else router.push('/dashboard');
+                        } catch (err) {
+                          console.error(err);
+                          setError('Login confirmation failed. Please try again.');
+                          setBlockLogin(false);
+                        }
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Continue with logout from other device
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -312,8 +419,11 @@ export default function LoginAndDashboard() {
                 'Sign In'
               )}
             </button>
+            
           </div>
         </form>
+        
+        
 
         <style jsx>{`
           .login-bg {
@@ -361,485 +471,4 @@ export default function LoginAndDashboard() {
         `}</style>
       </div>
     );
-  }
-
-  // Logout handler
-  const handleLogout = async () => {
-    try {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-      const parsed = stored ? JSON.parse(stored) : null;
-      const sessionId = parsed?.sessionId;
-      
-      if (sessionId) {
-        console.log('🔐 Logging out with sessionId:', sessionId);
-        try {
-          // Wait for the logout API to complete
-          const response = await fetch('/api/users/logout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId })
-          });
-          
-          const result = await response.json();
-          if (response.ok && result.success) {
-            console.log('✅ Session successfully revoked');
-          } else {
-            console.warn('⚠️ Logout API warning:', result.error || 'Unknown error');
-          }
-        } catch (error) {
-          console.error('❌ Error calling logout API:', error);
-        }
-      } else {
-        console.log('ℹ️ No sessionId found, skipping API call');
-      }
-    } catch (error) {
-      console.error('❌ Error in logout handler:', error);
-    }
-    
-    // Clean up local storage and state after API call
-    localStorage.removeItem("user");
-    setUser(null);
-    setEmail("");
-    setPassword("");
-    console.log('🧹 Local logout completed');
-  };
-
-  // Show dashboard only
-  const today = new Date();
-  const daily = filterSalesByDate(sales, today);
-  const monthly = filterSalesByMonth(sales, today);
-  const target = 300000;
-
-  // Calculate days pending in the current month
-const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-const daysPending = lastDayOfMonth.getDate() - today.getDate();
-
-
-  const achievedTarget = monthly.reduce((sum, s) => sum + s.amount, 0);
-  const pendingTarget = target - achievedTarget;
-  const todayCollection = daily.reduce((sum, s) => sum + s.amount, 0);
-
-  // Calculate previous month
-  const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-  const lastMonthSales = filterSalesByMonth(sales, prevMonthDate);
-  const lastMonthAchieved = lastMonthSales.reduce((sum, s) => sum + s.amount, 0);
-
-  // Show last month collection only if it's not the first month (optional)
-  const showLastMonth = today.getMonth() > 0 || today.getFullYear() > sales[0]?.createdAt?.getFullYear();
-
-  // Edit/delete handlers
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this sale?')) return;
-    await fetch(`/api/sales?id=${id}`, { method: 'DELETE' });
-    // Refresh sales
-    fetch("/api/sales")
-      .then(res => res.json())
-      .then(data => {
-        const filteredSales = data.filter((s: any) => {
-          const saleOga = (s.ogaName ?? '').toString();
-          const userName = (user.name ?? '').toString();
-          const exactMatch = saleOga === userName;
-          const caseInsensitiveMatch = saleOga.toLowerCase() === userName.toLowerCase();
-          const partialMatch = saleOga.toLowerCase().includes(userName.toLowerCase()) || 
-                             userName.toLowerCase().includes(saleOga.toLowerCase());
-          return exactMatch || caseInsensitiveMatch || partialMatch;
-        });
-        setSales(filteredSales);
-      });
-  };
-
-  const handleEdit = (sale: any) => {
-    setEditingId(sale._id);
-    setEditData({
-      customerName: sale.customerName,
-      amount: sale.amount,
-      newAdmission: sale.newAdmission,
-    });
-  };
-
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingId || !editData) return;
-    await fetch(`/api/sales`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ _id: editingId, ...editData }),
-    });
-    setEditingId(null);
-    setEditData(null);
-    // Refresh sales
-    fetch("/api/sales")
-      .then(res => res.json())
-      .then(data => {
-        const filteredSales = data.filter((s: any) => {
-          const saleOga = (s.ogaName ?? '').toString();
-          const userName = (user.name ?? '').toString();
-          const exactMatch = saleOga === userName;
-          const caseInsensitiveMatch = saleOga.toLowerCase() === userName.toLowerCase();
-          const partialMatch = saleOga.toLowerCase().includes(userName.toLowerCase()) || 
-                             userName.toLowerCase().includes(saleOga.toLowerCase());
-          return exactMatch || caseInsensitiveMatch || partialMatch;
-        });
-        setSales(filteredSales);
-      });
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-6">
-      <Toaster position="top-center" />
-
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 mb-8 border border-white/50">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-2">
-                Welcome back, {user.name}
-              </h1>
-              <div className="flex flex-wrap gap-4 text-slate-600">
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-4 0V5a2 2 0 014 0v1" />
-                  </svg>
-                  {user.code}
-                </span>
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  {user.email}
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl font-semibold hover:from-red-600 hover:to-pink-600 transform hover:scale-105 transition-all duration-200 shadow-lg"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Target Card - Emerald to Teal */}
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-white/20 rounded-xl p-3">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-            <h3 className="text-emerald-100 text-lg font-medium mb-1">Target</h3>
-            <p className="text-3xl font-bold">₹{300000 .toLocaleString()}</p>
-          </div>
-
-          {/* Achieved Target Card - Purple to Pink */}
-          <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-white/20 rounded-xl p-3">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
-              </div>
-            </div>
-            <h3 className="text-purple-100 text-lg font-medium mb-1">Achieved Target</h3>
-            <p className="text-3xl font-bold">₹{achievedTarget > 0 ? achievedTarget.toLocaleString() : "0"}</p>
-          </div>
-
-          {/* Pending Target Card - Blue to Indigo */}
-          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-white/20 rounded-xl p-3">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-            <h3 className="text-blue-100 text-lg font-medium mb-1">Pending Target</h3>
-            <p className="text-3xl font-bold">₹{pendingTarget > 0 ? pendingTarget.toLocaleString() : "0"}</p>
-          </div>
-
-          {/* Today's Collection Card - Orange to Red */}
-          <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-white/20 rounded-xl p-3">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <span className="text-orange-100 text-sm font-medium">{daily.length} sales</span>
-            </div>
-            <h3 className="text-orange-100 text-lg font-medium mb-1">Today's Collection</h3>
-            <p className="text-3xl font-bold">₹{todayCollection > 0 ? todayCollection.toLocaleString() : "0"}</p>
-          </div>
-
-          {/* Last Month Collection Card - Cyan to Blue */}
-          {showLastMonth && (
-            <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-white/20 rounded-xl p-3">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              </div>
-              <h3 className="text-cyan-100 text-lg font-medium mb-1">Last Month Collection</h3>
-              <p className="text-3xl font-bold">
-                ₹{today.getDate() === 1 ? lastMonthAchieved.toLocaleString() : "0"}
-              </p>
-            </div>
-          )}
-
-          {/* Additional Card - Amber to Yellow */}
-          <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-white/20 rounded-xl p-3">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </div>
-            </div>
-            <h3 className="text-violet-100 text-lg font-medium mb-1">Days Pending</h3>
-            <p className="text-3xl font-bold">{daysPending >= 0 ? daysPending : 0} Days</p>
-          </div>
-
-        </div>
-
-
-
-        {/* Add Sale Button */}
-        <div className="flex justify-end mt-3">
-          <Link href="/form">
-            <button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add New Sale
-            </button>
-          </Link>
-        </div>
-
-        {/* Sales Table */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl mt-5 shadow-xl border border-white/50 overflow-hidden">
-          <div className="p-6 border-b border-slate-200">
-            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              All Sales Records
-            </h2>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Customer</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Amount</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">New Admission</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Date</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {sales.map((sale: any, index) => (
-                  <tr key={sale._id} className={`hover:bg-slate-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-slate-25'}`}>
-                    <td className="px-6 py-4">
-                      {editingId === sale._id ? (
-                        <input
-                          className="table-input bg-gray-800 text-white"
-                          value={editData?.customerName || ''}
-                          onChange={e => setEditData({ ...editData!, customerName: e.target.value })}
-                        />
-                      ) : (
-                        <span className="font-medium text-slate-900">{sale.customerName}</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      {editingId === sale._id ? (
-                        <input
-                          className="table-input bg-gray-800 text-white"
-                          type="number"
-                          value={editData?.amount || ''}
-                          onChange={e => setEditData({ ...editData!, amount: Number(e.target.value) })}
-                        />
-                      ) : (
-                        <span className="font-semibold text-emerald-600">₹{sale.amount.toLocaleString()}</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      {editingId === sale._id ? (
-                        <select
-                          className="table-input bg-gray-800 text-white"
-                          value={editData?.newAdmission || ''}
-                          onChange={e => setEditData({ ...editData!, newAdmission: e.target.value })}
-                        >
-                          <option value="yes">Yes</option>
-                          <option value="no">No</option>
-                        </select>
-                      ) : (
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${sale.newAdmission === 'yes'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-slate-100 text-slate-800'
-                          }`}>
-                          {sale.newAdmission === 'yes' ? 'Yes' : 'No'}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {sale.createdAt ? new Date(sale.createdAt).toLocaleDateString('en-IN', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      }) : ''}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        {editingId === sale._id ? (
-                          <>
-                            <button
-                              onClick={handleEditSubmit}
-                              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                              title="Save"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => { setEditingId(null); setEditData(null); }}
-                              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-                              title="Cancel"
-                              type="button"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => handleEdit(sale)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDelete(sale._id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {showCeoSetup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6">
-            <h2 className="text-xl font-bold mb-4">Choose your portal</h2>
-            <p className="text-slate-600 mb-4">Select one option to configure your CEO portal.</p>
-            <form onSubmit={handleCeoSetupSubmit} className="space-y-3">
-              <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-slate-50">
-                <input
-                  type="radio"
-                  name="portalType"
-                  value="edTech"
-                  checked={selectedPortal === 'edTech'}
-                  onChange={(e) => setSelectedPortal(e.target.value)}
-                />
-                <span className="font-medium text-black">edTech</span>
-                <span className="text-xs text-slate-500 ml-2">Courses, admissions</span>
-              </label>
-              <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-slate-50">
-                <input
-                  type="radio"
-                  name="portalType"
-                  value="sales"
-                  checked={selectedPortal === 'sales'}
-                  onChange={(e) => setSelectedPortal(e.target.value)}
-                />
-                <span className="font-medium text-black">Sales</span>
-                <span className="text-xs text-slate-500 ml-2">CRM focused</span>
-              </label>
-              <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-slate-50">
-                <input
-                  type="radio"
-                  name="portalType"
-                  value="operations"
-                  checked={selectedPortal === 'operations'}
-                  onChange={(e) => setSelectedPortal(e.target.value)}
-                />
-                <span className="font-medium text-black">Operations</span>
-                <span className="text-xs text-slate-500 ml-2">Back-office workflows</span>
-              </label>
-              <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-slate-50">
-                <input
-                  type="radio"
-                  name="portalType"
-                  value="operations+sales"
-                  checked={selectedPortal === 'operations+sales'}
-                  onChange={(e) => setSelectedPortal(e.target.value)}
-                />
-                <span className="font-medium text-black">Operations + Sales</span>
-                <span className="text-xs text-slate-500 ml-2">Hybrid portal</span>
-              </label>
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowCeoSetup(false)} className="px-4 py-2 rounded-lg bg-slate-200 text-slate-800 font-semibold">
-                  Cancel
-                </button>
-                <button type="submit" disabled={!selectedPortal} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold disabled:opacity-50">
-                  Save & Continue
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <style jsx>{`
-        .table-input {
-          width: 100%;
-          padding: 0.5rem 0.75rem;
-          border-radius: 0.5rem;
-          border: 1px solid #e2e8f0;
-          font-size: 0.875rem;
-          outline: none;
-          transition: all 0.2s ease;
-          background: white;
-        }
-        .table-input:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-        .table-input.bg-gray-800 {
-          background: #1f2937 !important; /* Tailwind gray-800 */
-          color: #fff !important;
-          border: 1.5px solid #6366f1;
-        }
-        .table-input.bg-gray-800:focus {
-          border-color: #6366f1;
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-      `}</style>
-    </div>
-  );
 }
