@@ -1472,9 +1472,12 @@ export default function TeamLeaderPage() {
                         <div className="text-right">
                           <div className="text-sm font-medium text-gray-900">Login ID</div>
                           <div className="text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded">
-                            {user.code}
+                            {user.email}
                           </div>
                         </div>
+
+                       
+                       
                         
                         <div className="text-right">
                           <div className="text-sm font-medium text-gray-900">Password</div>
