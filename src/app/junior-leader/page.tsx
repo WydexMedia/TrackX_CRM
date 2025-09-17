@@ -44,24 +44,10 @@ interface Analytics {
   todaySales: number;
 }
 
-interface Call {
-  _id: string;
-  ogaName: string;
-  callCompleted: string;
-}
-
-interface CallPerformance {
-  name: string;
-  totalCalls: number;
-  completedCalls: number;
-  conversionPercentage: number;
-}
 
 export default function JuniorLeaderPage() {
   const [teamData, setTeamData] = useState<TeamData | null>(null);
   const [analytics, setAnalytics] = useState<Analytics[]>([]);
-  const [calls, setCalls] = useState<Call[]>([]);
-  const [callPerformance, setCallPerformance] = useState<CallPerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const [showKPIModal, setShowKPIModal] = useState(false);
   const [selectedSalesPerson, setSelectedSalesPerson] = useState<any>(null);
@@ -104,7 +90,6 @@ export default function JuniorLeaderPage() {
             if (userData.role === "jl") {
               fetchTeamData(userData.email);
               fetchAnalytics();
-              fetchCalls();
               return;
             } else {
               router.push("/dashboard");
@@ -148,7 +133,6 @@ export default function JuniorLeaderPage() {
 
       fetchTeamData(userData.email);
       fetchAnalytics();
-      fetchCalls();
     };
 
     authenticateUser();
@@ -192,52 +176,6 @@ export default function JuniorLeaderPage() {
     }
   };
 
-  const fetchCalls = async () => {
-    try {
-      const response = await fetch("/api/calls");
-      if (response.ok) {
-        const data = await response.json();
-        setCalls(data);
-        
-        // Calculate call performance for team members
-        if (teamData) {
-          const performanceMap = new Map<string, CallPerformance>();
-          
-          data.forEach((call: Call) => {
-            const salespersonName = call.ogaName;
-            if (salespersonName) {
-              if (!performanceMap.has(salespersonName)) {
-                performanceMap.set(salespersonName, {
-                  name: salespersonName,
-                  totalCalls: 0,
-                  completedCalls: 0,
-                  conversionPercentage: 0
-                });
-              }
-              
-              const performance = performanceMap.get(salespersonName)!;
-              performance.totalCalls++;
-              
-              if (call.callCompleted === "yes") {
-                performance.completedCalls++;
-              }
-            }
-          });
-          
-          // Calculate conversion percentages
-          performanceMap.forEach(performance => {
-            performance.conversionPercentage = performance.totalCalls > 0 
-              ? Math.round((performance.completedCalls / performance.totalCalls) * 100)
-              : 0;
-          });
-          
-          setCallPerformance(Array.from(performanceMap.values()));
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching calls:", error);
-    }
-  };
 
   const handleSalesPersonClick = async (salesPerson: any) => {
     setSelectedSalesPerson(salesPerson);
@@ -392,10 +330,6 @@ export default function JuniorLeaderPage() {
     assignedSales.some(sales => sales.name.toLowerCase() === analyticsItem.name.toLowerCase())
   );
   
-  // Filter call performance to only show team members
-  const teamCallPerformance = callPerformance.filter(performance => 
-    assignedSales.some(sales => sales.name.toLowerCase() === performance.name.toLowerCase())
-  );
 
   // Calculate team totals
   const teamTotalTarget = teamAnalytics.reduce((sum, item) => sum + (item.target || 0), 0);
@@ -478,18 +412,12 @@ export default function JuniorLeaderPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Total Sales
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Call Performance
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {assignedSales.map((salesperson) => {
                     const analytics = teamAnalytics.find(a => 
                       a.name.toLowerCase() === salesperson.name.toLowerCase()
-                    );
-                    const callPerf = teamCallPerformance.find(c => 
-                      c.name.toLowerCase() === salesperson.name.toLowerCase()
                     );
                     
                     return (
@@ -523,17 +451,6 @@ export default function JuniorLeaderPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{analytics?.totalSales || 0}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {callPerf ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {callPerf.completedCalls}/{callPerf.totalCalls} ({callPerf.conversionPercentage}%)
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">No calls</span>
-                            )}
-                          </div>
                         </td>
                       </tr>
                     );

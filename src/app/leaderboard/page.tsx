@@ -130,13 +130,13 @@ export default function CompetitiveLeaderboard() {
   const [popper, setPopper] = useState<{ ogaName: string; amount: number } | null>(null);
   const lastSaleId = useRef<string | null>(null);
 
-  // Fetch sales from API in real time
+  // Fetch sales from public API in real time (no authentication required)
   useEffect(() => {
     const fetchSales = async () => {
       try {
-        const res = await fetch('/api/sales');
+        const res = await fetch('/api/public/leaderboard');
         const data = await res.json();
-        console.log('Fetched sales data:', data);
+        console.log('Fetched public leaderboard data:', data);
         console.log('Sales with newAdmission:', data.filter((s: Sale) => s.newAdmission));
         setSales(data);
         setPulseEffect(Date.now());
@@ -150,6 +150,7 @@ export default function CompetitiveLeaderboard() {
           }
         }
       } catch (e) {
+        console.error('Failed to fetch leaderboard data:', e);
         // fallback: do nothing
       }
     };
