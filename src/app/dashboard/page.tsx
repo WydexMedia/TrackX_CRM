@@ -180,15 +180,19 @@ export default function DashboardPage() {
       
       // Fallback to localStorage check
       const u = getUserFromStorage();
+      console.log('User from storage:', u);
       if (!u) {
+        console.log('No user found, redirecting to login');
         router.push("/login");
         return;
       }
 
       // Validate stored token
       const storedToken = localStorage.getItem("token");
+      console.log('Stored token exists:', !!storedToken);
       if (storedToken) {
         try {
+          console.log('Validating token...');
           const response = await fetch('/api/users/validate-session', {
             method: 'POST',
             headers: { 
@@ -198,14 +202,20 @@ export default function DashboardPage() {
             body: JSON.stringify({ token: storedToken })
           });
           
+          console.log('Token validation response status:', response.status);
           if (response.ok) {
             const userData = await response.json();
+            console.log('Token validation successful, user data:', userData);
             localStorage.setItem("user", JSON.stringify(userData));
             localStorage.setItem("token", userData.token);
             setUser(userData);
-            return;
+            
+            // Continue with loading sales data instead of returning early
+            console.log('Continuing with sales data loading after token validation...');
+            // Don't return here, let it continue to the sales loading logic
           } else if (response.status === 401) {
             const errorData = await response.json();
+            console.log('Token validation failed:', errorData);
             if (errorData.code === 'TOKEN_REVOKED_NEW_LOGIN') {
               // User logged in from another device
               localStorage.removeItem("user");
@@ -227,12 +237,6 @@ export default function DashboardPage() {
         }
       }
 
-      // Team leaders redirect
-      if (u.role === "teamleader") {
-        router.push("/team-leader");
-        return;
-      }
-
       // Load current user from API (fresh target, etc.)
       const identifier = encodeURIComponent(u.email || u.code);
       const loadUser = fetch(`/api/users/current?identifier=${identifier}`)
@@ -241,24 +245,68 @@ export default function DashboardPage() {
           const updated = userData?.success ? { ...u, ...userData.user } : u;
           localStorage.setItem("user", JSON.stringify(updated));
           setUser(updated);
+          
+          // Check for team leader redirect after user data is loaded
+          if (updated.role === "teamleader") {
+            router.push("/team-leader");
+            return;
+          }
+          
+          // Return the updated user for the sales API call
+          return updated;
         })
-        .catch(() => setUser(u));
+        .catch(() => {
+          setUser(u);
+          // Check for team leader redirect even if API fails
+          if (u.role === "teamleader") {
+            router.push("/team-leader");
+            return;
+          }
+          // Return the original user for the sales API call
+          return u;
+        });
 
-      const loadSales = fetch("/api/sales")
-        .then((res) => res.json())
-        .then((data: Sale[]) => {
-          const filteredSales = data.filter((s) => {
-            const exactMatch = s.ogaName === u.name;
-            const caseInsensitiveMatch = s.ogaName.toLowerCase() === u.name.toLowerCase();
-            const partialMatch = s.ogaName.toLowerCase().includes(u.name.toLowerCase()) ||
-                               u.name.toLowerCase().includes(s.ogaName.toLowerCase());
-            return exactMatch || caseInsensitiveMatch || partialMatch;
+      const loadSales = loadUser.then((currentUser) => {
+        if (!currentUser) return Promise.resolve([]);
+        
+        console.log('Loading sales for user:', currentUser);
+        return fetch("/api/sales", {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+          .then((res) => {
+            console.log('Sales API response status:', res.status);
+            if (!res.ok) {
+              throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            return res.json();
+          })
+          .then((data) => {
+            console.log('Sales API response data:', data);
+            // Handle the new API response format: {sales: [], pagination: {}}
+            const salesData = data.sales || data; // Fallback to direct array for backward compatibility
+            if (Array.isArray(salesData)) {
+              console.log('Setting sales data:', salesData);
+              setSales(salesData);
+              return salesData;
+            } else {
+              console.error('Unexpected sales data format:', data);
+              setSales([]);
+              return [];
+            }
+          })
+          .catch((error) => {
+            console.error('Failed to load sales:', error);
+            toast.error("Failed to load sales");
+            return [];
           });
-          setSales(filteredSales);
-        })
-        .catch(() => toast.error("Failed to load sales"));
+      });
 
-      Promise.all([loadUser, loadSales]).finally(() => setIsLoading(false));
+      Promise.all([loadUser, loadSales]).finally(() => {
+        console.log('All API calls completed, setting loading to false');
+        setIsLoading(false);
+      });
     };
 
     authenticateUser();
@@ -307,19 +355,31 @@ export default function DashboardPage() {
   // ------------- handlers -------------
   const refreshSales = () => {
     if (!user) return;
-    fetch("/api/sales")
-      .then((res) => res.json())
-      .then((data: Sale[]) => {
-        const filteredSales = data.filter((s) => {
-          const exactMatch = s.ogaName === user.name;
-          const caseInsensitiveMatch = s.ogaName.toLowerCase() === user.name.toLowerCase();
-          const partialMatch = s.ogaName.toLowerCase().includes(user.name.toLowerCase()) || 
-                             user.name.toLowerCase().includes(s.ogaName.toLowerCase());
-          return exactMatch || caseInsensitiveMatch || partialMatch;
-        });
-        setSales(filteredSales);
+    fetch("/api/sales", {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
       })
-      .catch(() => toast.error("Failed to refresh sales"));
+      .then((data) => {
+        // Handle the new API response format: {sales: [], pagination: {}}
+        const salesData = data.sales || data; // Fallback to direct array for backward compatibility
+        if (Array.isArray(salesData)) {
+          setSales(salesData);
+        } else {
+          console.error('Unexpected sales data format:', data);
+          setSales([]);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to refresh sales:', error);
+        toast.error("Failed to refresh sales");
+      });
   };
 
   const handleDelete = async (id: string) => {
@@ -596,7 +656,7 @@ export default function DashboardPage() {
                 <path d="M9 5H7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5" />
                 <path d="M20.59 7.41a2 2 0 0 1 0 2.83L12 18.83 9 19l.17-3 8.59-8.59a2 2 0 0 1 2.83 0z" />
               </svg>
-              All Sales Records
+              All Sales Record
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">{weekly.length} this week • {monthly.length} this month</p>
           </div>

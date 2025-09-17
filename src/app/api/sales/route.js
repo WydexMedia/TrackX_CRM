@@ -43,12 +43,78 @@ export async function POST(request) {
 }
 
 export async function GET(request) {
+  // Authenticate the request to get user context
+  const authResult = await authenticateToken(request);
+  if (!authResult.success) {
+    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+  }
+
   const { tenantSubdomain } = await getTenantContextFromRequest(request);
   const client = await clientPromise;
   const db = client.db();
   const sales = db.collection('sales');
-  const allSales = await sales.find(tenantSubdomain ? { tenantSubdomain } : {}).toArray();
-  return NextResponse.json(allSales);
+  
+  // Build query to filter by user and tenant
+  const query = {};
+  
+  // Add tenant filtering
+  if (tenantSubdomain) {
+    query.tenantSubdomain = tenantSubdomain;
+  }
+  
+  // Add user filtering - filter by the authenticated user's email or name
+  // We need to get the user's name from the users collection to match with ogaName
+  const users = db.collection('users');
+  const user = await users.findOne({ 
+    email: authResult.user.email,
+    ...(tenantSubdomain ? { tenantSubdomain } : {})
+  });
+  
+  if (user && user.name) {
+    // Filter sales by the user's name (ogaName field)
+    query.ogaName = user.name;
+  } else if (user && user.email) {
+    // Fallback: if no name, try filtering by email (some sales might have email as ogaName)
+    query.ogaName = user.email;
+  } else {
+    // Fallback: if user not found, return empty array for security
+    return NextResponse.json({
+      sales: [],
+      pagination: {
+        page: 1,
+        limit: 50,
+        total: 0,
+        totalPages: 0
+      }
+    });
+  }
+  
+  // Get pagination parameters
+  const { searchParams } = new URL(request.url);
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '50');
+  const skip = (page - 1) * limit;
+  
+  // Get total count for pagination
+  const totalCount = await sales.countDocuments(query);
+  
+  // Get paginated results, sorted by creation date (newest first)
+  const userSales = await sales
+    .find(query)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .toArray();
+  
+  return NextResponse.json({
+    sales: userSales,
+    pagination: {
+      page,
+      limit,
+      total: totalCount,
+      totalPages: Math.ceil(totalCount / limit)
+    }
+  });
 }
 
 export async function PUT(request) {
