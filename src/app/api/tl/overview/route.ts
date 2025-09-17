@@ -2,9 +2,16 @@ import { db } from "@/db/client";
 import { leads, tasks } from "@/db/schema";
 import { gte, sql, eq, and } from "drizzle-orm";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
+import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
 
 export async function GET(req: Request) {
   try {
+    // Authenticate the request
+    const authResult = await authenticateToken(req as any);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+    }
+
     const { tenantId } = await getTenantContextFromRequest(req as any);
     
     if (!tenantId) {

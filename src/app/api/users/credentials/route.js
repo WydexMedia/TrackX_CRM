@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
+import { authenticateToken, createUnauthorizedResponse } from '@/lib/authMiddleware';
 
 const uri = process.env.MONGODB_URI;
 let client;
@@ -13,6 +14,12 @@ if (!clientPromise) {
 
 // Get all users with passwords (for team leader credentials view)
 export async function GET(request) {
+  // Authenticate the request
+  const authResult = await authenticateToken(request);
+  if (!authResult.success) {
+    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+  }
+
   const { tenantSubdomain } = await getTenantContextFromRequest(request);
   const client = await clientPromise;
   const db = client.db();

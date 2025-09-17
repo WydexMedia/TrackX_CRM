@@ -195,7 +195,7 @@ export default function TeamLeaderPage() {
     
     // Set up periodic token validation
     const redirectToLogin = () => router.push("/login");
-    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 5000);
+    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 60000); // Check every 60 seconds
     
     return () => {
       clearInterval(validationInterval);
@@ -235,11 +235,16 @@ export default function TeamLeaderPage() {
 
   const fetchData = async () => {
     try {
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
+      
       const [analyticsRes, usersRes, credentialsRes, callsRes] = await Promise.all([
-        fetch("/api/analytics"),
-        fetch("/api/users"),
-        fetch("/api/users/credentials"),
-        fetch("/api/calls")
+        fetch("/api/analytics", { headers }),
+        fetch("/api/users", { headers }),
+        fetch("/api/users/credentials", { headers }),
+        fetch("/api/calls", { headers })
       ]);
 
       if (analyticsRes.ok && usersRes.ok && credentialsRes.ok && callsRes.ok) {
@@ -344,9 +349,13 @@ export default function TeamLeaderPage() {
     e.preventDefault();
     try {
       // Make API call to save profile data
+      const token = localStorage.getItem('token');
       const response = await fetch("/api/users", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           _id: teamLeader?._id,
           name: profileData.name,
@@ -401,9 +410,13 @@ export default function TeamLeaderPage() {
     
     try {
       // Make API call to change password
+      const token = localStorage.getItem('token');
       const response = await fetch("/api/users/change-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           _id: teamLeader?._id,
           currentPassword: passwordData.currentPassword,
@@ -432,9 +445,13 @@ export default function TeamLeaderPage() {
     e.preventDefault();
     setIsAddingUser(true);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch("/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(newUser),
       });
 
@@ -460,9 +477,13 @@ export default function TeamLeaderPage() {
 
     setIsUpdatingUser(true);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch("/api/users", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(editingUser),
       });
 
@@ -486,8 +507,12 @@ export default function TeamLeaderPage() {
 
     setIsDeletingUser(userId);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`/api/users?id=${userId}`, {
         method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
       });
 
       if (res.ok) {
@@ -520,9 +545,14 @@ export default function TeamLeaderPage() {
     
     try {
       // Fetch both daily reports and sales data
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
+      
       const [dailyReportsResponse, salesResponse] = await Promise.all([
-        fetch('/api/daily-reports'),
-        fetch('/api/sales')
+        fetch('/api/daily-reports', { headers }),
+        fetch('/api/sales', { headers })
       ]);
       
       const dailyReportsData = await dailyReportsResponse.json();

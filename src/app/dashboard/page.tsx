@@ -230,10 +230,15 @@ export default function DashboardPage() {
               });
               router.push("/login");
               return;
+            } else {
+              // Token is invalid/expired, but don't clear localStorage yet
+              // Let the user continue with the stored user data
+              console.log('Token validation failed, but continuing with stored user data');
             }
           }
         } catch (error) {
           console.error('Token validation failed:', error);
+          // Don't redirect to login on network errors, continue with stored data
         }
       }
 
@@ -313,7 +318,7 @@ export default function DashboardPage() {
     
     // Set up periodic token validation
     const redirectToLogin = () => router.push("/login");
-    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 5000); // Check every 5 seconds
+    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 60000); // Check every 60 seconds
     
     // Cleanup interval on unmount
     return () => {

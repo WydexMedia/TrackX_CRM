@@ -130,9 +130,18 @@ export function setupPeriodicTokenValidation(redirectToLogin: () => void, interv
   const validateInterval = setInterval(async () => {
     const result = await validateCurrentToken();
     if (!result.isValid) {
-      clearInterval(validateInterval);
-      try { window.removeEventListener('storage', storageListener); } catch {}
-      handleTokenValidationFailure(result, redirectToLogin);
+      // Only clear localStorage and redirect for specific error codes
+      // Don't redirect for network errors or temporary issues
+      if (result.errorCode === 'TOKEN_REVOKED_NEW_LOGIN' || 
+          result.errorCode === 'TOKEN_BLACKLISTED' || 
+          result.errorCode === 'INVALID_TOKEN') {
+        clearInterval(validateInterval);
+        try { window.removeEventListener('storage', storageListener); } catch {}
+        handleTokenValidationFailure(result, redirectToLogin);
+      } else {
+        // For network errors or other temporary issues, just log and continue
+        console.log('Token validation failed temporarily:', result.error);
+      }
     }
   }, intervalMs);
 

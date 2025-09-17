@@ -4,6 +4,7 @@ import { db as db_pg } from '@/db/client';
 import { leads, leadEvents } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
+           import { authenticateToken, createUnauthorizedResponse } from '@/lib/authMiddleware';
 
 const uri = process.env.MONGODB_URI;
 let client;
@@ -15,6 +16,12 @@ if (!clientPromise) {
 }
 
 export async function POST(request) {
+  // Authenticate the request
+  const authResult = await authenticateToken(request);
+  if (!authResult.success) {
+    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+  }
+
   const data = await request.json();
   console.log('Received call data:', data);
   

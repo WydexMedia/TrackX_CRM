@@ -1,9 +1,16 @@
 import { NextRequest } from "next/server";
 import { getMongoDb } from "@/lib/mongoClient";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
+import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
 
 export async function GET(req: NextRequest) {
   try {
+    // Authenticate the request
+    const authResult = await authenticateToken(req as any);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+    }
+
     const mdb = await getMongoDb();
     const users = mdb.collection("users");
     const { tenantSubdomain } = await getTenantContextFromRequest(req as any);

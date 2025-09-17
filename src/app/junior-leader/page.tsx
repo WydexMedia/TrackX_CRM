@@ -155,7 +155,7 @@ export default function JuniorLeaderPage() {
     
     // Set up periodic token validation
     const redirectToLogin = () => router.push("/login");
-    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 5000);
+    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 60000); // Check every 60 seconds
     
     return () => {
       clearInterval(validationInterval);
