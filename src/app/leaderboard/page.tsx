@@ -134,6 +134,13 @@ export default function CompetitiveLeaderboard() {
   useEffect(() => {
     const fetchSales = async () => {
       try {
+        // Restore last seen sale id from localStorage (once per mount)
+        if (lastSaleId.current === null) {
+          try {
+            const savedId = localStorage.getItem('lastSeenSaleId');
+            if (savedId) lastSaleId.current = savedId;
+          } catch {}
+        }
         const res = await fetch('/api/public/leaderboard');
         const data = await res.json();
         console.log('Fetched public leaderboard data:', data);
@@ -143,10 +150,22 @@ export default function CompetitiveLeaderboard() {
         setTimeout(() => setPulseEffect(null), 2000);
         // Popper logic: show when new sale comes in
         if (data.length > 0) {
-          const latest = data[data.length - 1];
-          if (latest.createdAt && latest.createdAt !== lastSaleId.current) {
-            lastSaleId.current = latest.createdAt;
-            setPopper({ ogaName: latest.ogaName, amount: latest.amount });
+          // API returns sales sorted by createdAt desc, so index 0 is newest
+          const latest = data[0];
+          const isTodaySale = latest.createdAt
+            ? new Date(latest.createdAt).toDateString() === new Date().toDateString()
+            : false;
+
+          if (isTodaySale) {
+            if (lastSaleId.current == null) {
+              // First load on this device: record latest seen but don't pop
+              lastSaleId.current = latest.createdAt!;
+              try { localStorage.setItem('lastSeenSaleId', latest.createdAt!); } catch {}
+            } else if (latest.createdAt && latest.createdAt !== lastSaleId.current) {
+              lastSaleId.current = latest.createdAt;
+              try { localStorage.setItem('lastSeenSaleId', latest.createdAt); } catch {}
+              setPopper({ ogaName: latest.ogaName, amount: latest.amount });
+            }
           }
         }
       } catch (e) {
