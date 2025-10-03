@@ -26,6 +26,7 @@ import {
   Fingerprint,
   PlayCircle,
 } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 // -----------------------------
 // DYNAMIC IMPORT FOR TENANT HOMEPAGE
@@ -637,20 +638,21 @@ function FAQ() {
   return (
     <section id="faq" className="py-20 px-6 bg-slate-50">
       <div className="max-w-4xl mx-auto">
-        <h2 className="text-3xl font-bold text-slate-900 text-center">Frequently asked questions</h2>
-        <div className="mt-10 space-y-4">
-          {faqs.map(({ q, a }) => (
-            <details key={q} className="group rounded-xl border bg-white p-5">
-              <summary className="flex cursor-pointer items-center justify-between text-lg font-semibold text-slate-800 list-none">
+        <h2 className="text-3xl font-bold text-slate-900 text-center mb-14">Frequently asked questions</h2>
+        <Accordion type="single" collapsible className="w-full">
+          {faqs.map(({ q, a }, index) => (
+            <AccordionItem key={index} value={`item-${index}`} className="rounded-xl border bg-white mb-4">
+              <AccordionTrigger className="px-6 py-4 text-left font-semibold text-slate-800 hover:no-underline">
                 {q}
-                <ChevronDown className="w-5 h-5 transition-transform group-open:rotate-180" />
-              </summary>
-              <p className="mt-3 text-slate-600">{a}</p>
-            </details>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-4 text-slate-600">
+                {a}
+              </AccordionContent>
+            </AccordionItem>
           ))}
-            </div>
-          </div>
-        </section>
+        </Accordion>
+      </div>
+    </section>
   );
 }
 
