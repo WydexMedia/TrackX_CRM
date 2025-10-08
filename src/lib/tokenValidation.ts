@@ -150,6 +150,7 @@ export function setupPeriodicTokenValidation(redirectToLogin: () => void, interv
 
 /**
  * Enhanced fetch function that includes token validation
+ * Automatically logs out user if token is revoked
  */
 export async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const token = localStorage.getItem('token');
@@ -167,16 +168,49 @@ export async function authenticatedFetch(url: string, options: RequestInit = {})
   // If we get a 401, validate the token to get specific error info
   if (response.status === 401) {
     const validationResult = await validateCurrentToken();
-    if (!validationResult.isValid && validationResult.errorCode === 'TOKEN_REVOKED_NEW_LOGIN') {
-      // Create a custom response with the error details
-      const errorResponse = new Response(JSON.stringify({
-        error: validationResult.error,
-        errorCode: validationResult.errorCode
-      }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-      return errorResponse;
+    if (!validationResult.isValid) {
+      // Handle token revocation professionally
+      if (validationResult.errorCode === 'TOKEN_REVOKED_NEW_LOGIN') {
+        // Clear all session data
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        sessionStorage.clear();
+        
+        // Show professional message
+        toast.error('You have been logged out because you logged in from another device.', {
+          duration: 5000,
+          style: {
+            background: '#fee2e2',
+            color: '#dc2626',
+            border: '1px solid #fecaca'
+          }
+        });
+        
+        // Force logout after a brief delay to allow toast to show
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1000);
+      } else if (validationResult.errorCode === 'TOKEN_BLACKLISTED' || validationResult.errorCode === 'INVALID_TOKEN') {
+        // Clear session data
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        sessionStorage.clear();
+        
+        // Show session expired message
+        toast.error('Your session has expired. Please log in again.', {
+          duration: 4000,
+          style: {
+            background: '#fef3c7',
+            color: '#d97706',
+            border: '1px solid #fde68a'
+          }
+        });
+        
+        // Redirect to login
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1000);
+      }
     }
   }
   
