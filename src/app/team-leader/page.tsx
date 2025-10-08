@@ -7,6 +7,34 @@ import Link from "next/link";
 import { setupPeriodicTokenValidation } from '@/lib/tokenValidation';
 import TenantLogo from "@/components/TenantLogo";
 import { useTenant } from "@/hooks/useTenant";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { 
+  Users, 
+  Target, 
+  TrendingUp, 
+  Clock, 
+  DollarSign, 
+  Eye, 
+  EyeOff, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  LogOut, 
+  Settings, 
+  User,
+  Search,
+  ChevronDown,
+  Crown,
+  Medal,
+  Award
+} from "lucide-react";
 
 interface User {
   _id: string;
@@ -496,8 +524,11 @@ export default function TeamLeaderPage() {
         throw new Error(dailyReportsData.error);
       }
       
+      // Ensure salesData is an array before filtering
+      const salesArray = Array.isArray(salesData) ? salesData : [];
+      
       // Filter sales data for the selected sales person
-      const salesPersonSales = salesData.filter((sale: any) => 
+      const salesPersonSales = salesArray.filter((sale: any) => 
         sale.ogaName?.toLowerCase() === salesPerson.name.toLowerCase()
       );
       
@@ -773,101 +804,83 @@ export default function TeamLeaderPage() {
           
           {/* Action Buttons */}
           <div className="flex items-center space-x-3">
-            <button
+            <Button
               onClick={() => setShowCredentials(true)}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2"
-              title="View Credentials"
+              variant="outline"
+              size="sm"
+              className="gap-2"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
-              <span className="text-sm font-medium">Credentials</span>
-            </button>
+              <Settings className="w-4 h-4" />
+              Credentials
+            </Button>
             
-            <button
+            <Button
               onClick={() => setShowAddUser(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2"
+              size="sm"
+              className="gap-2"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <span className="text-sm font-medium">Add Member</span>
-            </button>
+              <Plus className="w-4 h-4" />
+              Add Member
+            </Button>
             
             {/* Profile Dropdown */}
-            <div className="relative profile-dropdown">
-              <button
-                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                className="bg-gray-100 cursor-pointer hover:bg-gray-200 text-gray-700 p-2 rounded-lg transition-colors duration-200"
-                title="Profile"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </button>
-              
-              {showProfileDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                  <div className="py-2">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">{teamLeader?.name}</p>
-                      <p className="text-xs text-gray-500">{teamLeader?.email}</p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setShowEditProfile(true);
-                        setShowProfileDropdown(false);
-                      }}
-                      className="w-full cursor-pointer text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      Edit Profile
-                    </button>
-                  </div>
+            <DropdownMenu open={showProfileDropdown} onOpenChange={setShowProfileDropdown}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <User className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-2 py-1.5">
+                  <p className="text-sm font-medium">{teamLeader?.name}</p>
+                  <p className="text-xs text-muted-foreground">{teamLeader?.email}</p>
                 </div>
-              )}
-            </div>
-            
-            <button
-              onClick={handleLogout}
-              className="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded-lg transition-colors duration-200"
-              title="Logout"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </button>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    setShowEditProfile(true);
+                    setShowProfileDropdown(false);
+                  }}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Edit Profile
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
         {/* Navigation Tabs */}
         <div className="border-t border-gray-200 pt-4 pb-6">
-          <nav className="flex space-x-8">
-            <Link href="/leaderboard">
-              <div className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
+          <nav className="flex space-x-2">
+            <Button variant="ghost" asChild className="gap-2">
+              <Link href="/leaderboard">
+                <TrendingUp className="w-4 h-4" />
                 Sales Leaderboard
-              </div>
-            </Link>
+              </Link>
+            </Button>
             
-            <Link href="/team-leader/lead-management">
-              <div className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm6 0a10 10 0 11-20 0 10 10 0 0120 0z" />
-                </svg>
+            <Button variant="ghost" asChild className="gap-2">
+              <Link href="/team-leader/lead-management">
+                <Users className="w-4 h-4" />
                 Lead Management
-              </div>
-            </Link>
+              </Link>
+            </Button>
 
-            <Link href="/team-leader/team-management">
-              <div className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
+            <Button variant="ghost" asChild className="gap-2">
+              <Link href="/team-leader/team-management">
+                <Users className="w-4 h-4" />
                 Team Management
-              </div>
-            </Link>
+              </Link>
+            </Button>
           </nav>
         </div>
       </div>
@@ -913,11 +926,11 @@ export default function TeamLeaderPage() {
                 <div className="flex flex-col items-center">
                   <div className="relative">
                     <div className="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-yellow-200 animate-pulse">
-                      <span className="text-3xl md:text-4xl">👑</span>
+                      <Crown className="w-8 h-8 md:w-10 md:h-10 text-yellow-800" />
                     </div>
-                    <div className="absolute -top-2 -right-2 w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">1</span>
-                    </div>
+                    <Badge className="absolute -top-2 -right-2 w-10 h-10 bg-yellow-400 text-yellow-800 font-bold text-lg p-0 flex items-center justify-center">
+                      1
+                    </Badge>
                   </div>
                   <div className="mt-4 text-center">
                     <div className="text-white font-bold text-lg md:text-xl">{topPerformers[0].name}</div>
@@ -955,399 +968,388 @@ export default function TeamLeaderPage() {
 
           {/* Standard Analytics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Users className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Team Members</p>
+                  <p className="text-2xl font-bold text-gray-900">{analytics.length}</p>
                 </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Team Members</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.length}</p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Target className="w-5 h-5 text-green-600" />
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Target</p>
+                  <p className="text-2xl font-bold text-gray-900">₹{totalTarget.toLocaleString()}</p>
                 </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Target</p>
-                <p className="text-2xl font-bold text-gray-900">₹{totalTarget.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                  </svg>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Achieved</p>
+                  <p className="text-2xl font-bold text-gray-900">₹{totalAchieved.toLocaleString()}</p>
                 </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Achieved</p>
-                <p className="text-2xl font-bold text-gray-900">₹{totalAchieved.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-orange-600" />
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Pending</p>
+                  <p className="text-2xl font-bold text-gray-900">₹{totalPending.toLocaleString()}</p>
                 </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Pending</p>
-                <p className="text-2xl font-bold text-gray-900">₹{totalPending.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-red-600" />
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Today's Collection</p>
+                  <p className="text-2xl font-bold text-gray-900">₹{totalTodayCollection.toLocaleString()}</p>
                 </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Today's Collection</p>
-                <p className="text-2xl font-bold text-gray-900">₹{totalTodayCollection.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Standard Search and Filters */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="flex-1 max-w-md">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+              <div className="flex-1 max-w-md">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search by name, code, or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-                <input
-                  type="text"
-                  placeholder="Search by name, code, or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
+              </div>
+              <div className="text-sm text-gray-600">
+                Showing {filteredAndSortedAnalytics.length} of {analytics.length} team members
               </div>
             </div>
-            <div className="text-sm text-gray-600">
-              Showing {filteredAndSortedAnalytics.length} of {analytics.length} team members
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Standard Analytics Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Team Performance Analytics</h3>
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <CardTitle>Team Performance Analytics</CardTitle>
             <p className="text-sm text-gray-500 mt-1">Overview of your sales team's performance</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort("name")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Sales Person
-                      {sortBy === "name" && (
-                        <svg className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort("target")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Target
-                      {sortBy === "target" && (
-                        <svg className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort("achievedTarget")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Achieved
-                      {sortBy === "achievedTarget" && (
-                        <svg className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort("pendingTarget")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Pending
-                      {sortBy === "pendingTarget" && (
-                        <svg className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort("todayCollection")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Today's Collection
-                      {sortBy === "todayCollection" && (
-                        <svg className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort("lastMonthCollection")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Last Month
-                      {sortBy === "lastMonthCollection" && (
-                        <svg className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort("daysPending")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Days Remaining
-                      {sortBy === "daysPending" && (
-                        <svg className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort("totalSales")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Total Sales
-                      {sortBy === "totalSales" && (
-                        <svg className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAndSortedAnalytics.map((user, index) => {
-                  const achievementPercentage = user.target > 0 ? (user.achievedTarget / user.target) * 100 : 0;
-                  const daysRemaining = user.daysPending;
-                  const isUrgent = daysRemaining <= 7 && daysRemaining > 0;
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH
+                      className="cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("name")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Sales Person
+                        {sortBy === "name" && (
+                          <ChevronDown className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} />
+                        )}
+                      </div>
+                    </TH>
+                    <TH
+                      className="cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("target")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Target
+                        {sortBy === "target" && (
+                          <ChevronDown className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} />
+                        )}
+                      </div>
+                    </TH>
+                    <TH
+                      className="cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("achievedTarget")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Achieved
+                        {sortBy === "achievedTarget" && (
+                          <ChevronDown className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} />
+                        )}
+                      </div>
+                    </TH>
+                    <TH
+                      className="cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("pendingTarget")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Pending
+                        {sortBy === "pendingTarget" && (
+                          <ChevronDown className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} />
+                        )}
+                      </div>
+                    </TH>
+                    <TH
+                      className="cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("todayCollection")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Today's Collection
+                        {sortBy === "todayCollection" && (
+                          <ChevronDown className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} />
+                        )}
+                      </div>
+                    </TH>
+                    <TH
+                      className="cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("lastMonthCollection")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Last Month
+                        {sortBy === "lastMonthCollection" && (
+                          <ChevronDown className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} />
+                        )}
+                      </div>
+                    </TH>
+                    <TH
+                      className="cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("daysPending")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Days Remaining
+                        {sortBy === "daysPending" && (
+                          <ChevronDown className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} />
+                        )}
+                      </div>
+                    </TH>
+                    <TH
+                      className="cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort("totalSales")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Total Sales
+                        {sortBy === "totalSales" && (
+                          <ChevronDown className={`w-4 h-4 ${sortOrder === "asc" ? "rotate-180" : ""}`} />
+                        )}
+                      </div>
+                    </TH>
+                    <TH>Actions</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {filteredAndSortedAnalytics.map((user, index) => {
+                    const achievementPercentage = user.target > 0 ? (user.achievedTarget / user.target) * 100 : 0;
+                    const daysRemaining = user.daysPending;
+                    const isUrgent = daysRemaining <= 7 && daysRemaining > 0;
 
-                  return (
-                    <tr key={user._id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                              <span className="text-sm font-medium text-white">
-                                {(user.name || '').split(' ').map(n => n[0]).join('').toUpperCase()}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="ml-4">
-                            <div 
-                              className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
-                              onClick={() => handleSalesPersonClick(user)}
-                            >
-                              {user.name}
-                            </div>
-                            <div className="text-sm text-gray-500">{user.code}</div>
-                            <div className="text-xs text-gray-400">{user.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-gray-900">₹{user.target.toLocaleString()}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-green-600">₹{user.achievedTarget.toLocaleString()}</div>
-                        <div className="text-xs text-gray-500">{achievementPercentage.toFixed(1)}% achieved</div>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                          <div
-                            className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(achievementPercentage, 100)}%` }}
-                          ></div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-orange-600">₹{user.pendingTarget.toLocaleString()}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-blue-600">₹{user.todayCollection.toLocaleString()}</div>
-                        <div className="text-xs text-gray-500">{user.todaySales} sales today</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-gray-900">₹{user.lastMonthCollection.toLocaleString()}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`text-sm font-semibold ${isUrgent ? 'text-orange-600' : 'text-gray-900'}`}>
-                          {daysRemaining} days
-                        </div>
-                        {isUrgent && (
-                          <div className="text-xs text-orange-500">Urgent</div>
-                        )}
-                        {daysRemaining === 0 && (
-                          <div className="text-xs text-red-500">Month ends today</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-gray-900">{user.totalSales}</div>
-                        <div className="text-xs text-gray-500">{user.thisMonthSales} this month</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => {
-                              const u = users.find(u => u._id === user._id);
-                              if (u) {
-                                setEditingUser({
-                                  _id: u._id,
-                                  name: u.name,
-                                  code: u.code,
-                                  email: u.email,
-                                  role: u.role,
-                                  target: typeof u.target === 'number' ? u.target : 0
-                                });
-                              }
-                            }}
-                            className="text-blue-600 hover:text-blue-900 font-medium"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(user._id)}
-                            disabled={isDeletingUser === user._id}
-                            className={`font-medium ${isDeletingUser === user._id
-                                ? 'text-gray-400 cursor-not-allowed'
-                                : 'text-red-600 hover:text-red-900'
-                              }`}
-                          >
-                            {isDeletingUser === user._id ? (
-                              <div className="flex items-center space-x-1">
-                                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span>Deleting...</span>
+                    return (
+                      <TR key={user._id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
+                        <TD className="whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10">
+                              <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                                <span className="text-sm font-medium text-white">
+                                  {(user.name || '').split(' ').map(n => n[0]).join('').toUpperCase()}
+                                </span>
                               </div>
-                            ) : (
-                              'Delete'
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                            </div>
+                            <div className="ml-4">
+                              <div 
+                                className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                                onClick={() => handleSalesPersonClick(user)}
+                              >
+                                {user.name}
+                              </div>
+                              <div className="text-sm text-gray-500">{user.code}</div>
+                              <div className="text-xs text-gray-400">{user.email}</div>
+                            </div>
+                          </div>
+                        </TD>
+                        <TD className="whitespace-nowrap">
+                          <div className="text-sm font-semibold text-gray-900">₹{user.target.toLocaleString()}</div>
+                        </TD>
+                        <TD className="whitespace-nowrap">
+                          <div className="text-sm font-semibold text-green-600">₹{user.achievedTarget.toLocaleString()}</div>
+                          <div className="text-xs text-gray-500">{achievementPercentage.toFixed(1)}% achieved</div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                            <div
+                              className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${Math.min(achievementPercentage, 100)}%` }}
+                            ></div>
+                          </div>
+                        </TD>
+                        <TD className="whitespace-nowrap">
+                          <div className="text-sm font-semibold text-orange-600">₹{user.pendingTarget.toLocaleString()}</div>
+                        </TD>
+                        <TD className="whitespace-nowrap">
+                          <div className="text-sm font-semibold text-blue-600">₹{user.todayCollection.toLocaleString()}</div>
+                          <div className="text-xs text-gray-500">{user.todaySales} sales today</div>
+                        </TD>
+                        <TD className="whitespace-nowrap">
+                          <div className="text-sm font-semibold text-gray-900">₹{user.lastMonthCollection.toLocaleString()}</div>
+                        </TD>
+                        <TD className="whitespace-nowrap">
+                          <div className={`text-sm font-semibold ${isUrgent ? 'text-orange-600' : 'text-gray-900'}`}>
+                            {daysRemaining} days
+                          </div>
+                          {isUrgent && (
+                            <Badge variant="outline" className="text-xs text-orange-500 mt-1">Urgent</Badge>
+                          )}
+                          {daysRemaining === 0 && (
+                            <Badge variant="outline" className="text-xs mt-1 text-red-600 border-red-600">Month ends today</Badge>
+                          )}
+                        </TD>
+                        <TD className="whitespace-nowrap">
+                          <div className="text-sm font-semibold text-gray-900">{user.totalSales}</div>
+                          <div className="text-xs text-gray-500">{user.thisMonthSales} this month</div>
+                        </TD>
+                        <TD className="whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const u = users.find(u => u._id === user._id);
+                                if (u) {
+                                  setEditingUser({
+                                    _id: u._id,
+                                    name: u.name,
+                                    code: u.code,
+                                    email: u.email,
+                                    role: u.role,
+                                    target: typeof u.target === 'number' ? u.target : 0
+                                  });
+                                }
+                              }}
+                              className="h-8 px-2 text-blue-600 hover:text-blue-900"
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteUser(user._id)}
+                              disabled={isDeletingUser === user._id}
+                              className={`h-8 px-2 ${isDeletingUser === user._id
+                                  ? 'text-gray-400 cursor-not-allowed'
+                                  : 'text-red-600 hover:text-red-900'
+                                }`}
+                            >
+                              {isDeletingUser === user._id ? (
+                                <div className="flex items-center space-x-1">
+                                  <div className="animate-spin h-3 w-3 border-2 border-gray-400 border-t-transparent rounded-full"></div>
+                                  <span>Deleting...</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <Trash2 className="w-3 h-3 mr-1" />
+                                  Delete
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </TD>
+                      </TR>
+                    );
+                  })}
+                </TBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
 
         {filteredAndSortedAnalytics.length === 0 && (
-          <div className="text-center py-12">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No team members found</h3>
-            <p className="mt-1 text-sm text-gray-500">Get started by adding a new sales person.</p>
-          </div>
+          <Card>
+            <CardContent className="text-center py-12">
+              <Users className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No team members found</h3>
+              <p className="mt-1 text-sm text-gray-500">Get started by adding a new sales person.</p>
+            </CardContent>
+          </Card>
         )}
       </div>
 
 
       {/* Credentials Modal */}
-      {showCredentials && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Team Credentials</h2>
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={toggleAllPasswords}
-                  className="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  {visiblePasswords.size === credentials.length ? 'Hide All' : 'Show All'}
-                </button>
-                <button
-                  onClick={() => setShowCredentials(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+      <Dialog open={showCredentials} onOpenChange={setShowCredentials}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Team Credentials</DialogTitle>
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleAllPasswords}
+                className="gap-2"
+              >
+                {visiblePasswords.size === credentials.length ? (
+                  <>
+                    <EyeOff className="w-4 h-4" />
+                    Hide All
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4" />
+                    Show All
+                  </>
+                )}
+              </Button>
             </div>
-            
-            <div className="flex-1 overflow-y-auto">
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto">
+            <Card className="mb-4">
+              <CardContent className="p-4">
                 <p className="text-sm text-gray-600">
                   <strong>Note:</strong> These are the login credentials for all team members. 
                   Passwords are hidden by default for security. Click the eye icon to reveal passwords.
                 </p>
-              </div>
-              
-              <div className="grid gap-4">
-                {credentials.map((user) => (
-                  <div key={user._id} className="bg-white border border-gray-200 rounded-lg p-4">
+              </CardContent>
+            </Card>
+            
+            <div className="grid gap-4">
+              {credentials.map((user) => (
+                <Card key={user._id}>
+                  <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-4">
@@ -1373,9 +1375,6 @@ export default function TeamLeaderPage() {
                             {user.email}
                           </div>
                         </div>
-
-                       
-                       
                         
                         <div className="text-right">
                           <div className="text-sm font-medium text-gray-900">Password</div>
@@ -1383,275 +1382,249 @@ export default function TeamLeaderPage() {
                             <div className="text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded min-w-[120px]">
                               {visiblePasswords.has(user._id) ? (user.password || 'No password set') : '••••••'}
                             </div>
-                            <button
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => togglePasswordVisibility(user._id)}
-                              className="p-1 hover:bg-gray-100 rounded"
+                              className="p-1 h-8 w-8"
                               title={visiblePasswords.has(user._id) ? 'Hide password' : 'Show password'}
                             >
                               {visiblePasswords.has(user._id) ? (
-                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                                </svg>
+                                <EyeOff className="w-4 h-4 text-gray-500" />
                               ) : (
-                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
+                                <Eye className="w-4 h-4 text-gray-500" />
                               )}
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-              
-              {credentials.length === 0 && (
-                <div className="text-center py-8">
-                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            
+            {credentials.length === 0 && (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <Users className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900">No team members found</h3>
                   <p className="mt-1 text-sm text-gray-500">Add team members to view their credentials.</p>
-                </div>
-              )}
-            </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Add User Modal */}
-      {showAddUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl text-black font-bold mb-4">Add New Sales Person</h2>
-            <form onSubmit={handleAddUser} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
-                  type="text"
-                  required
-                  value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                  className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              {/* Removed Code field; code will be set to email in API */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  className="w-full text-black  px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  className="w-full text-black  px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Target (₹)</label>
-                <input
-                  type="number"
-                  required
-                  value={newUser.target}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, target: parseInt(e.target.value) || 0 })
-                  }
-                  className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none no-spinner"
-                />
-              </div>
+      <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Sales Person</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddUser} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <Input
+                type="text"
+                required
+                value={newUser.name}
+                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                placeholder="Enter full name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <Input
+                type="email"
+                required
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                placeholder="Enter email address"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <Input
+                type="password"
+                required
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                placeholder="Enter password"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Target (₹)</label>
+              <Input
+                type="number"
+                required
+                value={newUser.target}
+                onChange={(e) =>
+                  setNewUser({ ...newUser, target: parseInt(e.target.value) || 0 })
+                }
+                placeholder="Enter target amount"
+              />
+            </div>
 
-              <div className="flex space-x-3">
-                <button
-                  type="submit"
-                  disabled={isAddingUser}
-                  className={`flex-1 py-2 px-4 rounded-md font-medium ${isAddingUser
-                      ? 'bg-blue-400 text-white cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
-                >
-                  {isAddingUser ? (
-                    <div className="flex items-center justify-center space-x-2">
-                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>Adding...</span>
-                    </div>
-                  ) : (
-                    'Add User'
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddUser(false)}
-                  disabled={isAddingUser}
-                  className={`flex-1 py-2 px-4 rounded-md font-medium ${isAddingUser
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-                    }`}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <div className="flex space-x-3 pt-4">
+              <Button
+                type="submit"
+                disabled={isAddingUser}
+                className="flex-1"
+              >
+                {isAddingUser ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    <span>Adding...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add User
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAddUser(false)}
+                disabled={isAddingUser}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit User Modal */}
-      {editingUser && (
-        <div className="fixed text-black inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-          <h2 className="text-xl !text-black font-bold mb-4">Edit User</h2>
+      <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+          </DialogHeader>
+          {editingUser && (
             <form onSubmit={handleUpdateUser} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
+                <Input
                   type="text"
                   required
                   value={editingUser.name}
                   onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
-                  className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter full name"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
-                <input
+                <Input
                   type="text"
                   required
                   value={editingUser.code}
                   onChange={(e) => setEditingUser({ ...editingUser, code: e.target.value })}
-                  className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter user code"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
+                <Input
                   type="email"
                   required
                   value={editingUser.email}
                   onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
-                  className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter email address"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Target (₹)</label>
-                <input
+                <Input
                   type="number"
                   required
                   value={editingUser.target}
                   onChange={(e) => setEditingUser({ ...editingUser, target: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter target amount"
                 />
               </div>
-              <div className="flex space-x-3">
-                <button
+              <div className="flex space-x-3 pt-4">
+                <Button
                   type="submit"
                   disabled={isUpdatingUser}
-                  className={`flex-1 py-2 px-4 rounded-md font-medium ${isUpdatingUser
-                      ? 'bg-blue-400 text-white cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
+                  className="flex-1"
                 >
                   {isUpdatingUser ? (
-                    <div className="flex items-center justify-center space-x-2">
-                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
                       <span>Updating...</span>
                     </div>
                   ) : (
-                    'Update User'
+                    <>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Update User
+                    </>
                   )}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => setEditingUser(null)}
                   disabled={isUpdatingUser}
-                  className={`flex-1 py-2 px-4 rounded-md font-medium ${isUpdatingUser
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-                    }`}
+                  className="flex-1"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* KPI Modal */}
-      {showKPIModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                KPI Dashboard - {selectedSalesPerson?.name}
-              </h2>
-              <button
-                onClick={() => setShowKPIModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+      <Dialog open={showKPIModal} onOpenChange={setShowKPIModal}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>KPI Dashboard - {selectedSalesPerson?.name}</DialogTitle>
+          </DialogHeader>
 
-            {loadingKPI ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="flex items-center space-x-2">
-                  <svg className="animate-spin h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span className="text-lg text-gray-600">Loading KPI data...</span>
-                </div>
+          {loadingKPI ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+                <span className="text-lg text-gray-600">Loading KPI data...</span>
               </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Date Range Filter */}
-                <div className="bg-gray-50 rounded-lg p-4">
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Date Range Filter */}
+              <Card>
+                <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row gap-4 items-center">
                     <div className="flex-1">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Date Range Filter</label>
                       <div className="flex gap-2">
-                        <input
+                        <Input
                           type="date"
                           value={dateRange.startDate}
                           onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
-                          className="flex-1 text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          placeholder="Start Date"
+                          className="flex-1 text-sm"
                         />
                         <span className="flex items-center text-gray-500">to</span>
-                        <input
+                        <Input
                           type="date"
                           value={dateRange.endDate}
                           onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
-                          className="flex-1 text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          placeholder="End Date"
+                          className="flex-1 text-sm"
                         />
                       </div>
                     </div>
-                    <button
+                    <Button
+                      variant="outline"
                       onClick={() => setDateRange({startDate: '', endDate: ''})}
-                      className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                      className="text-sm"
                     >
                       Clear Filter
-                    </button>
+                    </Button>
                   </div>
                   {dateRange.startDate && dateRange.endDate && (
                     <div className="mt-2 text-sm text-gray-600">
@@ -1661,11 +1634,13 @@ export default function TeamLeaderPage() {
                       </span>
                     </div>
                   )}
-                </div>
+                </CardContent>
+              </Card>
 
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <Card className="bg-gradient-to-r from-blue-500 to-blue-600 border-0">
+                  <CardContent className="p-4 text-white">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-blue-100 text-sm">Total Leads</p>
@@ -1675,13 +1650,13 @@ export default function TeamLeaderPage() {
                           )}
                         </p>
                       </div>
-                      <svg className="w-8 h-8 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
+                      <Users className="w-8 h-8 text-blue-200" />
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white">
+                <Card className="bg-gradient-to-r from-green-500 to-green-600 border-0">
+                  <CardContent className="p-4 text-white">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-green-100 text-sm">Sales Converted</p>
@@ -1691,13 +1666,13 @@ export default function TeamLeaderPage() {
                           )}
                         </p>
                       </div>
-                      <svg className="w-8 h-8 text-green-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                      <TrendingUp className="w-8 h-8 text-green-200" />
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
+                <Card className="bg-gradient-to-r from-purple-500 to-purple-600 border-0">
+                  <CardContent className="p-4 text-white">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-purple-100 text-sm">Amount Collected</p>
@@ -1705,13 +1680,13 @@ export default function TeamLeaderPage() {
                           ₹{filteredKpiData.reduce((sum, report) => sum + (report.dailyAmount || 0), 0).toLocaleString()}
                         </p>
                       </div>
-                      <svg className="w-8 h-8 text-purple-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                      </svg>
+                      <DollarSign className="w-8 h-8 text-purple-200" />
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-4 text-white">
+                <Card className="bg-gradient-to-r from-orange-500 to-orange-600 border-0">
+                  <CardContent className="p-4 text-white">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-orange-100 text-sm">Conversion %</p>
@@ -1727,164 +1702,132 @@ export default function TeamLeaderPage() {
                           })()}%
                         </p>
                       </div>
-                      <svg className="w-8 h-8 text-orange-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                      </svg>
+                      <Target className="w-8 h-8 text-orange-200" />
                     </div>
-                  </div>
-                </div>
-
-                {/* Detailed KPI Table */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900">Daily Performance Breakdown</h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Leads Assigned
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Sales Converted
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Amount Collected
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Conversion %
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Ad Spend
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Ad Spend %
-                          </th>
-                        </tr>
-                      </thead>
-                                             <tbody className="bg-white divide-y divide-gray-200">
-                                                 {filteredKpiData.length > 0 ? (
-                          filteredKpiData.map((report, index) => {
-                           const leadsAssigned = parseInt(report.leadsAssigned) || 0;
-                           const salesConverted = parseInt(report.salesConverted) || 0;
-                           const amountCollected = parseFloat(report.dailyAmount) || 0;
-                           const conversionRate = parseFloat(report.conversionRate) || 0;
-                           const adSpend = leadsAssigned * 50;
-                           const adSpendPercentage = amountCollected > 0 ? ((adSpend / amountCollected) * 100).toFixed(1) : 0;
-
-                           return (
-                             <tr key={report._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                 {new Date(report.date).toLocaleDateString('en-IN', {
-                                   year: 'numeric',
-                                   month: 'short',
-                                   day: 'numeric'
-                                 })}
-                               </td>
-                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                 {leadsAssigned}
-                               </td>
-                               <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">
-                                 {salesConverted}
-                               </td>
-                               <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-semibold">
-                                 ₹{amountCollected.toLocaleString()}
-                               </td>
-                               <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-600 font-semibold">
-                                 {conversionRate}%
-                               </td>
-                               <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600 font-semibold">
-                                 ₹{adSpend.toLocaleString()}
-                               </td>
-                               <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">
-                                 {adSpendPercentage}%
-                               </td>
-                             </tr>
-                           );
-                         })
-                        ) : (
-                          <tr>
-                            <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                                                           <div className="flex flex-col items-center">
-                               <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                               </svg>
-                               <p className="text-lg font-medium">
-                                 {dateRange.startDate && dateRange.endDate ? 'No data found for selected date range' : 'No KPI data available'}
-                               </p>
-                               <p className="text-sm">
-                                 {dateRange.startDate && dateRange.endDate 
-                                   ? 'Try adjusting your date range or clear the filter.'
-                                   : 'No performance data found for this sales person.'
-                                 }
-                               </p>
-                             </div>
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+
+              {/* Detailed KPI Table */}
+              <Card className="overflow-hidden">
+                <CardHeader>
+                  <CardTitle>Daily Performance Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <THead>
+                        <TR>
+                          <TH>Date</TH>
+                          <TH>Leads Assigned</TH>
+                          <TH>Sales Converted</TH>
+                          <TH>Amount Collected</TH>
+                          <TH>Conversion %</TH>
+                          <TH>Ad Spend</TH>
+                          <TH>Ad Spend %</TH>
+                        </TR>
+                      </THead>
+                      <TBody>
+                        {filteredKpiData.length > 0 ? (
+                          filteredKpiData.map((report, index) => {
+                            const leadsAssigned = parseInt(report.leadsAssigned) || 0;
+                            const salesConverted = parseInt(report.salesConverted) || 0;
+                            const amountCollected = parseFloat(report.dailyAmount) || 0;
+                            const conversionRate = parseFloat(report.conversionRate) || 0;
+                            const adSpend = leadsAssigned * 50;
+                            const adSpendPercentage = amountCollected > 0 ? ((adSpend / amountCollected) * 100).toFixed(1) : 0;
+
+                            return (
+                              <TR key={report._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <TD className="font-medium">
+                                  {new Date(report.date).toLocaleDateString('en-IN', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </TD>
+                                <TD>{leadsAssigned}</TD>
+                                <TD className="text-green-600 font-semibold">{salesConverted}</TD>
+                                <TD className="text-blue-600 font-semibold">₹{amountCollected.toLocaleString()}</TD>
+                                <TD className="text-purple-600 font-semibold">{conversionRate}%</TD>
+                                <TD className="text-orange-600 font-semibold">₹{adSpend.toLocaleString()}</TD>
+                                <TD className="text-red-600 font-semibold">{adSpendPercentage}%</TD>
+                              </TR>
+                            );
+                          })
+                        ) : (
+                          <TR>
+                            <TD colSpan={7} className="text-center py-8">
+                              <div className="flex flex-col items-center">
+                                <Users className="w-12 h-12 text-gray-400 mb-4" />
+                                <p className="text-lg font-medium">
+                                  {dateRange.startDate && dateRange.endDate ? 'No data found for selected date range' : 'No KPI data available'}
+                                </p>
+                                <p className="text-sm">
+                                  {dateRange.startDate && dateRange.endDate 
+                                    ? 'Try adjusting your date range or clear the filter.'
+                                    : 'No performance data found for this sales person.'
+                                  }
+                                </p>
+                              </div>
+                            </TD>
+                          </TR>
+                        )}
+                      </TBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
 
       {/* Edit Profile Modal */}
-      {showEditProfile && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex shadow-2xl border border-gray-200">
+      <Dialog open={showEditProfile} onOpenChange={setShowEditProfile}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          <div className="flex w-full">
             {/* Sidebar */}
             <div className="w-64 bg-gray-50 p-6 border-r border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Manage</h2>
-                             <nav className="space-y-2">
-                 <div 
-                   onClick={() => setActiveProfileTab("institute")}
-                   className={`py-2 px-3 rounded-md cursor-pointer ${
-                     activeProfileTab === "institute" 
-                       ? "text-teal-600 font-medium bg-white shadow-sm" 
-                       : "text-gray-600 hover:bg-white"
-                   }`}
-                 >
-                   Institute Profile
-                 </div>
-                
-                 <div className="text-gray-600 py-2 px-3 hover:bg-white rounded-md cursor-pointer">
-                   Courses
-                 </div>
-                 <div className="text-gray-600 py-2 px-3 hover:bg-white rounded-md cursor-pointer">
-                   Batches
-                 </div>
-                 <div className="text-gray-600 py-2 px-3 hover:bg-white rounded-md cursor-pointer">
-                   Billing
-                 </div>
-               </nav>
+              <nav className="space-y-2">
+                <Button
+                  variant={activeProfileTab === "institute" ? "default" : "ghost"}
+                  onClick={() => setActiveProfileTab("institute")}
+                  className="w-full justify-start"
+                >
+                  Institute Profile
+                </Button>
+                <Button variant="ghost" className="w-full justify-start">
+                  Courses
+                </Button>
+                <Button variant="ghost" className="w-full justify-start">
+                  Batches
+                </Button>
+                <Button variant="ghost" className="w-full justify-start">
+                  Billing
+                </Button>
+              </nav>
               
               <h3 className="text-lg font-semibold text-gray-900 mt-8 mb-4">My Profile</h3>
               <nav className="space-y-2">
-                <div className="text-gray-600 py-2 px-3 hover:bg-white rounded-md cursor-pointer">
+                <Button variant="ghost" className="w-full justify-start">
                   User Details
-                </div>
-                <div 
+                </Button>
+                <Button
+                  variant={activeProfileTab === "changePassword" ? "default" : "ghost"}
                   onClick={() => setActiveProfileTab("changePassword")}
-                  className={`py-2 px-3 hover:bg-white rounded-md cursor-pointer ${
-                    activeProfileTab === "changePassword" 
-                      ? "text-teal-600 font-medium bg-white shadow-sm" 
-                      : "text-gray-600"
-                  }`}
+                  className="w-full justify-start"
                 >
                   Change Password
-                </div>
-                <div className="text-gray-600 py-2 px-3 hover:bg-white rounded-md cursor-pointer">
+                </Button>
+                <Button variant="ghost" className="w-full justify-start">
                   Notifications
-                </div>
+                </Button>
               </nav>
             </div>
 
@@ -1893,19 +1836,20 @@ export default function TeamLeaderPage() {
               {/* Header with background pattern */}
               <div className="h-32 bg-gradient-to-r from-gray-100 to-gray-200 relative">
                 <div className="absolute inset-0 bg-white bg-opacity-50"></div>
-                                 <div className="absolute top-4 right-4">
-                   <button
-                     onClick={() => {
-                       setShowEditProfile(false);
-                       setIsEditingProfile(false);
-                     }}
-                     className="text-gray-500 hover:text-gray-700 p-2"
-                   >
-                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                     </svg>
-                   </button>
-                 </div>
+                <div className="absolute top-4 right-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowEditProfile(false);
+                      setIsEditingProfile(false);
+                    }}
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </Button>
+                </div>
               </div>
 
                              <div className="p-8">
@@ -1933,11 +1877,11 @@ export default function TeamLeaderPage() {
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                          </svg>
                          {isEditingProfile ? (
-                           <input
+                           <Input
                              type="email"
                              value={profileData.email}
                              onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                             className="flex-1 text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                             className="flex-1"
                              placeholder="Email"
                            />
                          ) : (
@@ -1950,11 +1894,11 @@ export default function TeamLeaderPage() {
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                          </svg>
                          {isEditingProfile ? (
-                           <input
+                           <Input
                              type="tel"
                              value={profileData.phone}
                              onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                             className="flex-1 text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                             className="flex-1"
                              placeholder="Phone"
                            />
                          ) : (
@@ -1975,11 +1919,11 @@ export default function TeamLeaderPage() {
                        <div>
                          <label className="block text-sm font-medium text-gray-700 mb-2">Address:</label>
                          {isEditingProfile ? (
-                           <textarea
+                           <Textarea
                              value={profileData.address}
                              onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
                              rows={2}
-                             className="w-full text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                             className="w-full resize-none"
                              placeholder="Enter address"
                            />
                          ) : (
@@ -2006,11 +1950,11 @@ export default function TeamLeaderPage() {
                            </button>
                          </div>
                          {isEditingProfile ? (
-                           <textarea
+                           <Textarea
                              value={profileData.about}
                              onChange={(e) => setProfileData({ ...profileData, about: e.target.value })}
                              rows={4}
-                             className="w-full text-gray-900 bg-white border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                             className="w-full"
                              placeholder="Tell us about yourself..."
                            />
                          ) : (
@@ -2041,8 +1985,9 @@ export default function TeamLeaderPage() {
                      {isEditingProfile && (
                        <div className="flex justify-end pt-6 border-t border-gray-200">
                          <div className="flex space-x-3">
-                           <button
+                           <Button
                              type="button"
+                             variant="outline"
                              onClick={() => {
                                setIsEditingProfile(false);
                                // Reset form data to original values
@@ -2057,16 +2002,15 @@ export default function TeamLeaderPage() {
                                  });
                                }
                              }}
-                             className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
                            >
                              Cancel
-                           </button>
-                           <button
+                           </Button>
+                           <Button
                              type="submit"
-                             className="px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors"
+                             className="bg-teal-600 hover:bg-teal-700"
                            >
                              Save Changes
-                           </button>
+                           </Button>
                          </div>
                        </div>
                      )}
@@ -2083,43 +2027,44 @@ export default function TeamLeaderPage() {
                      <form onSubmit={handlePasswordChange} className="max-w-md space-y-6">
                        <div>
                          <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-                         <input
+                         <Input
                            type="password"
                            required
                            value={passwordData.currentPassword}
                            onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                           className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                           placeholder="Enter current password"
                          />
                        </div>
                        
                        <div>
                          <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-                         <input
+                         <Input
                            type="password"
                            required
                            minLength={6}
                            value={passwordData.newPassword}
                            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                           className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                           placeholder="Enter new password"
                          />
                          <p className="text-sm text-gray-500 mt-1">Password must be at least 6 characters long</p>
                        </div>
                        
                        <div>
                          <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-                         <input
+                         <Input
                            type="password"
                            required
                            minLength={6}
                            value={passwordData.confirmPassword}
                            onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                           className="w-full text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                           placeholder="Confirm new password"
                          />
                        </div>
 
                        <div className="flex space-x-3 pt-4">
-                         <button
+                         <Button
                            type="button"
+                           variant="outline"
                            onClick={() => {
                              setActiveProfileTab("institute");
                              setPasswordData({
@@ -2128,27 +2073,24 @@ export default function TeamLeaderPage() {
                                confirmPassword: ""
                              });
                            }}
-                           className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
                          >
                            Cancel
-                         </button>
-                         <button
+                         </Button>
+                         <Button
                            type="submit"
-                           className="px-6 py-2 bg-teal-600 text-white rounded-md font-medium hover:bg-teal-700 transition-colors"
+                           className="bg-teal-600 hover:bg-teal-700"
                          >
                            Change Password
-                         </button>
+                         </Button>
                        </div>
                      </form>
                    </div>
                  )}
                </div>
             </div>
-                     </div>
-         </div>
-       )}
-
-      
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

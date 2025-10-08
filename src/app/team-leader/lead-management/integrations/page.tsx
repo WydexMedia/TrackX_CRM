@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { RefreshCw, Plus, Trash2, AlertTriangle, Wifi, WifiOff, Clock, CheckCircle, XCircle, Search, Edit, User, Infinity, Plug, BookOpen, FileText, CreditCard, FileSpreadsheet, Mail, MessageSquare, Calendar, Facebook, Zap, Cloud, CircleDollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 interface IntegrationRow {
   id: number;
@@ -81,13 +87,12 @@ function AddIntegrationModal({ isOpen, onClose, onAdd }: AddIntegrationModalProp
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-        <div className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Add New Integration</h2>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="w-full max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add New Integration</DialogTitle>
+        </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -116,14 +121,12 @@ function AddIntegrationModal({ isOpen, onClose, onAdd }: AddIntegrationModalProp
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Display Name
               </label>
-              <input
+              <Input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Facebook Lead Gen Campaign"
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                  errors.name ? "border-red-300" : "border-slate-300"
-                }`}
+                className={errors.name ? "border-red-300" : ""}
               />
               {errors.name && (
                 <p className="mt-1 text-xs text-red-600">{errors.name}</p>
@@ -131,18 +134,18 @@ function AddIntegrationModal({ isOpen, onClose, onAdd }: AddIntegrationModalProp
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4">
-              <button
+              <Button
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+                variant="outline"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 text-sm bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50 flex items-center gap-2"
+                className="bg-cyan-600 hover:bg-cyan-700"
               >
                 {isSubmitting ? (
                   <>
@@ -155,60 +158,59 @@ function AddIntegrationModal({ isOpen, onClose, onAdd }: AddIntegrationModalProp
                     Add Integration
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </form>
-        </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 function ConfirmDeleteModal({ isOpen, onClose, onConfirm, integration, isDeleting }: ConfirmDeleteModalProps) {
-  if (!isOpen || !integration) return null;
+  if (!integration) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-4">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="w-full max-w-sm">
+        <DialogHeader>
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
               <AlertTriangle className="w-5 h-5 text-red-600" />
             </div>
-            <h2 className="text-lg font-semibold">Delete Integration</h2>
+            <DialogTitle>Delete Integration</DialogTitle>
           </div>
-          <p className="text-sm text-slate-600 mb-6">
-            Are you sure you want to delete "{integration.name}"? This action cannot be undone and may affect your data sync.
-          </p>
-          <div className="flex items-center justify-end gap-2">
-            <button
-              onClick={onClose}
-              disabled={isDeleting}
-              className="px-4 py-2 text-sm rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onConfirm}
-              disabled={isDeleting}
-              className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              {isDeleting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </>
-              )}
-            </button>
-          </div>
+        </DialogHeader>
+        <p className="text-sm text-slate-600 mb-6">
+          Are you sure you want to delete "{integration.name}"? This action cannot be undone and may affect your data sync.
+        </p>
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            onClick={onClose}
+            disabled={isDeleting}
+            variant="outline"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {isDeleting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </>
+            )}
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -262,37 +264,45 @@ function ConnectedIntegrationCard({ integration, onDelete, onEdit }: {
   };
 
   return (
-    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-          {getProviderIcon(integration.provider)}
+    <Card className="bg-slate-50">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+              {getProviderIcon(integration.provider)}
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900">{integration.name}</h3>
+              <p className="text-sm text-slate-600">{integration.email || getProviderLabel(integration.provider)}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge className="bg-yellow-100 text-yellow-800 gap-1">
+              <User className="w-3 h-3" />
+              {integration.level || "User level"}
+            </Badge>
+            <Button
+              onClick={() => onEdit(integration)}
+              variant="ghost"
+              size="sm"
+              className="p-2 text-slate-400 hover:text-slate-600"
+              title="Edit integration"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={() => onDelete(integration)}
+              variant="ghost"
+              size="sm"
+              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50"
+              title="Delete integration"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
-        <div>
-          <h3 className="font-semibold text-slate-900">{integration.name}</h3>
-          <p className="text-sm text-slate-600">{integration.email || getProviderLabel(integration.provider)}</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <button className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-lg text-xs font-medium flex items-center gap-1">
-          <User className="w-3 h-3" />
-          {integration.level || "User level"}
-        </button>
-        <button
-          onClick={() => onEdit(integration)}
-          className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg transition-colors"
-          title="Edit integration"
-        >
-          <Edit className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onDelete(integration)}
-          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          title="Delete integration"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -303,22 +313,25 @@ function BrowseIntegrationCard({ integration, onConnect }: {
   const IconComponent = integration.icon;
   
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-          <IconComponent className="w-4 h-4 text-slate-600" />
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+            <IconComponent className="w-4 h-4 text-slate-600" />
+          </div>
+          <Button 
+            onClick={() => onConnect(integration)}
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 gap-1"
+          >
+            <Plug className="w-3 h-3" />
+            Connect
+          </Button>
         </div>
-        <button 
-          onClick={() => onConnect(integration)}
-          className="px-3 py-1 bg-green-600 text-white rounded-lg text-xs font-medium flex items-center gap-1 hover:bg-green-700 transition-colors"
-        >
-          <Plug className="w-3 h-3" />
-          Connect
-        </button>
-      </div>
-      <h3 className="font-semibold text-slate-900 mb-1">{integration.name}</h3>
-      <p className="text-sm text-slate-600 leading-relaxed">{integration.description}</p>
-    </div>
+        <h3 className="font-semibold text-slate-900 mb-1">{integration.name}</h3>
+        <p className="text-sm text-slate-600 leading-relaxed">{integration.description}</p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -346,7 +359,7 @@ export default function IntegrationsPage() {
     
     try {
       setError(null);
-      const response = await fetch("/api/tl/integrations");
+      const response = await authenticatedFetch("/api/tl/integrations");
       if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
       
       const data = await response.json();
@@ -364,7 +377,7 @@ export default function IntegrationsPage() {
   }, []);
 
   async function handleAddIntegration(provider: string, name: string) {
-    const response = await fetch("/api/tl/integrations", {
+    const response = await authenticatedFetch("/api/tl/integrations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ provider, name }),
@@ -383,7 +396,7 @@ export default function IntegrationsPage() {
 
     setDeleting(true);
     try {
-      const response = await fetch("/api/tl/integrations", {
+      const response = await authenticatedFetch("/api/tl/integrations", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: deleteTarget.id }),
@@ -433,12 +446,14 @@ export default function IntegrationsPage() {
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-red-600" />
             <span className="text-red-800 text-sm">{error}</span>
-            <button
+            <Button
               onClick={() => setError(null)}
-              className="ml-auto text-red-600 hover:text-red-800"
+              variant="ghost"
+              size="sm"
+              className="ml-auto p-0 text-red-600 hover:text-red-800"
             >
               <XCircle className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -447,41 +462,45 @@ export default function IntegrationsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-slate-900">Connected</h2>
-          <button
+          <Button
             onClick={refresh}
             disabled={refreshing}
-            className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+            variant="ghost"
+            size="sm"
+            className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             title="Refresh integrations"
           >
             <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
-          </button>
+          </Button>
         </div>
-        <div className="bg-slate-50 rounded-xl p-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="flex items-center gap-3 text-slate-600">
-                <RefreshCw className="w-5 h-5 animate-spin" />
-                <span>Loading integrations...</span>
+        <Card className="bg-slate-50">
+          <CardContent className="p-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center gap-3 text-slate-600">
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <span>Loading integrations...</span>
+                </div>
               </div>
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="text-center py-8">
-              <WifiOff className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-slate-500 text-sm">No connected integrations</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {rows.map((integration) => (
-                <ConnectedIntegrationCard
-                  key={integration.id}
-                  integration={integration}
-                  onDelete={openDeleteConfirm}
-                  onEdit={handleEditIntegration}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+            ) : rows.length === 0 ? (
+              <div className="text-center py-8">
+                <WifiOff className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-slate-500 text-sm">No connected integrations</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {rows.map((integration) => (
+                  <ConnectedIntegrationCard
+                    key={integration.id}
+                    integration={integration}
+                    onDelete={openDeleteConfirm}
+                    onEdit={handleEditIntegration}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Browse Integrations Section */}
@@ -492,7 +511,7 @@ export default function IntegrationsPage() {
         {/* Search Bar */}
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-          <input
+          <Input
             type="text"
             placeholder="Search"
             value={searchQuery}

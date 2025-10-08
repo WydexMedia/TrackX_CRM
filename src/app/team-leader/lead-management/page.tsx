@@ -3,6 +3,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 export default function LeadManagementOverviewPage() {
   const [widgets, setWidgets] = useState<{ slaAtRisk: number; leadsToday: number; qualifiedRate: number } | null>(null);
@@ -11,14 +15,14 @@ export default function LeadManagementOverviewPage() {
   const [showAllActivities, setShowAllActivities] = useState(false);
 
   useEffect(() => {
-    fetch("/api/tl/overview")
+    authenticatedFetch("/api/tl/overview")
       .then((r) => r.json())
       .then((d) => setWidgets(d.widgets || { slaAtRisk: 0, leadsToday: 0, qualifiedRate: 0 }))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    fetch("/api/tl/activity?limit=20")
+    authenticatedFetch("/api/tl/activity?limit=20")
       .then((r) => r.json())
       .then((d) => {
         if (d?.success && Array.isArray(d.items)) {
@@ -139,160 +143,169 @@ export default function LeadManagementOverviewPage() {
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {metrics.map((metric, index) => (
-          <div key={metric.title} className={`bg-white border-2 ${metric.borderColor} rounded-2xl p-6 hover:shadow-lg transition-all duration-200`}>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`${metric.bgColor} ${metric.color} p-3 rounded-xl`}>
-                    {metric.icon}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-600">{metric.title}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      {metric.trend === "critical" && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-red-700 bg-red-100">
-                          ⚠️ Critical
-                        </span>
-                      )}
-                      {metric.trend === "good" && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-green-700 bg-green-100">
-                          ✓ Good
-                        </span>
-                      )}
+          <Card key={metric.title} className={`border-2 ${metric.borderColor} hover:shadow-lg transition-all duration-200`}>
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={`${metric.bgColor} ${metric.color} p-3 rounded-xl`}>
+                      {metric.icon}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-600">{metric.title}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {metric.trend === "critical" && (
+                          <Badge className="bg-red-100 text-red-700">
+                            ⚠️ Critical
+                          </Badge>
+                        )}
+                        {metric.trend === "good" && (
+                          <Badge className="bg-green-100 text-green-700">
+                            ✓ Good
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="text-4xl font-bold text-slate-900 mb-2">
-                  {loading ? (
-                    <div className="animate-pulse bg-slate-200 h-12 w-24 rounded"></div>
-                  ) : (
-                    metric.value
-                  )}
+                  <div className="text-4xl font-bold text-slate-900 mb-2">
+                    {loading ? (
+                      <div className="animate-pulse bg-slate-200 h-12 w-24 rounded"></div>
+                    ) : (
+                      metric.value
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white border border-slate-200 rounded-2xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-purple-50 text-purple-600 p-2 rounded-lg">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-purple-50 text-purple-600 p-2 rounded-lg">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-semibold text-slate-900">Quick Actions</h2>
             </div>
-            <h2 className="text-lg font-semibold text-slate-900">Quick Actions</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Link href="/team-leader/lead-management/leads" className="flex items-center gap-2 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm">
-              <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Lead
-            </Link>
-            <Link href="/team-leader/lead-management/tasks" className="flex items-center gap-2 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm">
-              <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              Assign Tasks
-            </Link>
-            <Link href="/team-leader/lead-management/queue" className="flex items-center gap-2 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm">
-              <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              View Queue
-            </Link>
-            <Link href="/team-leader/lead-management/analytics" className="flex items-center gap-2 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm">
-              <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2 2z" />
-              </svg>
-              Analytics
-            </Link>
-          </div>
-        </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Link href="/team-leader/lead-management/leads" className="flex items-center gap-2 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm">
+                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Lead
+              </Link>
+              <Link href="/team-leader/lead-management/tasks" className="flex items-center gap-2 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm">
+                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Assign Tasks
+              </Link>
+              <Link href="/team-leader/lead-management/queue" className="flex items-center gap-2 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm">
+                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                View Queue
+              </Link>
+              <Link href="/team-leader/lead-management/analytics" className="flex items-center gap-2 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm">
+                <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2 2z" />
+                </svg>
+                Analytics
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-orange-50 text-orange-600 p-2 rounded-lg">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 00-15 0v5h5l-5 5-5-5h5V7a9.5 9.5 0 0119 0v10z" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-semibold text-slate-900">Recent Activity</h2>
+            </div>
+            <div className="space-y-3">
+              {activities.length === 0 ? (
+                <div className="text-sm text-slate-500">No recent activity</div>
+              ) : (
+                <>
+                  {(showAllActivities ? activities : activities.slice(0, 3)).map((a) => (
+                    <div key={a.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                      <div className={`w-2 h-2 rounded-full ${dotColor(a.color)}`}></div>
+                      <div className="flex-1 text-sm">
+                        <span className="font-medium">{a.title}</span>{" "}
+                        <span className="text-slate-700">{a.detail}</span>
+                        <div className="text-xs text-slate-500">{timeAgo(a.at)}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {activities.length > 3 && (
+                    <Button
+                      onClick={() => setShowAllActivities((v) => !v)}
+                      variant="ghost"
+                      className="w-full text-center text-blue-600 hover:text-blue-700 text-sm py-2"
+                    >
+                      {showAllActivities ? "Show less" : "Show more"}
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Alerts Section */}
+      <Card>
+        <CardContent className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="bg-orange-50 text-orange-600 p-2 rounded-lg">
+            <div className="bg-red-50 text-red-600 p-2 rounded-lg">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 00-15 0v5h5l-5 5-5-5h5V7a9.5 9.5 0 0119 0v10z" />
               </svg>
             </div>
-            <h2 className="text-lg font-semibold text-slate-900">Recent Activity</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Alerts & Notifications</h2>
           </div>
-          <div className="space-y-3">
-            {activities.length === 0 ? (
-              <div className="text-sm text-slate-500">No recent activity</div>
-            ) : (
-              <>
-                {(showAllActivities ? activities : activities.slice(0, 3)).map((a) => (
-                  <div key={a.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                    <div className={`w-2 h-2 rounded-full ${dotColor(a.color)}`}></div>
-                    <div className="flex-1 text-sm">
-                      <span className="font-medium">{a.title}</span>{" "}
-                      <span className="text-slate-700">{a.detail}</span>
-                      <div className="text-xs text-slate-500">{timeAgo(a.at)}</div>
-                    </div>
-                  </div>
-                ))}
-                {activities.length > 3 && (
-                  <button
-                    onClick={() => setShowAllActivities((v) => !v)}
-                    className="w-full text-center text-blue-600 hover:text-blue-700 text-sm py-2"
-                  >
-                    {showAllActivities ? "Show less" : "Show more"}
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Alerts Section */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="bg-red-50 text-red-600 p-2 rounded-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 00-15 0v5h5l-5 5-5-5h5V7a9.5 9.5 0 0119 0v10z" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-semibold text-slate-900">Alerts & Notifications</h2>
-        </div>
-        
-        {widgets?.slaAtRisk && widgets.slaAtRisk > 0 ? (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <div className="text-red-500 mt-0.5">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          
+          {widgets?.slaAtRisk && widgets.slaAtRisk > 0 ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="text-red-500 mt-0.5">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-medium text-red-800">SLA Alert</h3>
+                  <p className="text-sm text-red-700 mt-1">
+                    {widgets.slaAtRisk} lead{widgets.slaAtRisk !== 1 ? 's are' : ' is'} at risk of missing SLA targets. Immediate attention required.
+                  </p>
+                  <Button variant="ghost" className="mt-2 p-0 h-auto text-sm text-red-800 hover:text-red-900 font-medium">
+                    View Details →
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-green-500 mb-3">
+                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <div>
-                <h3 className="font-medium text-red-800">SLA Alert</h3>
-                <p className="text-sm text-red-700 mt-1">
-                  {widgets.slaAtRisk} lead{widgets.slaAtRisk !== 1 ? 's are' : ' is'} at risk of missing SLA targets. Immediate attention required.
-                </p>
-                <button className="mt-2 text-sm text-red-800 hover:text-red-900 font-medium">
-                  View Details →
-                </button>
-              </div>
+              <p className="text-sm text-slate-500">All good! No alerts at the moment.</p>
             </div>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <div className="text-green-500 mb-3">
-              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <p className="text-sm text-slate-500">All good! No alerts at the moment.</p>
-          </div>
-        )}
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

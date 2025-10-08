@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 interface AnalyticsData {
   funnel: {
@@ -65,7 +66,7 @@ export default function AnalyticsPage() {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/tl/analytics?range=${dateRange}`);
+      const res = await authenticatedFetch(`/api/tl/analytics?range=${dateRange}`);
       if (res.ok) {
         const analyticsData = await res.json();
         setData(analyticsData);

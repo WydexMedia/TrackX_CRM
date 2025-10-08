@@ -1,5 +1,11 @@
 "use client";
 import React from 'react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 export default function ReportsPage() {
   return (
@@ -147,9 +153,9 @@ function LeadsReports() {
     console.log('Debug - Calling API with URL:', `/api/tl/leads?${params.toString()}`);
 
     Promise.all([
-      fetch(`/api/tl/leads?${params.toString()}`).then(r => r.json()),
-      fetch(`/api/tl/users`).then(r => r.json()),
-      fetch(`/api/tl/reports?dateRange=${encodeURIComponent(dateRange)}&sortByDuration=${sortByDuration}`).then(r => r.json())
+      authenticatedFetch(`/api/tl/leads?${params.toString()}`).then(r => r.json()),
+      authenticatedFetch(`/api/tl/users`).then(r => r.json()),
+      authenticatedFetch(`/api/tl/reports?dateRange=${encodeURIComponent(dateRange)}&sortByDuration=${sortByDuration}`).then(r => r.json())
     ]).then(([leadsRes, usersRes, reportsRes]) => {
       console.log('Debug - API responses received:');
       console.log('  leadsRes:', leadsRes);
@@ -259,140 +265,149 @@ function LeadsReports() {
   return (
     <div className="space-y-4">
 
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Daily Conversions Card */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-800">Daily Conversions</h3>
-                <p className="text-sm text-slate-600">Recent daily trends</p>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-3 max-h-64 overflow-auto custom-scrollbar">
-            {agg?.trends?.daily?.length ? agg.trends.daily.map((d: any) => (
-              <div key={String(d.period)} className="flex items-center justify-between p-3 bg-white/70 rounded-xl hover:bg-white/90 transition-colors">
-                <span className="text-slate-700 font-medium">{new Date(d.period).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-blue-600">{d.conversions}</span>
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                </div>
-              </div>
-            )) : (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 border-blue-200 shadow-sm hover:shadow-md transition-all duration-300">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <p className="text-slate-500 font-medium">No data available</p>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800">Daily Conversions</h3>
+                  <p className="text-sm text-slate-600">Recent daily trends</p>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+            <div className="space-y-3 max-h-64 overflow-auto custom-scrollbar">
+              {agg?.trends?.daily?.length ? agg.trends.daily.map((d: any) => (
+                <div key={String(d.period)} className="flex items-center justify-between p-3 bg-white/70 rounded-xl hover:bg-white/90 transition-colors">
+                  <span className="text-slate-700 font-medium">{new Date(d.period).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold text-blue-600">{d.conversions}</span>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+              )) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-slate-500 font-medium">No data available</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Weekly Conversions Card */}
-        <div className="bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-800">Weekly Conversions</h3>
-                <p className="text-sm text-slate-600">Weekly performance</p>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-3 max-h-64 overflow-auto custom-scrollbar">
-            {agg?.trends?.weekly?.length ? agg.trends.weekly.map((d: any) => (
-              <div key={String(d.period)} className="flex items-center justify-between p-3 bg-white/70 rounded-xl hover:bg-white/90 transition-colors">
-                <span className="text-slate-700 font-medium">Week of {new Date(d.period).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-emerald-600">{d.conversions}</span>
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                </div>
-              </div>
-            )) : (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        <Card className="bg-gradient-to-br from-emerald-50 to-green-100 border-emerald-200 shadow-sm hover:shadow-md transition-all duration-300">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </div>
-                <p className="text-slate-500 font-medium">No data available</p>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800">Weekly Conversions</h3>
+                  <p className="text-sm text-slate-600">Weekly performance</p>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+            <div className="space-y-3 max-h-64 overflow-auto custom-scrollbar">
+              {agg?.trends?.weekly?.length ? agg.trends.weekly.map((d: any) => (
+                <div key={String(d.period)} className="flex items-center justify-between p-3 bg-white/70 rounded-xl hover:bg-white/90 transition-colors">
+                  <span className="text-slate-700 font-medium">Week of {new Date(d.period).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold text-emerald-600">{d.conversions}</span>
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+              )) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-slate-500 font-medium">No data available</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Monthly Conversions Card */}
-        <div className="bg-gradient-to-br from-purple-50 to-violet-100 border border-purple-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-800">Monthly Conversions</h3>
-                <p className="text-sm text-slate-600">Monthly overview</p>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-3 max-h-64 overflow-auto custom-scrollbar">
-            {agg?.trends?.monthly?.length ? agg.trends.monthly.map((d: any) => (
-              <div key={String(d.period)} className="flex items-center justify-between p-3 bg-white/70 rounded-xl hover:bg-white/90 transition-colors">
-                <span className="text-slate-700 font-medium">{new Date(d.period).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-purple-600">{d.conversions}</span>
-                  <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-                </div>
-              </div>
-            )) : (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        <Card className="bg-gradient-to-br from-purple-50 to-violet-100 border-purple-200 shadow-sm hover:shadow-md transition-all duration-300">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <p className="text-slate-500 font-medium">No data available</p>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800">Monthly Conversions</h3>
+                  <p className="text-sm text-slate-600">Monthly overview</p>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+            <div className="space-y-3 max-h-64 overflow-auto custom-scrollbar">
+              {agg?.trends?.monthly?.length ? agg.trends.monthly.map((d: any) => (
+                <div key={String(d.period)} className="flex items-center justify-between p-3 bg-white/70 rounded-xl hover:bg-white/90 transition-colors">
+                  <span className="text-slate-700 font-medium">{new Date(d.period).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold text-purple-600">{d.conversions}</span>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+              )) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-slate-500 font-medium">No data available</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
       {/* Calls per Lead Section */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-slate-800">Calls per Lead</h3>
-        </div>
-        <div className="space-y-2">
-          {agg?.callsPerLead?.length ? agg.callsPerLead.map((c: any) => (
-            <div key={c.leadPhone} className="flex justify-between text-sm">
-              <span className="text-slate-600">{c.leadPhone}</span>
-              <span className="text-slate-700">Started: {c.started} • Completed: {c.completed}</span>
-            </div>
-          )) : (
-            <div className="text-slate-500 text-sm">No call data</div>
-          )}
-        </div>
-      </div>
-      <div className="bg-white border border-slate-200 rounded-2xl p-4">
-        <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs text-slate-500 mb-1">Search</label>
-            <input className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" value={q} onChange={e=>{setOffset(0); setQ(e.target.value);}} placeholder="Name, email or phone" />
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-800">Calls per Lead</h3>
           </div>
+          <div className="space-y-2">
+            {agg?.callsPerLead?.length ? agg.callsPerLead.map((c: any) => (
+              <div key={c.leadPhone} className="flex justify-between text-sm">
+                <span className="text-slate-600">{c.leadPhone}</span>
+                <span className="text-slate-700">Started: {c.started} • Completed: {c.completed}</span>
+              </div>
+            )) : (
+              <div className="text-slate-500 text-sm">No call data</div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs text-slate-500 mb-1">Search</label>
+              <Input className="w-full" value={q} onChange={e=>{setOffset(0); setQ(e.target.value);}} placeholder="Name, email or phone" />
+            </div>
           <div>
             <label className="block text-xs text-slate-500 mb-1">Stage</label>
             <select className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={stage} onChange={e=>{setOffset(0); setStage(e.target.value);}}>
@@ -431,10 +446,10 @@ function LeadsReports() {
             </select>
           </div>
           <div className="ml-auto flex gap-2">
-            <button onClick={()=>{setQ(""); setStage(""); setOwner(""); setDateRange("last30days"); setHasEmail(""); setEmailDomain(""); setScoreMin(""); setScoreMax(""); setLastActivity(""); setConnected(false); setCallCountMin(""); setCallCountMax(""); setSortByDuration(false); setExcludeEarlyStages(false); setSortByCallCount(false); setNeedFollowup(""); setOffset(0);}} className="px-4 py-2 border border-slate-300 rounded-lg text-sm cursor-pointer">Reset</button>
-            <button onClick={()=>setShowAdvanced(v=>!v)} className="px-4 py-2 border border-slate-300 rounded-lg text-sm cursor-pointer">{showAdvanced ? 'Hide Advanced' : 'Advanced Filters'}</button>
-            <button onClick={saveCurrentFilter} className="px-4 py-2 border border-blue-600 text-blue-700 rounded-lg text-sm cursor-pointer">Save Filter</button>
-            <button onClick={exportCsv} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm cursor-pointer">Download CSV</button>
+            <Button onClick={()=>{setQ(""); setStage(""); setOwner(""); setDateRange("last30days"); setHasEmail(""); setEmailDomain(""); setScoreMin(""); setScoreMax(""); setLastActivity(""); setConnected(false); setCallCountMin(""); setCallCountMax(""); setSortByDuration(false); setExcludeEarlyStages(false); setSortByCallCount(false); setNeedFollowup(""); setOffset(0);}} variant="outline" size="sm">Reset</Button>
+            <Button onClick={()=>setShowAdvanced(v=>!v)} variant="outline" size="sm">{showAdvanced ? 'Hide Advanced' : 'Advanced Filters'}</Button>
+            <Button onClick={saveCurrentFilter} variant="outline" size="sm" className="border-blue-600 text-blue-700">Save Filter</Button>
+            <Button onClick={exportCsv} size="sm" className="bg-slate-800 hover:bg-slate-900">Download CSV</Button>
           </div>
         </div>
 
@@ -450,15 +465,15 @@ function LeadsReports() {
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-emailDomain">Email Domain</label>
-              <input id="adv-emailDomain" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={emailDomain} onChange={e=>{setOffset(0); setEmailDomain(e.target.value);}} placeholder="gmail.com" />
+              <Input id="adv-emailDomain" value={emailDomain} onChange={e=>{setOffset(0); setEmailDomain(e.target.value);}} placeholder="gmail.com" />
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-scoreMin">Score Min</label>
-              <input id="adv-scoreMin" type="number" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={scoreMin} onChange={e=>{setOffset(0); setScoreMin(e.target.value);}} />
+              <Input id="adv-scoreMin" type="number" value={scoreMin} onChange={e=>{setOffset(0); setScoreMin(e.target.value);}} />
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-scoreMax">Score Max</label>
-              <input id="adv-scoreMax" type="number" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={scoreMax} onChange={e=>{setOffset(0); setScoreMax(e.target.value);}} />
+              <Input id="adv-scoreMax" type="number" value={scoreMax} onChange={e=>{setOffset(0); setScoreMax(e.target.value);}} />
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-lastActivity">Last Activity</label>
@@ -480,11 +495,11 @@ function LeadsReports() {
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-callCountMin">Call Count Min</label>
-              <input id="adv-callCountMin" type="number" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={callCountMin} onChange={e=>{setOffset(0); setCallCountMin(e.target.value);}} placeholder="0" />
+              <Input id="adv-callCountMin" type="number" value={callCountMin} onChange={e=>{setOffset(0); setCallCountMin(e.target.value);}} placeholder="0" />
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-callCountMax">Call Count Max</label>
-              <input id="adv-callCountMax" type="number" className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={callCountMax} onChange={e=>{setOffset(0); setCallCountMax(e.target.value);}} placeholder="10" />
+              <Input id="adv-callCountMax" type="number" value={callCountMax} onChange={e=>{setOffset(0); setCallCountMax(e.target.value);}} placeholder="10" />
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1" htmlFor="adv-sortByDuration">Sort by Duration</label>
@@ -517,131 +532,144 @@ function LeadsReports() {
             <div className="flex flex-wrap gap-2">
               {savedFilters.map(f => (
                 <div key={f.id} className="flex items-center gap-2 border border-slate-300 rounded-full px-3 py-1 text-xs">
-                  <button className="text-slate-700 cursor-pointer" onClick={()=>applySavedFilter(f)}>{f.name}</button>
-                  <button className="text-slate-400 hover:text-red-600 cursor-pointer" onClick={()=>removeSavedFilter(f.id)} title="Remove">✕</button>
+                  <Button variant="ghost" size="sm" className="text-slate-700 p-0 h-auto cursor-pointer" onClick={()=>applySavedFilter(f)}>{f.name}</Button>
+                  <Button variant="ghost" size="sm" className="text-slate-400 hover:text-red-600 p-0 h-auto cursor-pointer" onClick={()=>removeSavedFilter(f.id)} title="Remove">✕</Button>
                 </div>
               ))}
             </div>
           </div>
         )}
-      </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">By Stage</div>
-          <div className="space-y-2">
-            {stageSummary.map(([s, c]) => (
-              <div key={s} className="flex justify-between text-sm">
-                <span className="text-slate-600">{s}</span>
-                <span className="font-medium">{c}</span>
-              </div>
-            ))}
-            {stageSummary.length === 0 && <div className="text-slate-500 text-sm">No data</div>}
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">By Owner (Top 12)</div>
-          <div className="space-y-2">
-            {ownerSummary.map((o) => (
-              <div key={o.code} className="flex justify-between text-sm">
-                <span className="text-slate-600">{o.name}</span>
-                <span className="font-medium">{o.count}</span>
-              </div>
-            ))}
-            {ownerSummary.length === 0 && <div className="text-slate-500 text-sm">No data</div>}
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">Connected Leads Filter</div>
-          <select 
-            className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2" 
-            value={connected ? "true" : ""} 
-            onChange={e=>{
-              console.log('Connected filter changed to:', e.target.value === "true");
-              setOffset(0); 
-              setConnected(e.target.value === "true");
-            }}
-          >
-            <option value="">All leads</option>
-            <option value="true">Number Of Connected Calls</option>
-          </select>
-          <div className="text-xs text-slate-500">
-            {connected ? 'Filtering connected leads only' : 'Showing all leads'}
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">Successful Connections Filter</div>
-          <select 
-            className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2" 
-            value={excludeEarlyStages ? "true" : ""} 
-            onChange={e=>{
-              console.log('ExcludeEarlyStages filter changed to:', e.target.value === "true");
-              setOffset(0); 
-              setExcludeEarlyStages(e.target.value === "true");
-            }}
-          >
-            <option value="">All leads</option>
-            <option value="true">Only leads with successful connections (excludes: Attempt to contact, Did not Connect, Not contacted)</option>
-          </select>
-          <div className="text-xs text-slate-500">
-            {excludeEarlyStages ? 'Filtering successful connections only' : 'Showing all leads'}
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">Call Count Filter</div>
-          <div className="flex gap-2 mb-2">
-            <input 
-              type="number" 
-              className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm" 
-              placeholder="Min calls" 
-              value={callCountMin} 
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-medium mb-3">By Stage</div>
+            <div className="space-y-2">
+              {stageSummary.map(([s, c]) => (
+                <div key={s} className="flex justify-between text-sm">
+                  <span className="text-slate-600">{s}</span>
+                  <span className="font-medium">{c}</span>
+                </div>
+              ))}
+              {stageSummary.length === 0 && <div className="text-slate-500 text-sm">No data</div>}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-medium mb-3">By Owner (Top 12)</div>
+            <div className="space-y-2">
+              {ownerSummary.map((o) => (
+                <div key={o.code} className="flex justify-between text-sm">
+                  <span className="text-slate-600">{o.name}</span>
+                  <span className="font-medium">{o.count}</span>
+                </div>
+              ))}
+              {ownerSummary.length === 0 && <div className="text-slate-500 text-sm">No data</div>}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-medium mb-3">Connected Leads Filter</div>
+            <select 
+              className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2" 
+              value={connected ? "true" : ""} 
               onChange={e=>{
-                console.log('CallCountMin changed to:', e.target.value);
+                console.log('Connected filter changed to:', e.target.value === "true");
                 setOffset(0); 
-                setCallCountMin(e.target.value);
+                setConnected(e.target.value === "true");
               }}
-            />
-            <input 
-              type="number" 
-              className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm" 
-              placeholder="Max calls" 
-              value={callCountMax} 
+            >
+              <option value="">All leads</option>
+              <option value="true">Number Of Connected Calls</option>
+            </select>
+            <div className="text-xs text-slate-500">
+              {connected ? 'Filtering connected leads only' : 'Showing all leads'}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-medium mb-3">Successful Connections Filter</div>
+            <select 
+              className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2" 
+              value={excludeEarlyStages ? "true" : ""} 
               onChange={e=>{
-                console.log('CallCountMax changed to:', e.target.value);
+                console.log('ExcludeEarlyStages filter changed to:', e.target.value === "true");
                 setOffset(0); 
-                setCallCountMax(e.target.value);
+                setExcludeEarlyStages(e.target.value === "true");
               }}
-            />
-          </div>
-          <div className="text-xs text-slate-500">
-            {callCountMin || callCountMax ? 
-              `Filtering leads with ${callCountMin || '0'}-${callCountMax || '∞'} calls` : 
-              'Showing leads with any number of calls'
-            }
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-sm font-medium mb-3">Sorting Options</div>
-          <select 
-            className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2" 
-            value={sortByCallCount ? "true" : ""} 
-            onChange={e=>{
-              console.log('SortByCallCount filter changed to:', e.target.value === "true");
-              setOffset(0); 
-              setSortByCallCount(e.target.value === "true");
-            }}
-          >
-            <option value="">Sort by Date (newest first)</option>
-            <option value="true">Sort by Call Count (most active first)</option>
-          </select>
-          <div className="text-xs text-slate-500">
-            {sortByCallCount ? 'Sorting by number of stage changes' : 'Sorting by creation date'}
-          </div>
-        </div>
+            >
+              <option value="">All leads</option>
+              <option value="true">Only leads with successful connections (excludes: Attempt to contact, Did not Connect, Not contacted)</option>
+            </select>
+            <div className="text-xs text-slate-500">
+              {excludeEarlyStages ? 'Filtering successful connections only' : 'Showing all leads'}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-medium mb-3">Call Count Filter</div>
+            <div className="flex gap-2 mb-2">
+              <Input 
+                type="number" 
+                className="flex-1" 
+                placeholder="Min calls" 
+                value={callCountMin} 
+                onChange={e=>{
+                  console.log('CallCountMin changed to:', e.target.value);
+                  setOffset(0); 
+                  setCallCountMin(e.target.value);
+                }}
+              />
+              <Input 
+                type="number" 
+                className="flex-1" 
+                placeholder="Max calls" 
+                value={callCountMax} 
+                onChange={e=>{
+                  console.log('CallCountMax changed to:', e.target.value);
+                  setOffset(0); 
+                  setCallCountMax(e.target.value);
+                }}
+              />
+            </div>
+            <div className="text-xs text-slate-500">
+              {callCountMin || callCountMax ? 
+                `Filtering leads with ${callCountMin || '0'}-${callCountMax || '∞'} calls` : 
+                'Showing leads with any number of calls'
+              }
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-medium mb-3">Sorting Options</div>
+            <select 
+              className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2" 
+              value={sortByCallCount ? "true" : ""} 
+              onChange={e=>{
+                console.log('SortByCallCount filter changed to:', e.target.value === "true");
+                setOffset(0); 
+                setSortByCallCount(e.target.value === "true");
+              }}
+            >
+              <option value="">Sort by Date (newest first)</option>
+              <option value="true">Sort by Call Count (most active first)</option>
+            </select>
+            <div className="text-xs text-slate-500">
+              {sortByCallCount ? 'Sorting by number of stage changes' : 'Sorting by creation date'}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
 
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+      <Card className="overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 text-sm">
           <div className="text-slate-600">
             {loading ? 'Loading...' : `Showing ${pagination.from}–${pagination.to} of ${total} • Page ${pagination.currentPage} of ${pagination.totalPages}`}
@@ -653,72 +681,71 @@ function LeadsReports() {
               <option value={100}>100</option>
             </select>
             <div className="flex items-center gap-1">
-              <button disabled={pagination.currentPage === 1} onClick={()=>setOffset(0)} className="px-2 py-1 border rounded disabled:opacity-50 cursor-pointer">First</button>
-              <button disabled={pagination.currentPage === 1} onClick={()=>setOffset(Math.max(0, offset - limit))} className="px-2 py-1 border rounded disabled:opacity-50 cursor-pointer">Prev</button>
+              <Button disabled={pagination.currentPage === 1} onClick={()=>setOffset(0)} variant="outline" size="sm">First</Button>
+              <Button disabled={pagination.currentPage === 1} onClick={()=>setOffset(Math.max(0, offset - limit))} variant="outline" size="sm">Prev</Button>
               {pagination.pages.map(p => (
-                <button
+                <Button
                   key={p}
                   onClick={()=>setOffset((p - 1) * limit)}
-                  className={`px-2 py-1 border rounded cursor-pointer ${p === pagination.currentPage ? 'bg-slate-800 text-white' : ''}`}
-                >{p}</button>
+                  variant={p === pagination.currentPage ? "default" : "outline"}
+                  size="sm"
+                >{p}</Button>
               ))}
-              <button disabled={pagination.currentPage === pagination.totalPages} onClick={()=>setOffset(offset + limit)} className="px-2 py-1 border rounded disabled:opacity-50 cursor-pointer">Next</button>
-              <button disabled={pagination.currentPage === pagination.totalPages} onClick={()=>setOffset((pagination.totalPages - 1) * limit)} className="px-2 py-1 border rounded disabled:opacity-50 cursor-pointer">Last</button>
+              <Button disabled={pagination.currentPage === pagination.totalPages} onClick={()=>setOffset(offset + limit)} variant="outline" size="sm">Next</Button>
+              <Button disabled={pagination.currentPage === pagination.totalPages} onClick={()=>setOffset((pagination.totalPages - 1) * limit)} variant="outline" size="sm">Last</Button>
             </div>
           </div>
         </div>
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50">
+        <Table>
+          <THead>
             <tr>
-              <th className="px-4 py-2 text-left">Phone</th>
-              <th className="px-4 py-2 text-left">Name</th>
-              <th className="px-4 py-2 text-left">Email</th>
-              <th className="px-4 py-2 text-left">Source</th>
-              <th className="px-4 py-2 text-left">Stage</th>
-              <th className="px-4 py-2 text-left">Score</th>
-              <th className="px-4 py-2 text-left">Owner</th>
-              <th className="px-4 py-2 text-left">Created</th>
-              <th className="px-4 py-2 text-left">Last Activity</th>
-
-              <th className="px-4 py-2 text-left">Call Count</th>
+              <TH>Phone</TH>
+              <TH>Name</TH>
+              <TH>Email</TH>
+              <TH>Source</TH>
+              <TH>Stage</TH>
+              <TH>Score</TH>
+              <TH>Owner</TH>
+              <TH>Created</TH>
+              <TH>Last Activity</TH>
+              <TH>Call Count</TH>
             </tr>
-          </thead>
-          <tbody>
+          </THead>
+          <TBody>
             {rows.map((r) => (
-              <tr 
+              <TR 
                 key={r.phone} 
-                className="border-t hover:bg-slate-50 cursor-pointer transition-colors"
+                className="cursor-pointer transition-colors"
                 onClick={() => window.location.href = `/team-leader/lead-management/leads/${encodeURIComponent(r.phone)}`}
               >
-                <td className="px-4 py-2 text-blue-600 underline">{r.phone}</td>
-                <td className="px-4 py-2">{r.name || '—'}</td>
-                <td className="px-4 py-2">{r.email || '—'}</td>
-                <td className="px-4 py-2">{r.source || '—'}</td>
-                <td className="px-4 py-2">{r.stage}</td>
-                <td className="px-4 py-2">{r.score ?? '—'}</td>
-                <td className="px-4 py-2">{ownersMap[r.ownerId || ''] || r.ownerId || '—'}</td>
-                <td className="px-4 py-2">{r.createdAt ? new Date(r.createdAt).toLocaleString() : '—'}</td>
-                <td className="px-4 py-2">{r.lastActivityAt ? new Date(r.lastActivityAt).toLocaleString() : '—'}</td>
-
-                <td className="px-4 py-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                <TD className="text-blue-600 underline">{r.phone}</TD>
+                <TD>{r.name || '—'}</TD>
+                <TD>{r.email || '—'}</TD>
+                <TD>{r.source || '—'}</TD>
+                <TD>{r.stage}</TD>
+                <TD>{r.score ?? '—'}</TD>
+                <TD>{ownersMap[r.ownerId || ''] || r.ownerId || '—'}</TD>
+                <TD>{r.createdAt ? new Date(r.createdAt).toLocaleString() : '—'}</TD>
+                <TD>{r.lastActivityAt ? new Date(r.lastActivityAt).toLocaleString() : '—'}</TD>
+                <TD>
+                  <Badge className={`${
                     (r.callCount || 0) > 5 ? 'bg-green-100 text-green-800' :
                     (r.callCount || 0) > 2 ? 'bg-yellow-100 text-yellow-800' :
                     'bg-slate-100 text-slate-800'
                   }`}>
                     {r.callCount || 0}
-                  </span>
-                </td>
-              </tr>
+                  </Badge>
+                </TD>
+              </TR>
             ))}
             {!loading && rows.length === 0 && (
-              <tr>
-                <td className="px-4 py-10 text-center text-slate-500" colSpan={10}>No results</td>
-              </tr>
+              <TR>
+                <TD className="text-center text-slate-500" colSpan={10}>No results</TD>
+              </TR>
             )}
-          </tbody>
-        </table>
-      </div>
+          </TBody>
+        </Table>
+      </Card>
     </div>
   );
 }

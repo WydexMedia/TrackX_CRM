@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 interface TaskRow { 
   id: number; 
@@ -12,21 +16,21 @@ interface TaskRow {
   createdAt: string | null;
 }
 
-const getStatusColor = (status: string) => {
+const getStatusBadge = (status: string) => {
   switch (status.toLowerCase()) {
     case 'done':
     case 'completed':
-      return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+      return <Badge variant='success'>{status.replace('_', ' ')}</Badge>;
     case 'in_progress':
     case 'working':
-      return 'text-blue-700 bg-blue-50 border-blue-200';
+      return <Badge className='text-blue-700 bg-blue-50 border-blue-200'>{status.replace('_', ' ')}</Badge>;
     case 'pending':
     case 'todo':
-      return 'text-yellow-700 bg-yellow-50 border-yellow-200';
+      return <Badge className='text-green-700 bg-green-50 border-green-200'>{status.replace('_', ' ')}</Badge>;
     case 'overdue':
-      return 'text-red-700 bg-red-50 border-red-200';
+      return <Badge className='text-red-700 bg-red-50 border-red-200'>{status.replace('_', ' ')}</Badge>;
     default:
-      return 'text-slate-700 bg-slate-50 border-slate-200';
+      return <Badge variant='secondary'>{status.replace('_', ' ')}</Badge>;
   }
 };
 
@@ -47,30 +51,30 @@ const getPriorityBadge = (priority: string) => {
   switch (priority) {
     case 'overdue':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-red-700 bg-red-100 border border-red-200">
+        <Badge className="gap-1 bg-red-100 text-red-700 border-red-200">
           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
           Overdue
-        </span>
+        </Badge>
       );
     case 'urgent':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-red-700 bg-red-50 border border-red-200">
+        <Badge className="gap-1 bg-red-50 text-red-700 border-red-200">
           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
           </svg>
           Urgent
-        </span>
+        </Badge>
       );
     case 'high':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200">
+        <Badge className="gap-1 bg-orange-50 text-orange-700 border-orange-200">
           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
           </svg>
           High
-        </span>
+        </Badge>
       );
     default:
       return null;
@@ -188,75 +192,84 @@ export default function TasksPage() {
             </div>
           </div>
           
-          <button
+          <Button
             onClick={refresh}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+            variant="outline"
+            className="gap-2"
           >
             <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             Refresh
-          </button>
+          </Button>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-slate-900">{taskStats.total}</div>
+                  <div className="text-sm text-slate-600">Total Tasks</div>
+                </div>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-slate-900">{taskStats.total}</div>
-                <div className="text-sm text-slate-600">Total Tasks</div>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
           
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-slate-900">{taskStats.pending}</div>
+                  <div className="text-sm text-slate-600">Pending</div>
+                </div>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-slate-900">{taskStats.pending}</div>
-                <div className="text-sm text-slate-600">Pending</div>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
           
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-slate-900">{taskStats.overdue}</div>
+                  <div className="text-sm text-slate-600">Overdue</div>
+                </div>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-slate-900">{taskStats.overdue}</div>
-                <div className="text-sm text-slate-600">Overdue</div>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
           
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-slate-900">{taskStats.completed}</div>
+                  <div className="text-sm text-slate-600">Completed</div>
+                </div>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-slate-900">{taskStats.completed}</div>
-                <div className="text-sm text-slate-600">Completed</div>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Filters and Bulk Actions */}
@@ -270,22 +283,18 @@ export default function TasksPage() {
                 { key: 'overdue', label: 'Overdue', count: taskStats.overdue },
                 { key: 'completed', label: 'Completed', count: taskStats.completed }
               ].map((option) => (
-                <button
+                <Button
                   key={option.key}
                   onClick={() => setFilter(option.key as any)}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                    filter === option.key
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
-                  }`}
+                  variant={filter === option.key ? "default" : "outline"}
+                  size="sm"
+                  className="gap-2"
                 >
                   {option.label}
-                  <span className={`px-1.5 py-0.5 rounded text-xs ${
-                    filter === option.key ? 'bg-white/20' : 'bg-slate-100'
-                  }`}>
+                  <Badge variant="secondary" className="ml-1">
                     {option.count}
-                  </span>
-                </button>
+                  </Badge>
+                </Button>
               ))}
             </div>
           </div>
@@ -293,10 +302,10 @@ export default function TasksPage() {
           {selectedTasks.length > 0 && (
             <div className="flex items-center gap-3">
               <span className="text-sm text-slate-600">{selectedTasks.length} selected</span>
-              <button
+              <Button
                 onClick={handleBulkComplete}
                 disabled={bulkLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                className="gap-2"
               >
                 {bulkLoading ? (
                   <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -309,14 +318,14 @@ export default function TasksPage() {
                   </svg>
                 )}
                 Mark Complete
-              </button>
+              </Button>
             </div>
           )}
         </div>
       </div>
 
       {/* Tasks Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+      <Card className="overflow-hidden">
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto mb-4"></div>
@@ -340,33 +349,33 @@ export default function TasksPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50">
+            <Table>
+              <THead>
                 <tr>
-                  <th className="text-left px-4 py-3 w-12">
+                  <TH className="w-12">
                     <input
                       type="checkbox"
                       checked={selectedTasks.length === filteredRows.filter(t => t.status.toLowerCase() !== 'done').length && filteredRows.filter(t => t.status.toLowerCase() !== 'done').length > 0}
                       onChange={handleSelectAll}
                       className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
                     />
-                  </th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-900">Priority</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-900">Lead</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-900">Task</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-900">Due</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-900">Status</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-900">Actions</th>
+                  </TH>
+                  <TH>Priority</TH>
+                  <TH>Lead</TH>
+                  <TH>Task</TH>
+                  <TH>Due</TH>
+                  <TH>Status</TH>
+                  <TH>Actions</TH>
                 </tr>
-              </thead>
-              <tbody>
+              </THead>
+              <TBody>
                 {filteredRows.map((task) => {
                   const priority = getPriorityColor(task.dueAt, task.status);
                   const isDone = task.status.toLowerCase() === 'done';
                   
                   return (
-                    <tr key={task.id} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="px-4 py-3">
+                    <TR key={task.id}>
+                      <TD>
                         {!isDone && (
                           <input
                             type="checkbox"
@@ -381,11 +390,11 @@ export default function TasksPage() {
                             className="rounded border-slate-300 text-slate-600 focus:ring-slate-500"
                           />
                         )}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TD>
+                      <TD>
                         {getPriorityBadge(priority)}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TD>
+                      <TD>
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
                             <svg className="w-4 h-4 text-slate-600" fill="currentColor" viewBox="0 0 20 20">
@@ -394,13 +403,13 @@ export default function TasksPage() {
                           </div>
                           <span className="font-medium text-slate-900">{task.leadPhone}</span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TD>
+                      <TD>
                         <div className={isDone ? 'line-through text-slate-500' : 'text-slate-900'}>
                           {task.title}
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TD>
+                      <TD>
                         {task.dueAt ? (
                           <div>
                             <div className="text-slate-900">{new Date(task.dueAt).toLocaleDateString()}</div>
@@ -409,16 +418,16 @@ export default function TasksPage() {
                         ) : (
                           <span className="text-slate-400">No due date</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(task.status)}`}>
-                          {task.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TD>
+                      <TD>
+                        {getStatusBadge(task.status)}
+                      </TD>
+                      <TD>
                         {!isDone ? (
-                          <button 
-                            className="text-emerald-600 hover:text-emerald-700 font-medium" 
+                          <Button 
+                            variant="ghost"
+                            size="sm"
+                            className="text-primary hover:text-primary/80 p-0 h-auto font-medium" 
                             onClick={async () => {
                               const res = await fetch("/api/tl/tasks", { 
                                 method: "PATCH", 
@@ -434,19 +443,19 @@ export default function TasksPage() {
                             }}
                           >
                             Mark Complete
-                          </button>
+                          </Button>
                         ) : (
                           <span className="text-slate-400">Completed</span>
                         )}
-                      </td>
-                    </tr>
+                      </TD>
+                    </TR>
                   );
                 })}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

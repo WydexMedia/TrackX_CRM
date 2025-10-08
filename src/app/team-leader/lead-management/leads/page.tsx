@@ -4,12 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 import { AddLeadModal, ImportLeadsModal } from "./AddLeadModals";
 import { ListCreateModal } from "./ListCreateModal";
 import toast from "react-hot-toast";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Clipboard, 
   RotateCcw, 
@@ -193,7 +200,7 @@ export default function LeadsPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/tl/leads?${params}`)
+    authenticatedFetch(`/api/tl/leads?${params}`)
       .then((r) => r.json())
       .then((d) => { 
         setRows(d.rows || []); 
@@ -221,7 +228,7 @@ export default function LeadsPage() {
       }
     }
     
-    fetch("/api/users")
+    authenticatedFetch("/api/users")
       .then((r) => r.json())
       .then((all) => {
         const onlySales = (Array.isArray(all) ? all : []).filter((u: any) => (u.role ?? 'sales') === "sales");
@@ -253,7 +260,7 @@ export default function LeadsPage() {
   const performBulkDelete = async () => {
     if (phones.length === 0) return;
     try {
-      const res = await fetch("/api/tl/leads", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phones }) });
+      const res = await authenticatedFetch("/api/tl/leads", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phones }) });
       if (!res.ok) throw new Error("Failed to delete leads");
       toast.success("Deleted selected leads");
       setSelected({});
@@ -306,7 +313,7 @@ export default function LeadsPage() {
   };
 
   const refreshData = () => {
-    fetch(`/api/tl/leads?${params}`).then((r) => r.json()).then((d) => {
+    authenticatedFetch(`/api/tl/leads?${params}`).then((r) => r.json()).then((d) => {
       setRows(d.rows || []);
       setTotal(d.total || 0);
     });
@@ -428,17 +435,18 @@ export default function LeadsPage() {
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-semibold text-gray-900">Lead Lists</h1>
                 <Tooltip>
-                <TooltipTrigger asChild>
-                <button
-                  onClick={() => setShowCreateList(true)}
-                  className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
-                      <p className="font-medium">Create New List</p>
-                    </TooltipContent>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCreateList(true)}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
+                    <p className="font-medium">Create New List</p>
+                  </TooltipContent>
                 </Tooltip>
               </div>
             )}
@@ -447,12 +455,13 @@ export default function LeadsPage() {
                 <>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
+                      <Button
+                        variant={showAdvancedFilters ? "default" : "ghost"}
+                        size="sm"
                         onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                        className={`p-2 rounded-lg text-sm ${showAdvancedFilters ? 'bg-blue-100 text-blue-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
                       >
                         <Filter className="w-5 h-5" />
-                      </button>
+                      </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
                       <p className="font-medium">Advanced Filters</p>
@@ -460,12 +469,13 @@ export default function LeadsPage() {
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setShowCreateView(true)}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
                       >
                         <Cylinder className="w-5 h-5" />
-                      </button>
+                      </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
                       <p className="font-medium">Create custom view</p>
@@ -475,12 +485,13 @@ export default function LeadsPage() {
               )}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
                   >
                     {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-                  </button>
+                  </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
                   <p className="font-medium">{sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}</p>
@@ -507,9 +518,9 @@ export default function LeadsPage() {
           {/* Search */}
           {!sidebarCollapsed && (
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
+              <Input
+                className="pl-10"
                 placeholder="Search leads..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -534,8 +545,9 @@ export default function LeadsPage() {
                           : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
-                      <button
-                        className="flex items-center gap-3 flex-1 text-left"
+                      <Button
+                        variant="ghost"
+                        className="flex items-center gap-3 flex-1 text-left justify-start"
                         onClick={() => {
                           setCurrentView(`list-${l.id}`);
                           setSelected({});
@@ -544,9 +556,11 @@ export default function LeadsPage() {
                       >
                         <Pin className="w-4 h-4" />
                         <span className="font-medium">{l.name}</span>
-                      </button>
-                      <button
-                        className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="p-1 hover:bg-red-50 text-gray-400 hover:text-red-600"
                         onClick={() => {
                           setDeletingListId(l.id);
                           setConfirmDeleteListOpen(true);
@@ -554,7 +568,7 @@ export default function LeadsPage() {
                         aria-label="Delete list"
                       >
                         <Trash className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -567,22 +581,18 @@ export default function LeadsPage() {
                   return (
                     <Tooltip key={view.id}>
                       <TooltipTrigger asChild>
-                        <button
+                        <Button
+                          variant={currentView === view.id ? "default" : "ghost"}
+                          size="sm"
                           onClick={() => {
                             setCurrentView(view.id);
                             setPage(1);
                             setSelected({});
                           }}
-                          className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-3 py-2'} text-sm rounded-lg transition-colors ${
-                            currentView === view.id
-                              ? "bg-blue-50 text-blue-700 border border-blue-200"
-                              : "text-gray-700 hover:bg-gray-50"
-                          }`}
+                          className="w-full justify-center"
                         >
-                          <div className={`flex items-center ${sidebarCollapsed ? '' : 'gap-3'}`}>
-                            <IconComponent className="w-4 h-4 flex-shrink-0" />
-                          </div>
-                        </button>
+                          <IconComponent className="w-4 h-4 flex-shrink-0" />
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
                         <p className="font-medium">{view.name}</p>
@@ -591,31 +601,27 @@ export default function LeadsPage() {
                   );
                 }
                 return (
-                  <button
+                  <Button
                     key={view.id}
+                    variant={currentView === view.id ? "default" : "ghost"}
+                    size="sm"
                     onClick={() => {
                       setCurrentView(view.id);
                       setPage(1);
                       setSelected({});
                     }}
-                    className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-3 py-2'} text-sm rounded-lg transition-colors ${
-                      currentView === view.id
-                        ? "bg-blue-50 text-blue-700 border border-blue-200"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
+                    className="w-full justify-between"
                   >
-                    <div className={`flex items-center ${sidebarCollapsed ? '' : 'gap-3'}`}>
+                    <div className="flex items-center gap-3">
                       <IconComponent className="w-5 h-5 flex-shrink-0" />
-                      {!sidebarCollapsed && (
-                        <span className="font-medium">{view.name}</span>
-                      )}
+                      <span className="font-medium">{view.name}</span>
                     </div>
-                    {!sidebarCollapsed && view.count !== undefined && (
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                    {view.count !== undefined && (
+                      <Badge variant="outline" className="text-xs">
                         {view.count}
-                      </span>
+                      </Badge>
                     )}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -629,14 +635,12 @@ export default function LeadsPage() {
               <>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button 
-                      className={`w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-2'}`}
+                    <Button 
+                      className="w-full"
                       onClick={() => setShowAdd(true)}
                     >
-                      <span className="inline-flex text-white">
-                        <Plus className="w-4 h-4 stroke-white" strokeWidth={2.5} />
-                      </span>
-                    </button>
+                      <Plus className="w-4 h-4" />
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
                     <p className="font-medium">Add Lead</p>
@@ -644,14 +648,13 @@ export default function LeadsPage() {
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button 
-                      className={`w-full bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-2'}`}
+                    <Button 
+                      variant="secondary"
+                      className="w-full"
                       onClick={() => setShowImport(true)}
                     >
-                      <span className="inline-flex text-white">
-                        <Upload className="w-4 h-4 stroke-white" strokeWidth={2.5} />
-                      </span>
-                    </button>
+                      <Upload className="w-4 h-4" />
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="bg-gray-100 border border-gray-200 text-gray-800 shadow-lg">
                     <p className="font-medium">Import</p>
@@ -660,24 +663,21 @@ export default function LeadsPage() {
               </>
             ) : (
               <>
-                <button 
-                  className={`w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-2'}`}
+                <Button 
+                  className="w-full"
                   onClick={() => setShowAdd(true)}
                 >
-                  <span className="inline-flex text-white">
-                    <Plus className="w-5 h-5 stroke-white" strokeWidth={2.5} />
-                  </span>
-                  {!sidebarCollapsed && "Add Lead"}
-                </button>
-                <button 
-                  className={`w-full bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-center gap-2'}`}
+                  <Plus className="w-5 h-5" />
+                  Add Lead
+                </Button>
+                <Button 
+                  variant="secondary"
+                  className="w-full"
                   onClick={() => setShowImport(true)}
                 >
-                  <span className="inline-flex text-white">
-                    <Upload className="w-5 h-5 stroke-white" strokeWidth={2.5} />
-                  </span>
-                  {!sidebarCollapsed && "Import"}
-                </button>
+                  <Upload className="w-5 h-5" />
+                  Import
+                </Button>
               </>
             )}
           </div>
@@ -925,10 +925,10 @@ export default function LeadsPage() {
         {/* Table */}
         <div className="flex-1 overflow-auto">
           <div className="bg-white">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
-                <tr>
-                  <th className="w-12 px-4 py-3">
+            <Table>
+              <THead className="bg-gray-50 sticky top-0">
+                <TR>
+                  <TH className="w-12">
                     <input 
                       type="checkbox" 
                       onChange={(e) => {
@@ -937,52 +937,53 @@ export default function LeadsPage() {
                         setSelected(next);
                       }} 
                     />
-                  </th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-700">Lead</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-700">Stage</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-700">Owner</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-700">Source</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-700">Score</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-700">Last Activity</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-700">Created</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
+                  </TH>
+                  <TH>Lead</TH>
+                  <TH>Stage</TH>
+                  <TH>Owner</TH>
+                  <TH>Source</TH>
+                  <TH>Score</TH>
+                  <TH>Last Activity</TH>
+                  <TH>Created</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {loading ? (
-                  <tr>
-                    <td className="px-4 py-8 text-center text-gray-500" colSpan={8}>
+                  <TR>
+                    <TD className="text-center text-gray-500" colSpan={8}>
                       <div className="flex items-center justify-center gap-2">
                         <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
                         Loading leads...
                       </div>
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
                 ) : rows.length === 0 ? (
-                  <tr>
-                    <td className="px-4 py-8 text-center text-gray-500" colSpan={8}>
+                  <TR>
+                    <TD className="text-center text-gray-500" colSpan={8}>
                       <div className="flex flex-col items-center gap-2">
                         <Clipboard className="w-12 h-12 text-gray-300" />
                         <div>No leads found in this view</div>
-                        <button 
+                        <Button 
+                          variant="ghost"
                           className="text-blue-600 hover:text-blue-700 text-sm"
                           onClick={() => setShowAdd(true)}
                         >
                           Add your first lead
-                        </button>
+                        </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
                 ) : (
                   rows.map((lead) => (
-                    <tr key={lead.phone} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3">
+                    <TR key={lead.phone} className="hover:bg-gray-50 transition-colors">
+                      <TD>
                         <input 
                           type="checkbox" 
                           checked={!!selected[lead.phone]} 
                           onChange={(e) => setSelected({ ...selected, [lead.phone]: e.target.checked })} 
                         />
-                      </td>
-                      <td className="px-4 py-3">
+                      </TD>
+                      <TD>
                         <div className="flex flex-col">
                           <a 
                             href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
@@ -994,19 +995,19 @@ export default function LeadsPage() {
                             <span>{lead.phone}</span>
                             {lead.email && <span>• {lead.email}</span>}
                             {lead.callCount !== undefined && lead.callCount > 0 && (
-                              <span className="bg-gray-100 text-gray-600 px-1 rounded">
+                              <Badge variant="outline" className="text-xs">
                                 {lead.callCount} calls
-                              </span>
+                              </Badge>
                             )}
                           </div>
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TD>
+                      <TD>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStageColor(lead.stage)}`}>
+                            <Badge className={`${getStageColor(lead.stage)}`}>
                               {lead.stage || "Not contacted"}
-                            </span>
+                            </Badge>
                           </TooltipTrigger>
                           <TooltipContent 
                             side="top" 
@@ -1015,33 +1016,33 @@ export default function LeadsPage() {
                             <p className="font-medium">{lead.stage || "Not contacted"}</p>
                           </TooltipContent>
                         </Tooltip>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
+                      </TD>
+                      <TD className="text-gray-600">
                         {(sales.find((s) => s.code === lead.ownerId)?.name) || lead.ownerId || "—"}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TD>
+                      <TD>
                         <div className="flex items-center gap-1">
                           {getSourceIcon(lead.source || "")}
                           <span className="text-gray-600">{lead.source || "—"}</span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TD>
+                      <TD>
                         <div className="flex items-center gap-1">
                           <span className="font-mono text-sm">{lead.score ?? 0}</span>
                           {(lead.score ?? 0) >= 80 && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 text-xs">
+                      </TD>
+                      <TD className="text-gray-600 text-xs">
                         {lead.lastActivityAt ? new Date(lead.lastActivityAt).toLocaleDateString() : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 text-xs">
+                      </TD>
+                      <TD className="text-gray-600 text-xs">
                         {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : "—"}
-                      </td>
-                    </tr>
+                      </TD>
+                    </TR>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           </div>
         </div>
 
@@ -1070,20 +1071,22 @@ export default function LeadsPage() {
                 </div>
                 {total > pageSize && (
                   <div className="flex gap-2">
-                    <button
-                      className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 hover:bg-gray-50"
+                    <Button
+                      variant="outline"
+                      size="sm"
                       disabled={page === 1}
                       onClick={() => setPage(p => Math.max(1, p - 1))}
                     >
                       Previous
-                    </button>
-                    <button
-                      className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 hover:bg-gray-50"
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       disabled={page * pageSize >= total}
                       onClick={() => setPage(p => p + 1)}
                     >
                       Next
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -1093,174 +1096,172 @@ export default function LeadsPage() {
       </div>
 
       {/* Create Custom View Modal */}
-      {showCreateView && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Custom View</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">View Name</label>
-                <input
-                  type="text"
-                  value={newViewName}
-                  onChange={(e) => setNewViewName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter view name..."
-                />
-              </div>
-              <p className="text-sm text-gray-600">
-                This will create a view with the current filters: {currentViewData.name}
-                {showAdvancedFilters && getActiveAdvancedFilterCount() > 0 && ` + ${getActiveAdvancedFilterCount()} advanced filter(s)`}
-              </p>
+      <Dialog open={showCreateView} onOpenChange={setShowCreateView}>
+        <DialogContent className="w-full max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Custom View</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">View Name</label>
+              <Input
+                type="text"
+                value={newViewName}
+                onChange={(e) => setNewViewName(e.target.value)}
+                placeholder="Enter view name..."
+              />
             </div>
-            <div className="mt-6 flex items-center justify-end gap-2">
-              <button
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                onClick={() => {
-                  setShowCreateView(false);
-                  setNewViewName("");
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                onClick={createCustomView}
-              >
-                Create View
-              </button>
-            </div>
+            <p className="text-sm text-gray-600">
+              This will create a view with the current filters: {currentViewData.name}
+              {showAdvancedFilters && getActiveAdvancedFilterCount() > 0 && ` + ${getActiveAdvancedFilterCount()} advanced filter(s)`}
+            </p>
           </div>
-        </div>
-      )}
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCreateView(false);
+                setNewViewName("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={createCustomView}>
+              Create View
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation modal */}
-      {confirmDeleteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold text-gray-900">Delete selected leads?</h3>
-            <p className="text-sm text-gray-600 mt-1">This action cannot be undone. You are about to delete {phones.length} lead(s).</p>
-            <div className="mt-6 flex items-center justify-end gap-2">
-              <button
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                onClick={() => setConfirmDeleteOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                onClick={performBulkDelete}
-              >
-                Delete
-              </button>
-            </div>
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent className="w-full max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete selected leads?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">This action cannot be undone. You are about to delete {phones.length} lead(s).</p>
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDeleteOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={performBulkDelete}
+            >
+              Delete
+            </Button>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete List confirmation modal */}
-      {confirmDeleteListOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold text-gray-900">Delete this list?</h3>
-            <p className="text-sm text-gray-600 mt-1">This will remove the list and its items. Leads remain intact.</p>
-            <div className="mt-6 flex items-center justify-end gap-2">
-              <button
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                onClick={() => {
+      <Dialog open={confirmDeleteListOpen} onOpenChange={(open) => {
+        setConfirmDeleteListOpen(open);
+        if (!open) setDeletingListId(null);
+      }}>
+        <DialogContent className="w-full max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete this list?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">This will remove the list and its items. Leads remain intact.</p>
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirmDeleteListOpen(false);
+                setDeletingListId(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!deletingListId) return;
+                try {
+                  const res = await fetch('/api/tl/lists', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ listId: deletingListId }),
+                  });
+                  if (!res.ok) throw new Error('Failed');
+                  toast.success('List deleted');
+                  setLists(prev => prev.filter(l => l.id !== deletingListId));
+                  if (currentView === `list-${deletingListId}`) {
+                    setCurrentView('all');
+                  }
+                } catch {
+                  toast.error('Failed to delete list');
+                } finally {
                   setConfirmDeleteListOpen(false);
                   setDeletingListId(null);
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                onClick={async () => {
-                  if (!deletingListId) return;
-                  try {
-                    const res = await fetch('/api/tl/lists', {
-                      method: 'DELETE',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ listId: deletingListId }),
-                    });
-                    if (!res.ok) throw new Error('Failed');
-                    toast.success('List deleted');
-                    setLists(prev => prev.filter(l => l.id !== deletingListId));
-                    if (currentView === `list-${deletingListId}`) {
-                      setCurrentView('all');
-                    }
-                  } catch {
-                    toast.error('Failed to delete list');
-                  } finally {
-                    setConfirmDeleteListOpen(false);
-                    setDeletingListId(null);
-                  }
-                }}
-              >
-                Delete
-              </button>
-            </div>
+                }
+              }}
+            >
+              Delete
+            </Button>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Create Task modal */}
-      {createTaskOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-900">Create Tasks</h3>
-            <p className="text-sm text-gray-600 mt-1">Create tasks for {phones.length} selected lead(s).</p>
-            
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Task Title</label>
-                <input
-                  type="text"
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                  placeholder="Enter task title..."
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Assign to</label>
-                <select
-                  value={taskAssignee}
-                  onChange={(e) => setTaskAssignee(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                >
-                  <option value="">Select assignee...</option>
-                  {sales.map((s) => (
-                    <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
-                  ))}
-                </select>
-              </div>
+      <Dialog open={createTaskOpen} onOpenChange={setCreateTaskOpen}>
+        <DialogContent className="w-full max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Tasks</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">Create tasks for {phones.length} selected lead(s).</p>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Task Title</label>
+              <Input
+                type="text"
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+                placeholder="Enter task title..."
+              />
             </div>
             
-            <div className="mt-6 flex items-center justify-end gap-2">
-              <button
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                onClick={() => {
-                  setCreateTaskOpen(false);
-                  setTaskTitle("Follow up");
-                  setTaskAssignee("");
-                }}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Assign to</label>
+              <select
+                value={taskAssignee}
+                onChange={(e) => setTaskAssignee(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
               >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50"
-                onClick={performCreateTasks}
-                disabled={creatingTask || !taskTitle.trim() || !taskAssignee}
-              >
-                {creatingTask ? "Creating..." : "Create Tasks"}
-              </button>
+                <option value="">Select assignee...</option>
+                {sales.map((s) => (
+                  <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
+                ))}
+              </select>
             </div>
           </div>
-        </div>
-      )}
+          
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCreateTaskOpen(false);
+                setTaskTitle("Follow up");
+                setTaskAssignee("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-cyan-600 hover:bg-cyan-700"
+              onClick={performCreateTasks}
+              disabled={creatingTask || !taskTitle.trim() || !taskAssignee}
+            >
+              {creatingTask ? "Creating..." : "Create Tasks"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AddLeadModal
         open={showAdd}

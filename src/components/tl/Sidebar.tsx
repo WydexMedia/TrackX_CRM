@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Card, CardContent } from "@/components/ui/card";
 
 const items = [
   { href: "/team-leader/lead-management", label: "Overview", icon: Icons.LayoutDashboard, badge: null },
@@ -79,49 +83,64 @@ export default function Sidebar() {
             </div>
           </div>
         )}
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+          className="p-2"
         >
           <svg className={cn("w-4 h-4 text-slate-600 transition-transform", isCollapsed && "rotate-180")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
           </svg>
-        </button>
+        </Button>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {items.map(({ href, label, icon: Icon, badge }) => {
           const active = pathname === href || (href !== "/team-leader/lead-management" && pathname?.startsWith(href));
+          
+          const linkContent = (
+            <Link
+              href={href}
+              className={cn(
+                "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 hover:bg-slate-50",
+                active && "bg-blue-50 text-blue-700 shadow-sm border border-blue-100",
+                !active && "text-slate-700 hover:text-slate-900"
+              )}
+            >
+              <Icon className={cn("h-5 w-5 flex-shrink-0", active && "text-blue-600")} />
+              {!isCollapsed && (
+                <>
+                  <span className="flex-1">{label}</span>
+                  {badge === "automation" && shortRule && (
+                    <Badge 
+                      variant="outline" 
+                      className={cn("text-[10px] px-2 py-0.5", shortRule.color)}
+                      title={shortRule.title}
+                    >
+                      {shortRule.short}
+                    </Badge>
+                  )}
+                </>
+              )}
+            </Link>
+          );
+
           return (
             <div key={href} className="relative">
-              <Link
-                href={href}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 hover:bg-slate-50",
-                  active && "bg-blue-50 text-blue-700 shadow-sm border border-blue-100",
-                  !active && "text-slate-700 hover:text-slate-900"
-                )}
-                title={isCollapsed ? label : undefined}
-              >
-                <Icon className={cn("h-5 w-5 flex-shrink-0", active && "text-blue-600")} />
-                {!isCollapsed && (
-                  <>
-                    <span className="flex-1">{label}</span>
-                    {badge === "automation" && shortRule && (
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
-                          shortRule.color
-                        )}
-                        title={shortRule.title}
-                      >
-                        {shortRule.short}
-                      </span>
-                    )}
-                  </>
-                )}
-              </Link>
+              {isCollapsed ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {linkContent}
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>{label}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                linkContent
+              )}
               {active && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 rounded-r-full" />
               )}
@@ -133,17 +152,19 @@ export default function Sidebar() {
       {/* Footer */}
       {!isCollapsed && (
         <div className="p-3 border-t border-slate-100">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
-            <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
-              <svg className="w-4 h-4 text-slate-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-slate-900 truncate">Team Leader</div>
-              <div className="text-xs text-slate-500">v1.0.0</div>
-            </div>
-          </div>
+          <Card className="bg-slate-50">
+            <CardContent className="flex items-center gap-3 p-3">
+              <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
+                <svg className="w-4 h-4 text-slate-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-slate-900 truncate">Team Leader</div>
+                <div className="text-xs text-slate-500">v1.0.0</div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </aside>

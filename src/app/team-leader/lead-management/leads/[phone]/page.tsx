@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 import { 
   Target, 
   BarChart3, 
@@ -62,7 +63,7 @@ export default function LeadDetailPage() {
   // Function to fetch user names from API
   const fetchUserNames = async () => {
     try {
-      const response = await fetch("/api/tl/users");
+      const response = await authenticatedFetch("/api/tl/users");
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.users) {
@@ -111,7 +112,7 @@ export default function LeadDetailPage() {
       const currentUser = getCurrentUser();
       const actorId = currentUser?.code || "system";
       
-      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead?.phone || '')}`, {
+      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead?.phone || '')}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -125,7 +126,7 @@ export default function LeadDetailPage() {
         if (lead) lead.ownerId = selectedOwner;
         
         // Refresh data
-        const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
+        const d = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
         setLead(d.lead || null);
         setEvents(d.events || []);
         setTasks(d.tasks || []);
@@ -145,7 +146,7 @@ export default function LeadDetailPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/tl/leads/${encodeURIComponent(phone)}`)
+    authenticatedFetch(`/api/tl/leads/${encodeURIComponent(phone)}`)
       .then((r) => r.json())
       .then((d) => { setLead(d.lead || null); setEvents(d.events || []); setTasks(d.tasks || []); })
       .finally(() => setLoading(false));
@@ -155,7 +156,7 @@ export default function LeadDetailPage() {
   }, [phone]);
 
   useEffect(() => {
-    fetch("/api/users")
+    authenticatedFetch("/api/users")
       .then((r) => r.json())
       .then((all) => {
         const onlySales = (Array.isArray(all) ? all : []).filter((u: any) => (u.role ?? 'sales') === "sales");
@@ -177,7 +178,7 @@ export default function LeadDetailPage() {
   const performDeleteLead = async () => {
     if (!lead) return;
     try {
-      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, { method: "DELETE" });
+      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete lead");
       toast.success("Lead deleted");
       window.location.href = "/team-leader/lead-management/leads";
@@ -700,7 +701,7 @@ export default function LeadDetailPage() {
                         const currentUser = getCurrentUser();
                         const actorId = currentUser?.code || "system";
 
-                        const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+                        const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
                           method: "PUT",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
@@ -716,7 +717,7 @@ export default function LeadDetailPage() {
                           
                           // Refresh lead data
                           console.log('Refreshing data after stage update...');
-                          const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
+                          const d = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
                           console.log('Quick stage change - refreshed data:', d);
                           console.log('Events count after refresh:', d.events?.length || 0);
                           console.log('Latest events:', d.events?.slice(0, 3));
@@ -792,7 +793,7 @@ export default function LeadDetailPage() {
                     try {
                       setAddingNote(true);
                       const toastId = toast.loading("Adding note...");
-                      const res = await fetch("/api/tl/leads/notes", { 
+                      const res = await authenticatedFetch("/api/tl/leads/notes", { 
                         method: "POST", 
                         headers: { "Content-Type": "application/json" }, 
                         body: JSON.stringify({ 
@@ -804,7 +805,7 @@ export default function LeadDetailPage() {
                         toast.success("Note added successfully", { id: toastId });
                         setNewNote("");
                         // Refresh events to show the new note
-                        const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
+                        const d = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
                         setEvents(d.events || []);
                       } else {
                         toast.error("Failed to add note", { id: toastId });

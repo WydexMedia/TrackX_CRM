@@ -27,6 +27,11 @@ import {
   PlayCircle,
 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // -----------------------------
 // DYNAMIC IMPORT FOR TENANT HOMEPAGE
@@ -99,14 +104,14 @@ function TenantLogo({ name = "Tenant" }: { name?: string }) {
 // -----------------------------
 function AnimatedChart() {
   return (
-    <div className="w-full h-56 rounded-xl bg-white/80 backdrop-blur border border-slate-200 p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
+    <Card className="w-full h-56 bg-white/80 backdrop-blur">
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
         <div className="flex items-center gap-2 text-slate-700">
           <BarChart3 className="w-5 h-5" />
-          <span className="font-medium">Lead Analytics</span>
-      </div>
-        <div className="text-xs text-slate-500">Last 30 days</div>
-                </div>
+          <CardTitle className="text-sm font-medium">Lead Analytics</CardTitle>
+        </div>
+        <Badge variant="outline" className="text-xs">Last 30 days</Badge>
+      </CardHeader>
       <div className="relative h-36">
         {/* Bars */}
         <div className="absolute inset-0 flex items-end gap-2">
@@ -134,21 +139,23 @@ function AnimatedChart() {
           />
         </svg>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
-              <div>
-          <div className="text-slate-500">New Leads</div>
-          <div className="font-semibold text-slate-900">1,221</div>
-              </div>
-        <div>
-          <div className="text-slate-500">CPL</div>
-          <div className="font-semibold text-slate-900">₹4.85</div>
-            </div>
-              <div>
-          <div className="text-slate-500">Conversions</div>
-          <div className="font-semibold text-slate-900">312</div>
-                </div>
-            </div>
+      <CardContent className="pt-4">
+        <div className="grid grid-cols-3 gap-4 text-sm">
+          <div>
+            <div className="text-slate-500">New Leads</div>
+            <div className="font-semibold text-slate-900">1,221</div>
           </div>
+          <div>
+            <div className="text-slate-500">CPL</div>
+            <div className="font-semibold text-slate-900">₹4.85</div>
+          </div>
+          <div>
+            <div className="text-slate-500">Conversions</div>
+            <div className="font-semibold text-slate-900">312</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -163,29 +170,30 @@ function AppScreens() {
         whileInView={{ y: 0, opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6 }}
-        className="rounded-2xl border bg-white shadow-md p-4"
       >
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-slate-700">
-            <LayoutDashboard className="w-5 h-5" />
-            <span className="font-semibold">Pipeline Overview</span>
+        <Card className="shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="flex items-center gap-2 text-slate-700">
+              <LayoutDashboard className="w-5 h-5" />
+              <CardTitle className="text-base">Pipeline Overview</CardTitle>
             </div>
-          <span className="text-xs text-slate-500">Today</span>
-          </div>
-        <div className="grid grid-cols-3 gap-3">
-          {["New", "Qualified", "Won"].map((col, i) => (
-            <div key={col} className="rounded-xl border p-3">
-              <div className="text-xs text-slate-500">{col}</div>
-              <div className="text-2xl font-bold">{[56, 34, 18][i]}</div>
-              <div className="mt-2 h-1.5 rounded bg-slate-100">
-                <div className="h-1.5 rounded bg-gradient-to-r from-indigo-500 to-violet-500" style={{ width: `${[68, 42, 88][i]}%` }} />
-        </div>
-          </div>
-          ))}
-          </div>
-        <div className="mt-4">
-          <AnimatedChart />
-                </div>
+            <Badge variant="outline" className="text-xs">Today</Badge>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {["New", "Qualified", "Won"].map((col, i) => (
+                <Card key={col} className="p-3">
+                  <div className="text-xs text-slate-500">{col}</div>
+                  <div className="text-2xl font-bold">{[56, 34, 18][i]}</div>
+                  <div className="mt-2 h-1.5 rounded bg-slate-100">
+                    <div className="h-1.5 rounded bg-gradient-to-r from-indigo-500 to-violet-500" style={{ width: `${[68, 42, 88][i]}%` }} />
+                  </div>
+                </Card>
+              ))}
+            </div>
+            <AnimatedChart />
+          </CardContent>
+        </Card>
       </motion.div>
 
       <motion.div
@@ -193,35 +201,40 @@ function AppScreens() {
         whileInView={{ y: 0, opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6, delay: 0.1 }}
-        className="rounded-2xl border bg-white shadow-md p-4"
       >
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-slate-700">
-            <Workflow className="w-5 h-5" />
-            <span className="font-semibold">Automations</span>
-                </div>
-          <span className="text-xs text-slate-500">Active: 7</span>
-                </div>
-        <ul className="space-y-3">
-          {[
-            { t: "Round-robin Lead Assignment", i: CheckCircle2 },
-            { t: "Auto WhatsApp on New Lead", i: Bot },
-            { t: "SLA Breach Alerts", i: ShieldCheck },
-            { t: "Webhook to LMS", i: Webhook },
-          ].map(({ t, i: Icon }, idx) => (
-            <li key={idx} className="flex items-center gap-3 p-3 rounded-xl border">
-              <Icon className="w-5 h-5 text-indigo-600" />
-              <span className="text-slate-700">{t}</span>
-              <span className="ml-auto text-xs text-slate-500">Running</span>
-            </li>
-          ))}
-        </ul>
-        <div className="mt-4 rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 p-4 border">
-          <div className="flex items-center gap-2 text-slate-800 font-medium">
-            <Rocket className="w-4 h-4" /> Boost conversions by 27% with Playbooks
-              </div>
-          <p className="text-sm text-slate-600 mt-1">Drag‑and‑drop sequences for calls, WhatsApp, and follow‑ups.</p>
+        <Card className="shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="flex items-center gap-2 text-slate-700">
+              <Workflow className="w-5 h-5" />
+              <CardTitle className="text-base">Automations</CardTitle>
             </div>
+            <Badge variant="success" className="text-xs">Active: 7</Badge>
+          </CardHeader>
+          <CardContent className="p-4">
+            <ul className="space-y-3">
+              {[
+                { t: "Round-robin Lead Assignment", i: CheckCircle2 },
+                { t: "Auto WhatsApp on New Lead", i: Bot },
+                { t: "SLA Breach Alerts", i: ShieldCheck },
+                { t: "Webhook to LMS", i: Webhook },
+              ].map(({ t, i: Icon }, idx) => (
+                <li key={idx} className="flex items-center gap-3 p-3 rounded-xl border">
+                  <Icon className="w-5 h-5 text-indigo-600" />
+                  <span className="text-slate-700">{t}</span>
+                  <Badge variant="outline" className="ml-auto text-xs">Running</Badge>
+                </li>
+              ))}
+            </ul>
+            <Card className="mt-4 bg-gradient-to-br from-indigo-50 to-violet-50 border-indigo-200">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-slate-800 font-medium">
+                  <Rocket className="w-4 h-4" /> Boost conversions by 27% with Playbooks
+                </div>
+                <p className="text-sm text-slate-600 mt-1">Drag‑and‑drop sequences for calls, WhatsApp, and follow‑ups.</p>
+              </CardContent>
+            </Card>
+          </CardContent>
+        </Card>
       </motion.div>
           </div>
   );
@@ -251,14 +264,18 @@ function Navbar({ onOpenMobile }: { onOpenMobile: () => void }) {
             <Link href="#faq" className="text-slate-700 hover:text-blue-600 font-medium transition-colors">FAQ</Link>
           </nav>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="px-3 py-2 text-slate-700 font-medium hover:text-blue-600 transition-colors">Login</Link>
-            <Link href="/signup" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2">
-              Get Started <ArrowRight className="w-4 h-4" />
-                  </Link>
-            <button onClick={onOpenMobile} className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors" aria-label="Open menu">
+            <Button variant="ghost" asChild>
+              <Link href="/login">Login</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/signup" className="flex items-center gap-2">
+                Get Started <ArrowRight className="w-4 h-4" />
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onOpenMobile} className="md:hidden" aria-label="Open menu">
               <Menu className="w-5 h-5" />
-            </button>
-                </div>
+            </Button>
+          </div>
               </div>
               </div>
     </header>
@@ -320,33 +337,42 @@ function Footer() {
 }
 
 // -----------------------------
-// MOBILE MENU (simple)
+// MOBILE MENU (using shadcn Dialog)
 // -----------------------------
 function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
-  if (!open) return null;
   return (
-    <div className="md:hidden fixed inset-0 z-50 bg-white">
-      <div className="flex items-center justify-between px-6 py-4 border-b">
-        <TenantLogo name="TrackX" />
-        <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100"><X className="w-5 h-5" /></button>
-                  </div>
-      <nav className="p-6 space-y-4">
-        {[
-          ["Features", "#features"],
-          ["Solutions", "#solutions"],
-          ["Pricing", "#pricing"],
-          ["FAQ", "#faq"],
-        ].map(([label, href]) => (
-          <Link key={label} className="block text-lg font-medium text-slate-800" href={href} onClick={onClose}>
-            {label}
-                </Link>
-              ))}
-        <div className="pt-4 flex gap-3">
-          <Link href="/login" className="px-4 py-2 rounded-lg border">Login</Link>
-          <Link href="/signup" className="px-4 py-2 rounded-lg bg-blue-600 text-white">Get Started</Link>
-            </div>
-      </nav>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="md:hidden fixed inset-0 z-50 bg-white max-w-none w-full h-full rounded-none">
+        <DialogHeader className="flex flex-row items-center justify-between">
+          <TenantLogo name="TrackX" />
+          <DialogClose asChild>
+            <Button variant="ghost" size="sm">
+              <X className="w-5 h-5" />
+            </Button>
+          </DialogClose>
+        </DialogHeader>
+        <nav className="p-6 space-y-4">
+          {[
+            ["Features", "#features"],
+            ["Solutions", "#solutions"],
+            ["Pricing", "#pricing"],
+            ["FAQ", "#faq"],
+          ].map(([label, href]) => (
+            <Link key={label} className="block text-lg font-medium text-slate-800" href={href} onClick={onClose}>
+              {label}
+            </Link>
+          ))}
+          <div className="pt-4 flex gap-3">
+            <Button variant="outline" asChild>
+              <Link href="/login">Login</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/signup">Get Started</Link>
+            </Button>
           </div>
+        </nav>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -384,26 +410,37 @@ function Hero() {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="mt-8 flex flex-col sm:flex-row gap-3"
             >
-              <Link href="/signup" className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors inline-flex items-center gap-2">
-                Get Started Free <ArrowRight className="w-4 h-4" />
-              </Link>
-              <a 
-                href="https://wa.me/919633180779?text=Hi! I'd like to see a demo of TrackX CRM for my institute." 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="px-6 py-3 bg-white border rounded-xl font-semibold hover:bg-slate-50 inline-flex items-center gap-2"
-              >
-                <PlayCircle className="w-4 h-4" /> Watch Demo
-              </a>
+              <Button size="lg" asChild>
+                <Link href="/signup" className="inline-flex items-center gap-2">
+                  Get Started Free <ArrowRight className="w-4 h-4" />
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" asChild>
+                <a 
+                  href="https://wa.me/919633180779?text=Hi! I'd like to see a demo of TrackX CRM for my institute." 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2"
+                >
+                  <PlayCircle className="w-4 h-4" /> Watch Demo
+                </a>
+              </Button>
             </motion.div>
             <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
               {["Leads", "Calls", "WhatsApp", "Tasks"].map((t) => (
-                <div key={t} className="rounded-xl border bg-white p-3 text-center">
-                  <div className="text-2xl font-bold">{t === "Leads" ? "50k+" : t === "Calls" ? "1.2M" : t === "WhatsApp" ? "3.4M" : "24k"}</div>
-                  <div className="text-slate-500">{t} tracked</div>
-                    </div>
+                <Tooltip key={t}>
+                  <TooltipTrigger asChild>
+                    <Card className="p-3 text-center cursor-help">
+                      <div className="text-2xl font-bold">{t === "Leads" ? "50k+" : t === "Calls" ? "1.2M" : t === "WhatsApp" ? "3.4M" : "24k"}</div>
+                      <div className="text-slate-500">{t} tracked</div>
+                    </Card>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Total {t.toLowerCase()} managed through TrackX platform</p>
+                  </TooltipContent>
+                </Tooltip>
               ))}
-                  </div>
+            </div>
                     </div>
           <div className="relative">
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
@@ -463,15 +500,19 @@ function Features() {
                     </div>
         <div className="grid md:grid-cols-3 gap-6">
           {items.map(({ icon: Icon, title, desc }) => (
-            <motion.div key={title} initial={{ y: 20, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.4 }} className="rounded-2xl border p-6 bg-white shadow-sm">
-              <div className="w-10 h-10 rounded-lg bg-indigo-600/10 text-indigo-700 grid place-items-center mb-4">
-                <Icon className="w-5 h-5" />
+            <motion.div key={title} initial={{ y: 20, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.4 }}>
+              <Card className="shadow-sm">
+                <CardContent className="p-6">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-600/10 text-indigo-700 grid place-items-center mb-4">
+                    <Icon className="w-5 h-5" />
                   </div>
-              <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-              <p className="text-slate-600 mt-2 text-sm leading-6">{desc}</p>
+                  <CardTitle className="text-lg mb-2">{title}</CardTitle>
+                  <p className="text-slate-600 text-sm leading-6">{desc}</p>
+                </CardContent>
+              </Card>
             </motion.div>
-              ))}
-            </div>
+          ))}
+        </div>
           </div>
         </section>
   );
@@ -574,37 +615,40 @@ function Pricing() {
             </div>
         <div className="grid md:grid-cols-3 gap-6">
           {tiers.map((t) => (
-            <div key={t.name} className={`rounded-2xl border p-6 bg-white shadow-sm ${t.highlighted ? "ring-2 ring-indigo-600" : ""}`}>
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold">{t.name}</h3>
+            <Card key={t.name} className={`shadow-sm ${t.highlighted ? "ring-2 ring-indigo-600" : ""}`}>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-xl">{t.name}</CardTitle>
                 {t.highlighted && (
-                  <span className="text-xs px-2 py-1 rounded bg-indigo-600 text-white">Popular</span>
+                  <Badge>Popular</Badge>
                 )}
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="flex items-end gap-1 mb-4">
+                  <div className="text-4xl font-extrabold">{t.price}</div>
+                  <div className="text-slate-500">{t.period}</div>
                 </div>
-              <div className="mt-4 flex items-end gap-1">
-                <div className="text-4xl font-extrabold">{t.price}</div>
-                <div className="text-slate-500">{t.period}</div>
-              </div>
-              <ul className="mt-4 space-y-2 text-slate-600 text-sm">
-                {t.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 mt-0.5 text-green-600" /> <span>{f}</span></li>
-                ))}
+                <ul className="space-y-2 text-slate-600 text-sm">
+                  {t.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 mt-0.5 text-green-600" /> <span>{f}</span></li>
+                  ))}
                 </ul>
+              </CardContent>
               {t.name === "Scale" ? (
-                <a 
-                  href="https://wa.me/919633180779?text=Hi! I'm interested in TrackX Scale plan for my business. Can we discuss pricing and features?" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="mt-6 inline-flex items-center justify-center w-full px-4 py-2 rounded-lg border bg-white hover:bg-slate-50 font-semibold"
-                >
-                  {t.cta}
-                </a>
+                <Button asChild className="m-6 w-auto">
+                  <a 
+                    href="https://wa.me/919633180779?text=Hi! I'm interested in TrackX Scale plan for my business. Can we discuss pricing and features?" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    {t.cta}
+                  </a>
+                </Button>
               ) : (
-                <Link href="/signup" className="mt-6 inline-flex items-center justify-center w-full px-4 py-2 rounded-lg border bg-white hover:bg-slate-50 font-semibold">
-                  {t.cta}
-                </Link>
+                <Button asChild className="m-6 w-auto">
+                  <Link href="/signup">{t.cta}</Link>
+                </Button>
               )}
-              </div>
+            </Card>
           ))}
                 </div>
                 </div>
@@ -641,13 +685,15 @@ function FAQ() {
         <h2 className="text-3xl font-bold text-slate-900 text-center mb-14">Frequently asked questions</h2>
         <Accordion type="single" collapsible className="w-full">
           {faqs.map(({ q, a }, index) => (
-            <AccordionItem key={index} value={`item-${index}`} className="rounded-xl border bg-white mb-4">
-              <AccordionTrigger className="px-6 py-4 text-left font-semibold text-slate-800 hover:no-underline">
-                {q}
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-4 text-slate-600">
-                {a}
-              </AccordionContent>
+            <AccordionItem key={index} value={`item-${index}`} className="mb-4">
+              <Card>
+                <AccordionTrigger className="px-6 py-4 text-left font-semibold text-slate-800 hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                  {q}
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pb-4 text-slate-600">
+                  {a}
+                </AccordionContent>
+              </Card>
             </AccordionItem>
           ))}
         </Accordion>
@@ -666,16 +712,19 @@ function FinalCTA() {
         <h2 className="text-4xl font-bold mb-4">Start converting today</h2>
         <p className="text-lg opacity-90">Bespoke CRM to capture, qualify, and close — with beautiful analytics your team will love.</p>
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-          <Link href="/signup" className="px-6 py-3 bg-white text-indigo-700 rounded-xl font-semibold hover:bg-slate-100">Get Started</Link>
-          <a 
-            href="https://wa.me/919633180779?text=Hi! I'd like to discuss TrackX CRM pricing and features for my business." 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="px-6 py-3 border border-white/30 rounded-xl font-semibold hover:bg-white/10"
-          >
-            Talk to Sales
-          </a>
-            </div>
+          <Button size="lg" variant="secondary" asChild>
+            <Link href="/signup">Get Started</Link>
+          </Button>
+          <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" asChild>
+            <a 
+              href="https://wa.me/919633180779?text=Hi! I'd like to discuss TrackX CRM pricing and features for my business." 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              Talk to Sales
+            </a>
+          </Button>
+        </div>
           </div>
         </section>
   );
