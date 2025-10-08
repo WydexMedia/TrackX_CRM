@@ -246,45 +246,59 @@ function ComprehensiveLeadModal({
     switch (color) {
       case "emerald":
         return {
-          bg: "bg-emerald-500",
-          ring: "ring-emerald-100",
-          text: "text-emerald-700",
-          bgLight: "bg-emerald-50"
+          bg: "bg-gradient-to-br from-primary to-primary/80",
+          ring: "ring-primary/10",
+          text: "text-primary",
+          bgLight: "bg-primary/5",
+          iconBg: "bg-primary/10"
         };
       case "blue":
         return {
-          bg: "bg-blue-500",
-          ring: "ring-blue-100",
+          bg: "bg-gradient-to-br from-blue-600 to-blue-700",
+          ring: "ring-blue-500/10",
           text: "text-blue-700",
-          bgLight: "bg-blue-50"
+          bgLight: "bg-blue-50/50",
+          iconBg: "bg-blue-100"
         };
       case "purple":
         return {
-          bg: "bg-purple-500",
-          ring: "ring-purple-100",
-          text: "text-purple-700",
-          bgLight: "bg-purple-50"
+          bg: "bg-gradient-to-br from-violet-600 to-violet-700",
+          ring: "ring-violet-500/10",
+          text: "text-violet-700",
+          bgLight: "bg-violet-50/50",
+          iconBg: "bg-violet-100"
         };
       case "amber":
         return {
-          bg: "bg-amber-500",
-          ring: "ring-amber-100",
+          bg: "bg-gradient-to-br from-amber-600 to-amber-700",
+          ring: "ring-amber-500/10",
           text: "text-amber-700",
-          bgLight: "bg-amber-50"
+          bgLight: "bg-amber-50/50",
+          iconBg: "bg-amber-100"
         };
       case "green":
         return {
-          bg: "bg-green-500",
-          ring: "ring-green-100",
-          text: "text-green-700",
-          bgLight: "bg-green-50"
+          bg: "bg-gradient-to-br from-emerald-600 to-emerald-700",
+          ring: "ring-emerald-500/10",
+          text: "text-emerald-700",
+          bgLight: "bg-emerald-50/50",
+          iconBg: "bg-emerald-100"
+        };
+      case "cyan":
+        return {
+          bg: "bg-gradient-to-br from-cyan-600 to-cyan-700",
+          ring: "ring-cyan-500/10",
+          text: "text-cyan-700",
+          bgLight: "bg-cyan-50/50",
+          iconBg: "bg-cyan-100"
         };
       default:
         return {
-          bg: "bg-slate-500",
-          ring: "ring-slate-100",
+          bg: "bg-gradient-to-br from-slate-600 to-slate-700",
+          ring: "ring-slate-500/10",
           text: "text-slate-700",
-          bgLight: "bg-slate-50"
+          bgLight: "bg-slate-50/50",
+          iconBg: "bg-slate-100"
         };
     }
   };
@@ -363,21 +377,21 @@ function ComprehensiveLeadModal({
                           )}
                           <div className="relative flex items-start space-x-4">
                             {/* Event Icon */}
-                            <div className={`relative flex-shrink-0 ${colors.bgLight} rounded-full p-2`}>
-                              <div className={`h-14 w-14 rounded-full ${colors.bg} flex items-center justify-center ring-4 ${colors.ring} shadow-lg hover:shadow-xl transition-all duration-200`}>
-                                <item.icon className="w-7 h-7 text-white" />
+                            <div className="relative flex-shrink-0">
+                              <div className={`h-12 w-12 rounded-full ${colors.bg} flex items-center justify-center ring-8 ${colors.ring} shadow-md hover:shadow-lg transition-all duration-200`}>
+                                <item.icon className="w-5 h-5 text-white" />
                               </div>
                             </div>
                             
                             {/* Event Content */}
                             <div className="flex-1 min-w-0">
-                              <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-200 hover:border-slate-300">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1 space-y-3">
-                                    <h3 className="text-sm font-semibold text-slate-900 leading-5">{item.label}</h3>
+                              <div className="bg-white rounded-lg p-4 border border-slate-200/60 shadow-sm hover:shadow-md hover:border-slate-300/60 transition-all duration-200">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 space-y-2">
+                                    <h3 className="text-sm font-semibold text-slate-900">{item.label}</h3>
                                     {item.meta && (
                                       <div>
-                                        <span className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium ${colors.text} ${colors.bgLight} border border-current/20 shadow-sm`}>
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${colors.text} ${colors.bgLight} border border-current/10`}>
                                           {item.meta}
                                         </span>
                                       </div>
@@ -385,24 +399,23 @@ function ComprehensiveLeadModal({
                                     
                                     {/* Notes Display */}
                                     {item.notes && (
-                                      <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg shadow-sm">
-                                        <div className="flex items-start gap-3">
+                                      <div className="p-3 bg-slate-50 border border-slate-200/60 rounded-md mt-2">
+                                        <div className="flex items-start gap-2">
                                           <div className="flex-shrink-0">
-                                            <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-                                              <FileText className="w-4 h-4 text-amber-600" />
+                                            <div className="w-6 h-6 bg-slate-200/60 rounded-full flex items-center justify-center">
+                                              <FileText className="w-3 h-3 text-slate-600" />
                                             </div>
                                           </div>
                                           <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold text-amber-800 mb-1">Notes</p>
-                                            <p className="text-sm text-amber-700 leading-relaxed">{item.notes}</p>
+                                            <p className="text-xs font-medium text-slate-700 mb-0.5">Notes</p>
+                                            <p className="text-xs text-slate-600 leading-relaxed">{item.notes}</p>
                                           </div>
                                         </div>
                                       </div>
                                     )}
                                   </div>
                                   {item.at && (
-                                    <time className="flex-shrink-0 ml-4 text-xs text-slate-500 font-medium bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
-                                      <Clock className="w-3 h-3 inline mr-1" />
+                                    <time className="flex-shrink-0 text-xs text-slate-500 font-medium">
                                       {new Date(item.at).toLocaleDateString('en-US', { 
                                         month: 'short', 
                                         day: 'numeric',
