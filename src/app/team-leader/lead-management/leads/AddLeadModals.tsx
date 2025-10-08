@@ -3,6 +3,9 @@
 import { useRef, useState, useEffect, useCallback, startTransition } from "react";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open: boolean; onClose: () => void; onCreated: () => void; onListCreated?: (list: { id: number; name: string }) => void }) {
   const [form, setForm] = useState<{ phone: string; name?: string; email?: string; source?: string; stage?: string; score?: number }>({ phone: "" });
@@ -65,14 +68,16 @@ export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl w-full max-w-md p-5">
-        <div className="text-lg font-semibold mb-4">Add Lead</div>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Lead</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
-          <input className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" placeholder="Phone (required)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <input className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" placeholder="Name" value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <input className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" placeholder="Email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <input className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" placeholder="Source" value={form.source || ""} onChange={(e) => setForm({ ...form, source: e.target.value })} />
+          <Input placeholder="Phone (required)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <Input placeholder="Name" value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <Input placeholder="Email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Input placeholder="Source" value={form.source || ""} onChange={(e) => setForm({ ...form, source: e.target.value })} />
           
           {/* List Selection */}
           <div className="space-y-2">
@@ -91,20 +96,20 @@ export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open
                   </option>
                 ))}
               </select>
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowCreateList(true)}
-                className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md border border-gray-300"
+                variant="outline"
+                size="sm"
               >
                 New
-              </button>
+              </Button>
             </div>
           </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <button className="px-4 py-2 text-sm" onClick={onClose}>Cancel</button>
-          <button
-            className="rounded-xl bg-cyan-600 text-white px-4 py-2 text-sm hover:bg-cyan-700 disabled:opacity-50"
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button
             disabled={submitting || !form.phone.trim()}
             onClick={async () => {
               setSubmitting(true);
@@ -120,47 +125,45 @@ export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open
             }}
           >
             {submitting ? "Adding..." : "Add Lead"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </DialogContent>
 
       {/* Create New List Modal */}
-      {showCreateList && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold text-gray-900">Create New List</h3>
-            <p className="text-sm text-gray-600 mt-1">Give your list a name.</p>
-            <div className="mt-4">
-              <input
-                type="text"
-                value={newListName}
-                onChange={(e) => setNewListName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g. Hot leads"
-              />
-            </div>
-            <div className="mt-6 flex items-center justify-end gap-2">
-              <button 
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg" 
-                onClick={() => {
-                  setShowCreateList(false);
-                  setNewListName("");
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                onClick={createNewList}
-                disabled={creatingList || !newListName.trim()}
-              >
-                {creatingList ? "Creating..." : "Create"}
-              </button>
-            </div>
+      <Dialog open={showCreateList} onOpenChange={(open) => { if (!open) { setShowCreateList(false); setNewListName(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Create New List</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">Give your list a name.</p>
+          <div className="mt-4">
+            <Input
+              type="text"
+              value={newListName}
+              onChange={(e) => setNewListName(e.target.value)}
+              placeholder="e.g. Hot leads"
+            />
           </div>
-        </div>
-      )}
-    </div>
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <Button 
+              variant="ghost"
+              onClick={() => {
+                setShowCreateList(false);
+                setNewListName("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={createNewList}
+              disabled={creatingList || !newListName.trim()}
+            >
+              {creatingList ? "Creating..." : "Create"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Dialog>
   );
 }
 
@@ -542,12 +545,14 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
       
       <div className="flex justify-between items-center mb-4">
         <span className="text-sm text-gray-600">Found {getAvailableColumns().length} columns in your file</span>
-        <button
+        <Button
           onClick={autoMapColumns}
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          variant="ghost"
+          size="sm"
+          className="text-blue-600 hover:text-blue-800"
         >
           Auto-map columns
-        </button>
+        </Button>
       </div>
       
       <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -598,13 +603,14 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
               </option>
             ))}
           </select>
-          <button
+          <Button
             type="button"
             onClick={() => setShowCreateList(true)}
-            className="px-3 py-2 text-sm bg-blue-100 hover:bg-blue-200 rounded-md border border-blue-300 text-blue-700"
+            variant="outline"
+            size="sm"
           >
             New List
-          </button>
+          </Button>
         </div>
         {selectedListId && (
           <p className="text-blue-700 text-xs mt-2">
@@ -614,19 +620,18 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
       </div>
       
       <div className="flex justify-between pt-4">
-        <button
+        <Button
           onClick={() => setStep('upload')}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          variant="ghost"
         >
           ← Back
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={proceedToPreview}
           disabled={!columnMapping.phone}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Continue to Preview →
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -695,13 +700,14 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
               </option>
             ))}
           </select>
-          <button
+          <Button
             type="button"
             onClick={() => setShowCreateList(true)}
-            className="px-3 py-2 text-sm bg-blue-100 hover:bg-blue-200 rounded-md border border-blue-300 text-blue-700"
+            variant="outline"
+            size="sm"
           >
             New List
-          </button>
+          </Button>
         </div>
         {selectedListId && (
           <p className="text-blue-700 text-xs mt-2">
@@ -742,20 +748,20 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
       </div>
       
       <div className="flex justify-between pt-4">
-        <button
+        <Button
           onClick={() => setStep('mapping')}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          variant="ghost"
         >
           ← Back to Mapping
-        </button>
+        </Button>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={handleImport}
             disabled={uploading || validationErrors.length > 0}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-green-600 hover:bg-green-700"
           >
             {uploading ? "Importing..." : `Import ${mappedData.length} Leads`}
-          </button>
+          </Button>
           {/* Import unique-only helper button */}
           {(() => {
             const uniqueValidRows = (() => {
@@ -800,14 +806,14 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
               }
             };
             return hasIssues && canImportUnique ? (
-              <button
+              <Button
                 onClick={handleImportUnique}
                 disabled={uploading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="outline"
                 title="Imports only unique, valid phone numbers"
               >
                 {uploading ? "Importing..." : `Import Unique (${uniqueValidRows.length})`}
-              </button>
+              </Button>
             ) : null;
           })()}
         </div>
@@ -816,20 +822,12 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
   );
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Import Leads</h2>
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Import Leads</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-6">
           
           {/* Progress Steps */}
           <div className="flex items-center justify-center mt-4">
@@ -865,52 +863,50 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
               {step === 'preview' && 'Preview & Import'}
             </span>
           </div>
-        </div>
-        
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          {step === 'upload' && renderUploadStep()}
-          {step === 'mapping' && renderMappingStep()}
-          {step === 'preview' && renderPreviewStep()}
-        </div>
-      </div>
-
-      {/* Create New List Modal */}
-      {showCreateList && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold text-gray-900">Create New List</h3>
-            <p className="text-sm text-gray-600 mt-1">Give your list a name.</p>
-            <div className="mt-4">
-              <input
-                type="text"
-                value={newListName}
-                onChange={(e) => setNewListName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g. Hot leads"
-              />
-            </div>
-            <div className="mt-6 flex items-center justify-end gap-2">
-              <button 
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg" 
-                onClick={() => {
-                  setShowCreateList(false);
-                  setNewListName("");
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                onClick={createNewList}
-                disabled={creatingList || !newListName.trim()}
-              >
-                {creatingList ? "Creating..." : "Create"}
-              </button>
-            </div>
+          
+          <div className="mt-6">
+            {step === 'upload' && renderUploadStep()}
+            {step === 'mapping' && renderMappingStep()}
+            {step === 'preview' && renderPreviewStep()}
           </div>
         </div>
-      )}
-    </div>
+      </DialogContent>
+
+      {/* Create New List Modal */}
+      <Dialog open={showCreateList} onOpenChange={(open) => { if (!open) { setShowCreateList(false); setNewListName(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Create New List</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">Give your list a name.</p>
+          <div className="mt-4">
+            <Input
+              type="text"
+              value={newListName}
+              onChange={(e) => setNewListName(e.target.value)}
+              placeholder="e.g. Hot leads"
+            />
+          </div>
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <Button 
+              variant="ghost"
+              onClick={() => {
+                setShowCreateList(false);
+                setNewListName("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={createNewList}
+              disabled={creatingList || !newListName.trim()}
+            >
+              {creatingList ? "Creating..." : "Create"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Dialog>
   );
 }
 

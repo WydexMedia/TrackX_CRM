@@ -12,7 +12,8 @@ export async function GET(_req: Request, { params }: any) {
     } catch {
       return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
     }
-    const phone = decodeURIComponent(await params.phone);
+    const resolvedParams = await params;
+    const phone = decodeURIComponent(resolvedParams.phone);
     let lead = (await db.select().from(leads).where(and(eq(leads.phone, phone), eq(leads.tenantId, tenantId))))[0];
     if (!lead) {
       const noSpace = phone.replace(/\s+/g, "");
@@ -74,7 +75,8 @@ export async function PUT(_req: Request, { params }: any) {
     } catch {
       return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
     }
-    const phone = decodeURIComponent(await params.phone);
+    const resolvedParams = await params;
+    const phone = decodeURIComponent(resolvedParams.phone);
     const body = await _req.json();
     const { stage, score, ownerId, source, actorId, stageNotes, needFollowup, followupDate, followupNotes } = body || {};
     
@@ -247,7 +249,8 @@ export async function DELETE(_req: Request, { params }: any) {
     } catch {
       return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
     }
-    const phone = decodeURIComponent(await params.phone);
+    const resolvedParams = await params;
+    const phone = decodeURIComponent(resolvedParams.phone);
 
     // Normalize variants similar to GET lookup for cleanup
     const variantsSet = new Set<string>();

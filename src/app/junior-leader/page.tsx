@@ -4,6 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { setupPeriodicTokenValidation } from '@/lib/tokenValidation';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface User {
   _id: string;
@@ -304,10 +310,12 @@ export default function JuniorLeaderPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
-          <p className="mt-2 text-gray-600">Loading team data...</p>
-        </div>
+        <Card className="w-64">
+          <CardContent className="p-6 text-center">
+            <div className="inline-block h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading team data...</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -315,9 +323,11 @@ export default function JuniorLeaderPage() {
   if (!teamData) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">No team data available</p>
-        </div>
+        <Card className="w-64">
+          <CardContent className="p-6 text-center">
+            <p className="text-gray-600">No team data available</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -341,169 +351,168 @@ export default function JuniorLeaderPage() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Junior Leader Dashboard</h1>
-          <p className="mt-2 text-gray-600">Manage your assigned team members and view performance</p>
-        </div>
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <h1 className="text-3xl font-bold text-gray-900">Junior Leader Dashboard</h1>
+            <p className="mt-2 text-gray-600">Manage your assigned team members and view performance</p>
+          </CardContent>
+        </Card>
 
         {/* JL Info Card */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">{currentJL.name}</h2>
-              <p className="text-gray-600">{currentJL.email}</p>
-              <p className="text-sm text-gray-500">Role: Junior Leader</p>
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">{currentJL.name}</h2>
+                <p className="text-gray-600">{currentJL.email}</p>
+                <Badge variant="secondary" className="mt-1">Junior Leader</Badge>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-blue-600">{assignedSales.length}</div>
+                <p className="text-sm text-gray-600">Team Members</p>
+              </div>
             </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-blue-600">{assignedSales.length}</div>
-              <p className="text-sm text-gray-600">Team Members</p>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Team Performance Overview */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Team Performance Overview</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{teamTotalTarget}</div>
-              <p className="text-sm text-gray-600">Total Target</p>
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Team Performance Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{teamTotalTarget}</div>
+                <p className="text-sm text-gray-600">Total Target</p>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{teamTotalAchieved}</div>
+                <p className="text-sm text-gray-600">Achieved</p>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">{teamTotalCollection}</div>
+                <p className="text-sm text-gray-600">Today's Collection</p>
+              </div>
+              <div className="text-center p-4 bg-orange-50 rounded-lg">
+                <div className="text-2xl font-bold text-orange-600">{teamTotalSales}</div>
+                <p className="text-sm text-gray-600">Total Sales</p>
+              </div>
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{teamTotalAchieved}</div>
-              <p className="text-sm text-gray-600">Achieved</p>
-            </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">{teamTotalCollection}</div>
-              <p className="text-sm text-gray-600">Today's Collection</p>
-            </div>
-            <div className="text-center p-4 bg-orange-50 rounded-lg">
-              <div className="text-2xl font-bold text-orange-600">{teamTotalSales}</div>
-              <p className="text-sm text-gray-600">Total Sales</p>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Team Members with Analytics */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Team Members Performance</h3>
-          {assignedSales.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No team members assigned yet</p>
-              <p className="text-sm text-gray-400">Team Leader will assign sales persons to your team</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Target
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Achieved
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Today's Collection
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total Sales
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {assignedSales.map((salesperson) => {
-                    const analytics = teamAnalytics.find(a => 
-                      a.name.toLowerCase() === salesperson.name.toLowerCase()
-                    );
-                    
-                    return (
-                      <tr key={salesperson.code}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                              <span className="text-green-600 font-medium text-lg">
-                                {salesperson.name.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <div>
-                              <div 
-                                className="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer"
-                                onClick={() => handleSalesPersonClick(salesperson)}
-                              >
-                                {salesperson.name}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Your Team Members Performance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {assignedSales.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No team members assigned yet</p>
+                <p className="text-sm text-gray-400">Team Leader will assign sales persons to your team</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Name</TH>
+                      <TH>Target</TH>
+                      <TH>Achieved</TH>
+                      <TH>Today's Collection</TH>
+                      <TH>Total Sales</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {assignedSales.map((salesperson) => {
+                      const analytics = teamAnalytics.find(a => 
+                        a.name.toLowerCase() === salesperson.name.toLowerCase()
+                      );
+                      
+                      return (
+                        <TR key={salesperson.code}>
+                          <TD>
+                            <div className="flex items-center">
+                              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                                <span className="text-green-600 font-medium text-lg">
+                                  {salesperson.name.charAt(0).toUpperCase()}
+                                </span>
                               </div>
-                              <div className="text-sm text-gray-500">{salesperson.email}</div>
+                              <div>
+                                <div 
+                                  className="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer"
+                                  onClick={() => handleSalesPersonClick(salesperson)}
+                                >
+                                  {salesperson.name}
+                                </div>
+                                <div className="text-sm text-gray-500">{salesperson.email}</div>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{analytics?.target || 0}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{analytics?.achievedTarget || 0}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{analytics?.todayCollection || 0}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{analytics?.totalSales || 0}</div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                          </TD>
+                          <TD>
+                            <div className="text-sm text-gray-900">{analytics?.target || 0}</div>
+                          </TD>
+                          <TD>
+                            <div className="text-sm text-gray-900">{analytics?.achievedTarget || 0}</div>
+                          </TD>
+                          <TD>
+                            <div className="text-sm text-gray-900">{analytics?.todayCollection || 0}</div>
+                          </TD>
+                          <TD>
+                            <div className="text-sm text-gray-900">{analytics?.totalSales || 0}</div>
+                          </TD>
+                        </TR>
+                      );
+                    })}
+                  </TBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button
-              onClick={() => router.push("/team-leader/lead-management")}
-              className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              Manage Leads
-            </button>
-            <button
-              onClick={() => router.push("/team-leader/analytics")}
-              className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              View Analytics
-            </button>
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button
+                onClick={() => router.push("/team-leader/lead-management")}
+                variant="outline"
+                className="flex items-center justify-center h-auto py-3"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Manage Leads
+              </Button>
+              <Button
+                onClick={() => router.push("/team-leader/analytics")}
+                variant="outline"
+                className="flex items-center justify-center h-auto py-3"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                View Analytics
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* KPI Modal */}
-      {showKPIModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">
-                KPI Details - {selectedSalesPerson?.name}
-              </h3>
-              <button
-                onClick={() => setShowKPIModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+      <Dialog open={showKPIModal} onOpenChange={setShowKPIModal}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              KPI Details - {selectedSalesPerson?.name}
+            </DialogTitle>
+          </DialogHeader>
             
             {loadingKPI ? (
               <div className="flex items-center justify-center py-12">
@@ -518,66 +527,55 @@ export default function JuniorLeaderPage() {
             ) : (
               <div className="space-y-6">
                 {/* Date Range Filter */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex flex-col sm:flex-row gap-4 items-center">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Date Range Filter</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="date"
-                          value={dateRange.startDate}
-                          onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
-                          className="flex-1 text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          placeholder="Start Date"
-                        />
-                        <input
-                          type="date"
-                          value={dateRange.endDate}
-                          onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
-                          className="flex-1 text-black px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          placeholder="End Date"
-                        />
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date Range Filter</label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="date"
+                            value={dateRange.startDate}
+                            onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
+                            className="flex-1"
+                            placeholder="Start Date"
+                          />
+                          <Input
+                            type="date"
+                            value={dateRange.endDate}
+                            onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
+                            className="flex-1"
+                            placeholder="End Date"
+                          />
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium">Total Sales Days:</span> {filteredSales}
                       </div>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">Total Sales Days:</span> {filteredSales}
-                    </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
 
                 {/* Detailed KPI Table */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900">Daily Performance Breakdown</h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Leads Assigned
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Sales Converted
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Amount Collected
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Conversion %
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Ad Spend
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Ad Spend %
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Daily Performance Breakdown</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <THead>
+                          <TR>
+                            <TH>Date</TH>
+                            <TH>Leads Assigned</TH>
+                            <TH>Sales Converted</TH>
+                            <TH>Amount Collected</TH>
+                            <TH>Conversion %</TH>
+                            <TH>Ad Spend</TH>
+                            <TH>Ad Spend %</TH>
+                          </TR>
+                        </THead>
+                        <TBody>
                         {filteredKpiData.length > 0 ? (
                           filteredKpiData.map((report, index) => {
                             const leadsAssigned = parseInt(report.leadsAssigned) || 0;
@@ -588,64 +586,64 @@ export default function JuniorLeaderPage() {
                             const adSpendPercentage = amountCollected > 0 ? ((adSpend / amountCollected) * 100).toFixed(1) : 0;
 
                             return (
-                              <tr key={report._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              <TR key={report._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <TD className="font-medium">
                                   {new Date(report.date).toLocaleDateString('en-IN', {
                                     year: 'numeric',
                                     month: 'short',
                                     day: 'numeric'
                                   })}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                </TD>
+                                <TD>
                                   {leadsAssigned}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">
+                                </TD>
+                                <TD className="text-green-600 font-semibold">
                                   {salesConverted}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-semibold">
+                                </TD>
+                                <TD className="text-blue-600 font-semibold">
                                   ₹{amountCollected.toLocaleString()}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-600 font-semibold">
+                                </TD>
+                                <TD className="text-purple-600 font-semibold">
                                   {conversionRate}%
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600 font-semibold">
+                                </TD>
+                                <TD className="text-orange-600 font-semibold">
                                   ₹{adSpend.toLocaleString()}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">
+                                </TD>
+                                <TD className="text-red-600 font-semibold">
                                   {adSpendPercentage}%
-                                </td>
-                              </tr>
+                                </TD>
+                              </TR>
                             );
                           })
                         ) : (
-                          <tr>
-                            <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                          <TR>
+                            <TD colSpan={7} className="text-center py-8">
                               <div className="flex flex-col items-center">
                                 <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
-                                <p className="text-lg font-medium">
+                                <p className="text-lg font-medium text-gray-500">
                                   {dateRange.startDate && dateRange.endDate ? 'No data found for selected date range' : 'No KPI data available'}
                                 </p>
-                                <p className="text-sm">
+                                <p className="text-sm text-gray-400">
                                   {dateRange.startDate && dateRange.endDate 
                                     ? 'Try adjusting your date range or clear the filter.'
                                     : 'No performance data found for this sales person.'
                                   }
                                 </p>
                               </div>
-                            </td>
-                          </tr>
+                            </TD>
+                          </TR>
                         )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                        </TBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 
