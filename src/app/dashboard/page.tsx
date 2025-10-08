@@ -536,8 +536,7 @@ export default function DashboardPage() {
             </div>
             <Button
               onClick={handleLogout}
-              variant="destructive"
-              className="gap-2"
+              className="gap-2 bg-primary hover:bg-primary/90"
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -591,7 +590,7 @@ export default function DashboardPage() {
             <StatCard
               title="Target"
               value={INR.format(target)}
-              gradient="bg-gradient-to-br from-primary to-primary/80"
+              gradient="bg-gradient-to-br from-emerald-600 to-emerald-700"
               icon={
                 <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 21a9 9 0 1 0-9-9" />
@@ -603,7 +602,7 @@ export default function DashboardPage() {
             <StatCard
               title="Achieved Target"
               value={INR.format(achievedTarget)}
-              gradient="bg-gradient-to-br from-primary/80 to-primary/60"
+              gradient="bg-gradient-to-br from-blue-600 to-blue-700"
               icon={
                 <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 2l2.29 6.86L21 11l-6.71 2.14L12 20l-2.29-6.86L3 11l6.71-2.14L12 2z" />
@@ -614,7 +613,7 @@ export default function DashboardPage() {
             <StatCard
               title="Pending Target"
               value={INR.format(pendingTarget)}
-              gradient="bg-gradient-to-br from-primary/60 to-primary/40"
+              gradient="bg-gradient-to-br from-amber-600 to-amber-700"
               icon={
                 <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 8v4l3 3" />
@@ -624,9 +623,20 @@ export default function DashboardPage() {
             />
 
             <StatCard
+              title="Sales"
+              value={monthly.length}
+              gradient="bg-gradient-to-br from-rose-600 to-rose-700"
+              icon={
+                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m0 0L12 21l2.5-5m0 0L17 13" />
+                </svg>
+              }
+            />
+
+            <StatCard
               title="Today's Collection"
               value={INR.format(todayCollection)}
-              gradient="bg-gradient-to-br from-primary/70 to-primary/50"
+              gradient="bg-gradient-to-br from-yellow-600 to-yellow-700"
               hint={`${daily.length} sale${daily.length !== 1 ? "s" : ""}`}
               icon={
                 <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -640,7 +650,7 @@ export default function DashboardPage() {
               <StatCard
                 title="Last Month Collection"
                 value={today.getDate() === 1 ? INR.format(lastMonthAchieved) : "₹0"}
-                gradient="bg-gradient-to-br from-primary/50 to-primary/30"
+                gradient="bg-gradient-to-br from-violet-600 to-violet-700"
                 icon={
                   <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" />
@@ -653,7 +663,7 @@ export default function DashboardPage() {
             <StatCard
               title="Days Pending"
               value={`${daysPending} Days`}
-              gradient="bg-gradient-to-br from-primary/40 to-primary/20"
+              gradient="bg-gradient-to-br from-slate-600 to-slate-700"
               icon={
                 <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 8v4l3 3" />
