@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 interface LeadRow {
   phone: string;
@@ -35,12 +40,12 @@ export default function QueuePage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/tl/queue?${params}`).then((r) => r.json()).then((d) => { setRows(d.rows || []); setTotal(d.total || 0); }).finally(() => setLoading(false));
+    authenticatedFetch(`/api/tl/queue?${params}`).then((r) => r.json()).then((d) => { setRows(d.rows || []); setTotal(d.total || 0); }).finally(() => setLoading(false));
   }, [params]);
 
   // Load salespersons from Mongo-backed API
   useEffect(() => {
-    fetch("/api/users")
+    authenticatedFetch("/api/users")
       .then((r) => r.json())
       .then((all) => {
         const onlySales = (Array.isArray(all) ? all : []).filter((u: any) => u.role === "sales");
@@ -57,9 +62,27 @@ export default function QueuePage() {
       <p className="text-sm text-slate-500 mb-4">Unassigned, aging, hot leads</p>
 
       <div className="flex items-center gap-2 mb-3">
-        <button className={`px-3 py-1.5 rounded-lg text-sm cursor-pointer ${tab === "unassigned" ? "bg-slate-900 text-white" : "bg-white border"}`} onClick={() => setTab("unassigned")}>Unassigned</button>
-        <button className={`px-3 py-1.5 rounded-lg text-sm cursor-pointer ${tab === "aging" ? "bg-slate-900 text-white" : "bg-white border"}`} onClick={() => setTab("aging")}>Aging</button>
-        <button className={`px-3 py-1.5 rounded-lg text-sm cursor-pointer ${tab === "hot" ? "bg-slate-900 text-white" : "bg-white border"}`} onClick={() => setTab("hot")}>Hot</button>
+        <Button 
+          variant={tab === "unassigned" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setTab("unassigned")}
+        >
+          Unassigned
+        </Button>
+        <Button 
+          variant={tab === "aging" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setTab("aging")}
+        >
+          Aging
+        </Button>
+        <Button 
+          variant={tab === "hot" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setTab("hot")}
+        >
+          Hot
+        </Button>
         <div className="flex-1" />
         <select
           className="border border-slate-300 rounded-md px-2 py-2 text-sm"
@@ -71,24 +94,25 @@ export default function QueuePage() {
             <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
           ))}
         </select>
-        <button
-          className="rounded-xl bg-slate-800 text-white px-3 py-2 text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+        <Button
           disabled={phones.length === 0 || !assignee}
           onClick={async () => {
-            const res = await fetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "assign", phones, ownerId: assignee }) });
+            const res = await authenticatedFetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "assign", phones, ownerId: assignee }) });
             if (res.ok) toast.success(`Assigned ${phones.length} lead(s)`); else toast.error("Assignment failed");
             setSelected({});
-            const d = await fetch(`/api/tl/queue?${params}`).then((r) => r.json());
+            const d = await authenticatedFetch(`/api/tl/queue?${params}`).then((r) => r.json());
             setRows(d.rows || []);
           }}
-        >Assign</button>
-        <button
-          className="rounded-xl cursor-pointer bg-emerald-600 text-white px-3 py-2 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+        >
+          Assign
+        </Button>
+        <Button
+          className="bg-emerald-600 hover:bg-emerald-700"
           disabled={phones.length === 0 || autoAssigning}
           onClick={async () => {
             try {
               setAutoAssigning(true);
-              const res = await fetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "autoAssign", phones }) });
+              const res = await authenticatedFetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "autoAssign", phones }) });
               if (res.ok) {
                 const data = await res.json();
                 toast.success(`Auto-assigned ${phones.length} lead(s) via ${data.rule}`);
@@ -96,7 +120,7 @@ export default function QueuePage() {
                 toast.error("Auto-assign failed");
               }
               setSelected({});
-              const d = await fetch(`/api/tl/queue?${params}`).then((r) => r.json());
+              const d = await authenticatedFetch(`/api/tl/queue?${params}`).then((r) => r.json());
               setRows(d.rows || []);
             } finally {
               setAutoAssigning(false);
@@ -104,12 +128,12 @@ export default function QueuePage() {
           }}
         >
           {autoAssigning && (
-            <span className="inline-block  h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
+            <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
           )}
           <span>{autoAssigning ? "Auto-Assigning…" : "Auto-Assign (Active Rule)"}</span>
-        </button>
-        <button
-          className="rounded-xl bg-cyan-600 text-white px-3 py-2 text-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+        </Button>
+        <Button
+          className="bg-cyan-600 hover:bg-cyan-700"
           disabled={phones.length === 0}
           onClick={async () => {
             const title = prompt("Task title:") || "Follow up";
@@ -133,7 +157,7 @@ export default function QueuePage() {
             
             const selectedAssignee = sales[selectedIndex];
             
-            const res = await fetch("/api/tl/queue", { 
+            const res = await authenticatedFetch("/api/tl/queue", { 
               method: "POST", 
               headers: { "Content-Type": "application/json" }, 
               body: JSON.stringify({ 
@@ -148,51 +172,59 @@ export default function QueuePage() {
             else toast.error("Failed to create tasks");
             setSelected({});
           }}
-        >Create Tasks</button>
+        >
+          Create Tasks
+        </Button>
 
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="px-4 py-3"><input type="checkbox" onChange={(e) => {
-                  const next: Record<string, boolean> = {};
-                  if (e.target.checked) rows.forEach((r) => (next[r.phone] = true));
-                  setSelected(next);
-                }} /></th>
-                <th className="text-left px-4 py-3">Lead</th>
-                <th className="text-left px-4 py-3">Source</th>
-                <th className="text-left px-4 py-3">Owner</th>
-                <th className="text-left px-4 py-3">Age</th>
-                <th className="text-left px-4 py-3">SLA</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td className="px-4 py-6 text-slate-500" colSpan={6}>Loading...</td></tr>
-              ) : rows.length === 0 ? (
-                <tr><td className="px-4 py-6 text-slate-500" colSpan={6}>No leads</td></tr>
-              ) : (
-                rows.map((r) => (
-                  <tr key={r.phone} className="hover:bg-slate-50">
-                    <td className="px-4 py-3"><input type="checkbox" checked={!!selected[r.phone]} onChange={(e) => setSelected({ ...selected, [r.phone]: e.target.checked })} /></td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{r.name || "—"}</div>
-                      <div className="text-xs text-slate-500">{r.phone} {r.email ? `• ${r.email}` : ""}</div>
-                    </td>
-                    <td className="px-4 py-3">{r.source || "—"}</td>
-                    <td className="px-4 py-3">{(sales.find((s) => s.code === (r.ownerId || ""))?.name) || r.ownerId || "—"}</td>
-                    <td className="px-4 py-3">{r.createdAt ? `${Math.floor((Date.now() - new Date(r.createdAt).getTime())/3600000)}h` : "—"}</td>
-                    <td className="px-4 py-3"><span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-xs">OK</span></td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Card className="overflow-hidden">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <THead>
+                <TR>
+                  <TH><input type="checkbox" onChange={(e) => {
+                    const next: Record<string, boolean> = {};
+                    if (e.target.checked) rows.forEach((r) => (next[r.phone] = true));
+                    setSelected(next);
+                  }} /></TH>
+                  <TH>Lead</TH>
+                  <TH>Source</TH>
+                  <TH>Owner</TH>
+                  <TH>Age</TH>
+                  <TH>SLA</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {loading ? (
+                  <TR><TD className="px-4 py-6 text-slate-500" colSpan={6}>Loading...</TD></TR>
+                ) : rows.length === 0 ? (
+                  <TR><TD className="px-4 py-6 text-slate-500" colSpan={6}>No leads</TD></TR>
+                ) : (
+                  rows.map((r) => (
+                    <TR key={r.phone}>
+                      <TD><input type="checkbox" checked={!!selected[r.phone]} onChange={(e) => setSelected({ ...selected, [r.phone]: e.target.checked })} /></TD>
+                      <TD>
+                        <div className="font-medium">{r.name || "—"}</div>
+                        <div className="text-xs text-slate-500">{r.phone} {r.email ? `• ${r.email}` : ""}</div>
+                      </TD>
+                      <TD>{r.source || "—"}</TD>
+                      <TD>{(sales.find((s) => s.code === (r.ownerId || ""))?.name) || r.ownerId || "—"}</TD>
+                      <TD>{r.createdAt ? `${Math.floor((Date.now() - new Date(r.createdAt).getTime())/3600000)}h` : "—"}</TD>
+                      <TD>
+                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
+                          OK
+                        </Badge>
+                      </TD>
+                    </TR>
+                  ))
+                )}
+              </TBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="mt-4 flex items-center justify-between text-sm">
         <div className="text-slate-600">Showing {(page - 1) * pageSize + (rows.length ? 1 : 0)}-{Math.min(page * pageSize, total)} of {total}</div>
@@ -212,16 +244,22 @@ export default function QueuePage() {
             </select>
           </div>
           <div className="flex gap-2">
-          <button
-            className="px-3 py-1.5 rounded-lg border cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+          <Button
+            variant="outline"
+            size="sm"
             disabled={page === 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >Previous</button>
-          <button
-            className="px-3 py-1.5 rounded-lg border cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             disabled={page * pageSize >= total}
             onClick={() => setPage((p) => p + 1)}
-          >Next</button>
+          >
+            Next
+          </Button>
           </div>
         </div>
       </div>

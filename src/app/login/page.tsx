@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { Toaster, toast } from 'react-hot-toast';
 import Link from "next/link";
 import { setupPeriodicTokenValidation } from '@/lib/tokenValidation';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -284,10 +288,9 @@ export default function LoginPage() {
       <div className="login-bg">
         <div className="pattern-overlay"></div>
 
-        <form
-          onSubmit={handleLogin}
-          className="relative w-full max-w-md bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-white/20"
-        >
+        <Card className="relative w-full max-w-md bg-white/10 backdrop-blur-xl shadow-2xl border border-white/20">
+          <CardContent className="p-8">
+            <form onSubmit={handleLogin} className="space-y-6">
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -298,55 +301,56 @@ export default function LoginPage() {
             <p className="text-white/70">Sign in to your account</p>
           </div>
 
-          <div className="space-y-6">
-            <div>
-              <label className="block text-white/90 font-medium mb-2">UserId or Email</label>
-              <input
-                type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email or code"
-                className="modern-input text-black"
-              />
-            </div>
+              <div>
+                <label className="block text-white/90 font-medium mb-2">UserId or Email</label>
+                <Input
+                  type="text"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email or code"
+                  className="modern-input text-black"
+                />
+              </div>
 
-         <div>
-  <label className="block text-white/90 font-medium mb-2">Password</label>
-  <div className="relative">
-    <input
-      type={showPassword ? "text" : "password"}
-      value={password}
-      onChange={(e) => setPassword(e.target.value)}
-      placeholder="Enter your password"
-      className="modern-input pr-10 text-black"
-    />
-    <button
-      type="button"
-      onClick={() => setShowPassword(!showPassword)}
-      className="absolute inset-y-0 right-0 flex items-center pr-3"
-    >
-      {showPassword ? (
-        /* Eye Slash (Hide Password) */
-        <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L12 12m-3.122-3.122L3 3m6.878 6.878L12 12m0 0l3.878 3.878M12 12L9.878 9.878m8.242 8.242L21 21m-2.878-2.878A9.97 9.97 0 0112 19c-4.478 0-8.268-2.943-9.543-7a10.025 10.025 0 012.132-5.207m0 0A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-2.132 5.207" />
-        </svg>
-      ) : (
-        /* Eye (Show Password) */
-        <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-        </svg>
-      )}
-    </button>
-  </div>
-</div>
+              <div>
+                <label className="block text-white/90 font-medium mb-2">Password</label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="modern-input pr-10 text-black"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 h-auto p-0"
+                  >
+                    {showPassword ? (
+                      /* Eye Slash (Hide Password) */
+                      <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L12 12m-3.122-3.122L3 3m6.878 6.878L12 12m0 0l3.878 3.878M12 12L9.878 9.878m8.242 8.242L21 21m-2.878-2.878A9.97 9.97 0 0112 19c-4.478 0-8.268-2.943-9.543-7a10.025 10.025 0 012.132-5.207m0 0A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-2.132 5.207" />
+                      </svg>
+                    ) : (
+                      /* Eye (Show Password) */
+                      <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </Button>
+                </div>
+              </div>
 
             {error && (
               <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl text-sm">
                 {error}
                 {error.includes("already logged in") && (
                   <div className="mt-3">
-                    <button
+                    <Button
                       type="button"
                       onClick={async (e) => {
                         e.preventDefault();
@@ -389,40 +393,41 @@ export default function LoginPage() {
                           setBlockLogin(false);
                         }
                       }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                      size="sm"
+                      className="bg-primary hover:bg-primary/90"
                     >
                       Continue with logout from other device
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className={`w-full py-4 rounded-xl font-bold text-lg shadow-xl transition-all duration-200 ${
-                isLoading
-                  ? 'bg-gradient-to-r from-blue-400 to-purple-400 text-white cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transform hover:scale-[1.02]'
-              }`}
-            >
-              {isLoading ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Signing In...</span>
-                </div>
-              ) : (
-                'Sign In'
-              )}
-            </button>
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className={`w-full py-4 font-bold text-lg shadow-xl transition-all duration-200 ${
+                  isLoading
+                    ? 'bg-primary/60 cursor-not-allowed'
+                    : 'bg-primary hover:bg-primary/90 transform hover:scale-[1.02]'
+                }`}
+              >
+                {isLoading ? (
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Signing In...</span>
+                  </div>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
             
-          </div>
-        </form>
-        
+            </form>
+          </CardContent>
+        </Card>
         
 
         <style jsx>{`

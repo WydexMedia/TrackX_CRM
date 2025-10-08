@@ -13,6 +13,10 @@ import {
   Eye,
   EyeOff
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function SignupPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -185,11 +189,10 @@ export default function SignupPage() {
             
             <div className="flex items-center gap-4">
               <span className="text-gray-600">Already have an account?</span>
-              <Link
-                href="/login"
-                className="px-4 py-2 text-blue-600 font-semibold hover:text-blue-700 transition-colors"
-              >
-                Sign In
+              <Link href="/login">
+                <Button variant="ghost" className="text-blue-600 hover:text-blue-700">
+                  Sign In
+                </Button>
               </Link>
             </div>
           </div>
@@ -209,7 +212,8 @@ export default function SignupPage() {
             </div>
             
             {/* Mock Dashboard */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+            <Card className="bg-white/10 backdrop-blur-md border border-white/20">
+              <CardContent className="p-6">
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-white/20 rounded-lg p-4">
                   <div className="text-2xl font-bold text-white">36</div>
@@ -249,7 +253,8 @@ export default function SignupPage() {
                   <div className="text-sm text-blue-100">My Tasks</div>
                 </div>
               </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
           
           {/* Background decoration */}
@@ -276,23 +281,32 @@ export default function SignupPage() {
             {/* Step Indicator */}
             <div className="flex items-center justify-center mb-8">
               <div className="flex items-center space-x-4">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                  currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-                }`}>
+                <Badge 
+                  variant={currentStep >= 1 ? "default" : "secondary"}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                    currentStep >= 1 ? 'bg-primary' : 'bg-gray-300 text-gray-600'
+                  }`}
+                >
                   1
-                </div>
-                <div className={`w-16 h-1 ${currentStep >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                  currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-                }`}>
+                </Badge>
+                <div className={`w-16 h-1 ${currentStep >= 2 ? 'bg-primary' : 'bg-gray-300'}`}></div>
+                <Badge 
+                  variant={currentStep >= 2 ? "default" : "secondary"}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                    currentStep >= 2 ? 'bg-primary' : 'bg-gray-300 text-gray-600'
+                  }`}
+                >
                   2
-                </div>
-                <div className={`w-16 h-1 ${currentStep >= 3 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                  currentStep >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-                }`}>
+                </Badge>
+                <div className={`w-16 h-1 ${currentStep >= 3 ? 'bg-primary' : 'bg-gray-300'}`}></div>
+                <Badge 
+                  variant={currentStep >= 3 ? "default" : "secondary"}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                    currentStep >= 3 ? 'bg-primary' : 'bg-gray-300 text-gray-600'
+                  }`}
+                >
                   3
-                </div>
+                </Badge>
               </div>
             </div>
 
@@ -306,13 +320,13 @@ export default function SignupPage() {
                   </label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
+                    <Input
                       type="text"
                       name="firstName"
                       value={formData.firstName}
                       onChange={handleInputChange}
                       required
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-3"
                       placeholder="eg: Alex"
                     />
                   </div>
@@ -325,13 +339,13 @@ export default function SignupPage() {
                   </label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
+                    <Input
                       type="text"
                       name="lastName"
                       value={formData.lastName}
                       onChange={handleInputChange}
                       required
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-3"
                       placeholder="eg: Mathew"
                     />
                   </div>
@@ -345,13 +359,13 @@ export default function SignupPage() {
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <div className="absolute left-10 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">+91</div>
-                    <input
+                    <Input
                       type="tel"
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
                       required
-                      className="w-full pl-16 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-16 pr-4 py-3"
                       placeholder="Phone number"
                     />
                   </div>
@@ -364,13 +378,13 @@ export default function SignupPage() {
                   </label>
                   <div className="relative">
                     <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
+                    <Input
                       type="text"
                       name="instituteName"
                       value={formData.instituteName}
                       onChange={handleInputChange}
                       required
-                      className="w-full pl-10 pr-4 py-3 border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-3 border-2 border-green-500 focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       placeholder="eg: proskill edu"
                     />
                   </div>
@@ -383,13 +397,13 @@ export default function SignupPage() {
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
+                    <Input
                       type="email"
                       name="instituteEmail"
                       value={formData.instituteEmail}
                       onChange={handleInputChange}
                       required
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-3"
                       placeholder="eg: contact@company.com"
                     />
                   </div>
@@ -402,12 +416,12 @@ export default function SignupPage() {
                   </label>
                   <div className="relative">
                     <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
+                    <Input
                       type="url"
                       name="website"
                       value={formData.website}
                       onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-3"
                       placeholder="eg: www.proskilledu.com"
                     />
                   </div>
@@ -425,13 +439,13 @@ export default function SignupPage() {
                 )}
 
                 {/* Next Button */}
-                <button
+                <Button
                   type="button"
                   onClick={handleNext}
-                  className="w-full py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                  className="w-full py-3 bg-primary hover:bg-primary/90"
                 >
                   Next
-                </button>
+                </Button>
               </div>
             )}
 
@@ -444,22 +458,24 @@ export default function SignupPage() {
                     Password *
                   </label>
                   <div className="relative">
-                    <input
+                    <Input
                       type={showPassword ? "text" : "password"}
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 pr-12"
                       placeholder="Create a password"
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 h-auto p-0"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -469,22 +485,24 @@ export default function SignupPage() {
                     Confirm Password *
                   </label>
                   <div className="relative">
-                    <input
+                    <Input
                       type={showConfirmPassword ? "text" : "password"}
                       name="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 pr-12"
                       placeholder="Confirm your password"
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 h-auto p-0"
                     >
                       {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -501,20 +519,21 @@ export default function SignupPage() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-4">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={handleBack}
-                    className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                    className="flex-1 py-3"
                   >
                     Back
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={handleNext}
-                    className="flex-1 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                    className="flex-1 py-3 bg-primary hover:bg-primary/90"
                   >
                     Continue
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -528,13 +547,13 @@ export default function SignupPage() {
                     Enter Domain
                   </label>
                   <div className="relative">
-                    <input
+                    <Input
                       type="text"
                       name="subdomain"
                       value={formData.subdomain}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 border-2 border-red-500 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border-2 border-red-500 focus:ring-2 focus:ring-red-500 focus:border-transparent"
                       placeholder="Checkout your domain"
                     />
                   </div>
@@ -575,20 +594,21 @@ export default function SignupPage() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-4">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={handleBack}
-                    className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                    className="flex-1 py-3"
                   >
                     Back
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-3 bg-primary hover:bg-primary/90"
                   >
                     {isSubmitting ? "Creating Account..." : "Create Account"}
-                  </button>
+                  </Button>
                 </div>
               </form>
             )}
@@ -597,17 +617,17 @@ export default function SignupPage() {
             <div className="mt-8 text-center">
               <p className="text-sm text-gray-600">
                 Already have an account?{" "}
-                <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+                <Link href="/login" className="text-primary hover:text-primary/90 font-medium">
                   Sign In
                 </Link>
               </p>
               <p className="text-xs text-gray-500 mt-4">
                 By creating an account, you agree to trackx's{" "}
-                <Link href="#" className="text-blue-600 hover:text-blue-700">
+                <Link href="#" className="text-primary hover:text-primary/90">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link href="#" className="text-blue-600 hover:text-blue-700">
+                <Link href="#" className="text-primary hover:text-primary/90">
                   Privacy Policy
                 </Link>
                 .
