@@ -285,58 +285,67 @@ export default function LoginPage() {
 
   // Show login form only
   return (
-      <div className="login-bg">
-        <div className="pattern-overlay"></div>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 opacity-50">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236b7280' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}></div>
+      </div>
 
-        <Card className="relative w-full max-w-md bg-white/10 backdrop-blur-xl shadow-2xl border border-white/20">
+      {/* Main Content */}
+      <div className="relative flex-1 flex flex-col items-center justify-center px-4 py-12">
+        {/* Logo Section */}
+        <div className="text-center mb-12">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/80 rounded-xl mx-auto mb-6 flex items-center justify-center shadow-lg">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to TrackX</h1>
+          <p className="text-gray-600">Enter your login details to continue</p>
+        </div>
+
+        {/* Login Form */}
+        <Card className="w-full max-w-md bg-white shadow-xl border-0">
           <CardContent className="p-8">
             <form onSubmit={handleLogin} className="space-y-6">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-            <p className="text-white/70">Sign in to your account</p>
-          </div>
-
               <div>
-                <label className="block text-white/90 font-medium mb-2">UserId or Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <Input
-                  type="text"
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email or code"
-                  className="modern-input text-black"
+                  placeholder="Please enter email"
+                  className="w-full h-12 px-4 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  required
                 />
               </div>
 
               <div>
-                <label className="block text-white/90 font-medium mb-2">Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                 <div className="relative">
                   <Input
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="modern-input pr-10 text-black"
+                    className="w-full h-12 px-4 pr-12 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    required
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 h-auto p-0"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 h-auto p-1"
                   >
                     {showPassword ? (
-                      /* Eye Slash (Hide Password) */
-                      <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L12 12m-3.122-3.122L3 3m6.878 6.878L12 12m0 0l3.878 3.878M12 12L9.878 9.878m8.242 8.242L21 21m-2.878-2.878A9.97 9.97 0 0112 19c-4.478 0-8.268-2.943-9.543-7a10.025 10.025 0 012.132-5.207m0 0A9.97 9.97 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-2.132 5.207" />
                       </svg>
                     ) : (
-                      /* Eye (Show Password) */
-                      <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
@@ -345,72 +354,68 @@ export default function LoginPage() {
                 </div>
               </div>
 
-            {error && (
-              <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl text-sm">
-                {error}
-                {error.includes("already logged in") && (
-                  <div className="mt-3">
-                    <Button
-                      type="button"
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('Fallback button clicked - confirming login');
-                        setShowSessionConfirm(false);
-                        setBlockLogin(true);
-                        setPendingLoginData({ email, password });
-                        // Call confirm flow directly
-                        try {
-                          const res = await fetch('/api/users/login-confirm', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email, password })
-                          });
-                          if (!res.ok) {
-                            const t = await res.text();
-                            console.log('Confirm via fallback failed:', t);
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                  {error.includes("already logged in") && (
+                    <div className="mt-3">
+                      <Button
+                        type="button"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log('Fallback button clicked - confirming login');
+                          setShowSessionConfirm(false);
+                          setBlockLogin(true);
+                          setPendingLoginData({ email, password });
+                          // Call confirm flow directly
+                          try {
+                            const res = await fetch('/api/users/login-confirm', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ email, password })
+                            });
+                            if (!res.ok) {
+                              const t = await res.text();
+                              console.log('Confirm via fallback failed:', t);
+                              setError('Login confirmation failed. Please try again.');
+                              setBlockLogin(false);
+                              return;
+                            }
+                            const user = await res.json();
+                            // Broadcast to other tabs/devices to validate token now
+                            try { localStorage.setItem('tokenRevokedAt', String(Date.now())); } catch {}
+                            localStorage.setItem('user', JSON.stringify(user));
+                            localStorage.setItem('token', user.token);
+                            setUser(user);
+                            if (user.needsRedirect && user.redirectTo) {
+                              window.location.href = user.redirectTo;
+                              return;
+                            }
+                            if (user.role === 'CEO') router.push('/ceo');
+                            else if (user.role === 'teamleader') router.push('/team-leader');
+                            else if (user.role === 'jl') router.push('/junior-leader');
+                            else router.push('/dashboard');
+                          } catch (err) {
+                            console.error(err);
                             setError('Login confirmation failed. Please try again.');
                             setBlockLogin(false);
-                            return;
                           }
-                          const user = await res.json();
-                          // Broadcast to other tabs/devices to validate token now
-                          try { localStorage.setItem('tokenRevokedAt', String(Date.now())); } catch {}
-                          localStorage.setItem('user', JSON.stringify(user));
-                          localStorage.setItem('token', user.token);
-                          setUser(user);
-                          if (user.needsRedirect && user.redirectTo) {
-                            window.location.href = user.redirectTo;
-                            return;
-                          }
-                          if (user.role === 'CEO') router.push('/ceo');
-                          else if (user.role === 'teamleader') router.push('/team-leader');
-                          else if (user.role === 'jl') router.push('/junior-leader');
-                          else router.push('/dashboard');
-                        } catch (err) {
-                          console.error(err);
-                          setError('Login confirmation failed. Please try again.');
-                          setBlockLogin(false);
-                        }
-                      }}
-                      size="sm"
-                      className="bg-primary hover:bg-primary/90"
-                    >
-                      Continue with logout from other device
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
+                        }}
+                        size="sm"
+                        className="bg-primary hover:bg-primary/90 text-white"
+                      >
+                        Continue with logout from other device
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <Button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full py-4 font-bold text-lg shadow-xl transition-all duration-200 ${
-                  isLoading
-                    ? 'bg-primary/60 cursor-not-allowed'
-                    : 'bg-primary hover:bg-primary/90 transform hover:scale-[1.02]'
-                }`}
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg transition-colors"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center space-x-2">
@@ -421,59 +426,47 @@ export default function LoginPage() {
                     <span>Signing In...</span>
                   </div>
                 ) : (
-                  'Sign In'
+                  'Continue'
                 )}
               </Button>
-            
             </form>
+
+            {/* Sign Up Link */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                Don't have an account?{" "}
+                <Link href="/signup" className="text-primary hover:text-primary/90 font-medium">
+                  Request Demo
+                </Link>
+              </p>
+            </div>
           </CardContent>
         </Card>
-        
-
-        <style jsx>{`
-          .login-bg {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%);
-            padding: 1rem;
-            position: relative;
-          }
-          .pattern-overlay {
-            position: absolute;
-            inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-            opacity: 0.3;
-          }
-          .modern-input {
-            width: 100%;
-            padding: 1rem 1.25rem;
-            border-radius: 0.75rem;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            font-size: 1rem;
-            outline: none;
-            transition: all 0.3s ease;
-            color: white;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-          }
-          .modern-input:focus {
-            border: 1px solid rgba(99, 102, 241, 0.8);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-            background: rgba(255, 255, 255, 0.15);
-          }
-          .modern-input::placeholder {
-            color: #a3a3a3 !important; /* or any default gray you prefer */
-            opacity: 1 !important;
-          }
-          /* iOS/Safari specific */
-          .modern-input::-webkit-input-placeholder { color: #a3a3a3 !important; opacity: 1 !important; }
-          .modern-input::-moz-placeholder { color: #a3a3a3 !important; opacity: 1 !important; }
-          .modern-input:-ms-input-placeholder { color: #a3a3a3 !important; opacity: 1 !important; }
-          .modern-input::-ms-input-placeholder { color: #a3a3a3 !important; opacity: 1 !important; }
-        `}</style>
       </div>
-    );
+
+      {/* Footer */}
+      <div className="relative bg-white border-t border-gray-200 px-4 py-4">
+        <div className="flex flex-col sm:flex-row justify-between items-center text-sm text-gray-500 max-w-6xl mx-auto">
+          <div className="flex items-center space-x-2 mb-2 sm:mb-0">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+            </svg>
+            <span>English</span>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Link href="#" className="hover:text-gray-700">Help</Link>
+            <span>•</span>
+            <Link href="#" className="hover:text-gray-700">Terms Of Service</Link>
+            <span>•</span>
+            <Link href="#" className="hover:text-gray-700">Privacy Policy</Link>
+            <span>•</span>
+            <Link href="#" className="hover:text-gray-700">Acceptable Use</Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

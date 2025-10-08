@@ -177,20 +177,27 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 opacity-50">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236b7280' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}></div>
+      </div>
+
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-md border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="relative bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-              <span className="text-lg font-semibold text-gray-900">Back to Home</span>
+            <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+              <ArrowLeft className="w-5 h-5" />
+              <span className="font-medium">Back to Home</span>
             </Link>
             
             <div className="flex items-center gap-4">
-              <span className="text-gray-600">Already have an account?</span>
+              <span className="text-sm text-gray-600">Already have an account?</span>
               <Link href="/login">
-                <Button variant="ghost" className="text-blue-600 hover:text-blue-700">
+                <Button variant="ghost" className="text-primary hover:text-primary/90 font-medium">
                   Sign In
                 </Button>
               </Link>
@@ -200,115 +207,58 @@ export default function SignupPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex min-h-[calc(100vh-80px)]">
-        {/* Left Side - Branding */}
-        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-purple-700 p-12 flex-col justify-center relative overflow-hidden">
-          <div className="relative z-10">
-            <div className="mb-8">
-              <h1 className="text-4xl font-bold text-white mb-4">You're in trusted hands</h1>
-              <p className="text-xl text-blue-100">
-                Trackx helps entrepreneurs scale their institutions with a proven process.
-              </p>
+      <div className="relative flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-2xl">
+          {/* Logo Section */}
+          <div className="text-center mb-12">
+            <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/80 rounded-xl mx-auto mb-6 flex items-center justify-center shadow-lg">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-            
-            {/* Mock Dashboard */}
-            <Card className="bg-white/10 backdrop-blur-md border border-white/20">
-              <CardContent className="p-6">
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-white/20 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-white">36</div>
-                  <div className="text-sm text-blue-100">Total Branches</div>
-                </div>
-                <div className="bg-white/20 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-white">106</div>
-                  <div className="text-sm text-blue-100">Total Courses</div>
-                </div>
-                <div className="bg-white/20 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-white">1535</div>
-                  <div className="text-sm text-blue-100">Total Students</div>
-                </div>
-                <div className="bg-white/20 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-white">220</div>
-                  <div className="text-sm text-blue-100">Team Members</div>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="text-sm text-blue-100">Recent Activity</div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <CheckCircle className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="text-sm text-blue-100">New Conversions</div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <Mail className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="text-sm text-blue-100">My Tasks</div>
-                </div>
-              </div>
-              </CardContent>
-            </Card>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Your TrackX Account</h1>
+            <p className="text-gray-600">
+              {currentStep === 1 ? "Enter your basic information to get started" : 
+               currentStep === 2 ? "Secure your account with a strong password" :
+               "Complete your setup with domain configuration"}
+            </p>
           </div>
-          
-          {/* Background decoration */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-32 translate-x-32"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-24 -translate-x-24"></div>
-        </div>
 
-        {/* Right Side - Signup Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-          <div className="w-full max-w-md">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                {currentStep === 1 ? "Create Your Account" : 
-                 currentStep === 2 ? "Create Your Password" : 
-                 "Choose your subdomain"}
-              </h2>
-              <p className="text-gray-600">
-                {currentStep === 1 ? "Start managing your leads better" : 
-                 currentStep === 2 ? "Secure your account with a strong password" :
-                 "Setup your Domain & URL"}
-              </p>
+          {/* Step Indicator */}
+          <div className="flex items-center justify-center mb-8">
+            <div className="flex items-center space-x-4">
+              <Badge 
+                variant={currentStep >= 1 ? "default" : "secondary"}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                  currentStep >= 1 ? 'bg-primary' : 'bg-gray-300 text-gray-600'
+                }`}
+              >
+                1
+              </Badge>
+              <div className={`w-16 h-1 ${currentStep >= 2 ? 'bg-primary' : 'bg-gray-300'}`}></div>
+              <Badge 
+                variant={currentStep >= 2 ? "default" : "secondary"}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                  currentStep >= 2 ? 'bg-primary' : 'bg-gray-300 text-gray-600'
+                }`}
+              >
+                2
+              </Badge>
+              <div className={`w-16 h-1 ${currentStep >= 3 ? 'bg-primary' : 'bg-gray-300'}`}></div>
+              <Badge 
+                variant={currentStep >= 3 ? "default" : "secondary"}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                  currentStep >= 3 ? 'bg-primary' : 'bg-gray-300 text-gray-600'
+                }`}
+              >
+                3
+              </Badge>
             </div>
+          </div>
 
-            {/* Step Indicator */}
-            <div className="flex items-center justify-center mb-8">
-              <div className="flex items-center space-x-4">
-                <Badge 
-                  variant={currentStep >= 1 ? "default" : "secondary"}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                    currentStep >= 1 ? 'bg-primary' : 'bg-gray-300 text-gray-600'
-                  }`}
-                >
-                  1
-                </Badge>
-                <div className={`w-16 h-1 ${currentStep >= 2 ? 'bg-primary' : 'bg-gray-300'}`}></div>
-                <Badge 
-                  variant={currentStep >= 2 ? "default" : "secondary"}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                    currentStep >= 2 ? 'bg-primary' : 'bg-gray-300 text-gray-600'
-                  }`}
-                >
-                  2
-                </Badge>
-                <div className={`w-16 h-1 ${currentStep >= 3 ? 'bg-primary' : 'bg-gray-300'}`}></div>
-                <Badge 
-                  variant={currentStep >= 3 ? "default" : "secondary"}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                    currentStep >= 3 ? 'bg-primary' : 'bg-gray-300 text-gray-600'
-                  }`}
-                >
-                  3
-                </Badge>
-              </div>
-            </div>
+          {/* Signup Form */}
+          <Card className="bg-white shadow-xl border-0">
+            <CardContent className="p-8">
 
             {currentStep === 1 && (
               /* Step 1: Basic Information */
@@ -318,18 +268,15 @@ export default function SignupPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     First Name *
                   </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      type="text"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full pl-10 pr-4 py-3"
-                      placeholder="eg: Alex"
-                    />
-                  </div>
+                  <Input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full h-12 px-4 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="Enter your first name"
+                  />
                 </div>
 
                 {/* Last Name */}
@@ -337,18 +284,15 @@ export default function SignupPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Last Name *
                   </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      type="text"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full pl-10 pr-4 py-3"
-                      placeholder="eg: Mathew"
-                    />
-                  </div>
+                  <Input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full h-12 px-4 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="Enter your last name"
+                  />
                 </div>
 
                 {/* Phone Number */}
@@ -356,19 +300,15 @@ export default function SignupPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Phone Number *
                   </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <div className="absolute left-10 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">+91</div>
-                    <Input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full pl-16 pr-4 py-3"
-                      placeholder="Phone number"
-                    />
-                  </div>
+                  <Input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full h-12 px-4 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="Enter your phone number"
+                  />
                 </div>
 
                 {/* Institute Name */}
@@ -376,18 +316,15 @@ export default function SignupPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Institute Name *
                   </label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      type="text"
-                      name="instituteName"
-                      value={formData.instituteName}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full pl-10 pr-4 py-3 border-2 border-green-500 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="eg: proskill edu"
-                    />
-                  </div>
+                  <Input
+                    type="text"
+                    name="instituteName"
+                    value={formData.instituteName}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full h-12 px-4 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="Enter your institute name"
+                  />
                 </div>
 
                 {/* Institute Email */}
@@ -395,18 +332,15 @@ export default function SignupPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Company Email *
                   </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      type="email"
-                      name="instituteEmail"
-                      value={formData.instituteEmail}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full pl-10 pr-4 py-3"
-                      placeholder="eg: contact@company.com"
-                    />
-                  </div>
+                  <Input
+                    type="email"
+                    name="instituteEmail"
+                    value={formData.instituteEmail}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full h-12 px-4 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="Enter your company email"
+                  />
                 </div>
 
                 {/* Website */}
@@ -414,17 +348,14 @@ export default function SignupPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Company Website
                   </label>
-                  <div className="relative">
-                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      type="url"
-                      name="website"
-                      value={formData.website}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-4 py-3"
-                      placeholder="eg: www.proskilledu.com"
-                    />
-                  </div>
+                  <Input
+                    type="url"
+                    name="website"
+                    value={formData.website}
+                    onChange={handleInputChange}
+                    className="w-full h-12 px-4 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="Enter your website URL"
+                  />
                 </div>
 
                 {/* Message */}
@@ -464,7 +395,7 @@ export default function SignupPage() {
                       value={formData.password}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 pr-12"
+                      className="w-full h-12 px-4 pr-12 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       placeholder="Create a password"
                     />
                     <Button
@@ -472,7 +403,7 @@ export default function SignupPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 h-auto p-0"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 h-auto p-1"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </Button>
@@ -491,7 +422,7 @@ export default function SignupPage() {
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 pr-12"
+                      className="w-full h-12 px-4 pr-12 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       placeholder="Confirm your password"
                     />
                     <Button
@@ -499,7 +430,7 @@ export default function SignupPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 h-auto p-0"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 h-auto p-1"
                     >
                       {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </Button>
@@ -546,20 +477,18 @@ export default function SignupPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Enter Domain
                   </label>
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      name="subdomain"
-                      value={formData.subdomain}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-3 border-2 border-red-500 focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      placeholder="Checkout your domain"
-                    />
-                  </div>
+                  <Input
+                    type="text"
+                    name="subdomain"
+                    value={formData.subdomain}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full h-12 px-4 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="Enter your domain name"
+                  />
                   <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
-                    <div className="w-4 h-4 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 text-xs">i</span>
+                    <div className="w-4 h-4 bg-primary/10 rounded-full flex items-center justify-center">
+                      <span className="text-primary text-xs">i</span>
                     </div>
                     <span>Minimum 4 characters required</span>
                   </div>
@@ -570,13 +499,13 @@ export default function SignupPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Your URL
                   </label>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                     <div className="flex items-center">
-                      <span className="text-green-700 font-medium">https://</span>
-                      <span className="text-green-800 font-semibold mx-2">
+                      <span className="text-primary font-medium">https://</span>
+                      <span className="text-primary font-semibold mx-2">
                         {formData.subdomain || "yourdomain"}
                       </span>
-                      <span className="text-green-700 font-medium">.trackx.com</span>
+                      <span className="text-primary font-medium">.trackx.com</span>
                     </div>
                   </div>
                 </div>
@@ -613,26 +542,52 @@ export default function SignupPage() {
               </form>
             )}
 
-            {/* Footer */}
-            <div className="mt-8 text-center">
-              <p className="text-sm text-gray-600">
-                Already have an account?{" "}
-                <Link href="/login" className="text-primary hover:text-primary/90 font-medium">
-                  Sign In
-                </Link>
-              </p>
-              <p className="text-xs text-gray-500 mt-4">
-                By creating an account, you agree to trackx's{" "}
-                <Link href="#" className="text-primary hover:text-primary/90">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="#" className="text-primary hover:text-primary/90">
-                  Privacy Policy
-                </Link>
-                .
-              </p>
-            </div>
+            </CardContent>
+          </Card>
+
+          {/* Footer */}
+          <div className="mt-8 text-center">
+            <p className="text-sm text-gray-600">
+              Already have an account?{" "}
+              <Link href="/login" className="text-primary hover:text-primary/90 font-medium">
+                Sign In
+              </Link>
+            </p>
+            <p className="text-xs text-gray-500 mt-4">
+              By creating an account, you agree to trackx's{" "}
+              <Link href="#" className="text-primary hover:text-primary/90">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link href="#" className="text-primary hover:text-primary/90">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="relative bg-white border-t border-gray-200 px-4 py-4">
+        <div className="flex flex-col sm:flex-row justify-between items-center text-sm text-gray-500 max-w-6xl mx-auto">
+          <div className="flex items-center space-x-2 mb-2 sm:mb-0">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+            </svg>
+            <span>English</span>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Link href="#" className="hover:text-gray-700">Help</Link>
+            <span>•</span>
+            <Link href="#" className="hover:text-gray-700">Terms Of Service</Link>
+            <span>•</span>
+            <Link href="#" className="hover:text-gray-700">Privacy Policy</Link>
+            <span>•</span>
+            <Link href="#" className="hover:text-gray-700">Acceptable Use</Link>
           </div>
         </div>
       </div>
