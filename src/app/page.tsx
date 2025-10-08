@@ -344,6 +344,7 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="md:hidden fixed inset-0 z-50 bg-white max-w-none w-full h-full rounded-none">
         <DialogHeader className="flex flex-row items-center justify-between">
+          <DialogTitle className="sr-only">Mobile Navigation Menu</DialogTitle>
           <TenantLogo name="TrackX" />
           <DialogClose asChild>
             <Button variant="ghost" size="sm">

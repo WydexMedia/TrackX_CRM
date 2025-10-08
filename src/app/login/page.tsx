@@ -7,7 +7,6 @@ import { setupPeriodicTokenValidation } from '@/lib/tokenValidation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
