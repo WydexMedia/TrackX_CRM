@@ -48,10 +48,10 @@ export default function LeadMgmtLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="flex">
+    <div className="h-screen bg-slate-50 text-slate-900 overflow-hidden">
+      <div className="flex h-full">
         <Sidebar />
-        <main className="flex-1 min-h-screen">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>
