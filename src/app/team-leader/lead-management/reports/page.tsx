@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { authenticatedFetch } from "@/lib/tokenValidation";
 
 export default function ReportsPage() {
@@ -57,6 +58,8 @@ function LeadsReports() {
 
   // Saved quick filters
   const [savedFilters, setSavedFilters] = React.useState<Array<{ id: string; name: string; params: Record<string,string> }>>([]);
+  const [showSaveFilterDialog, setShowSaveFilterDialog] = React.useState(false);
+  const [filterName, setFilterName] = React.useState("");
   
   // Debug: Log when component mounts
   React.useEffect(() => {
@@ -74,6 +77,14 @@ function LeadsReports() {
     try { localStorage.setItem("tl_saved_filters", JSON.stringify(next)); } catch {}
   };
   const saveCurrentFilter = () => {
+    setFilterName("");
+    setShowSaveFilterDialog(true);
+  };
+
+  const handleSaveFilter = () => {
+    const name = filterName.trim();
+    if (!name) return;
+
     const params: Record<string,string> = {};
     if (q) params.q = q;
     if (stage) params.stage = stage;
@@ -92,11 +103,12 @@ function LeadsReports() {
     if (excludeEarlyStages) params.excludeEarlyStages = 'true';
     if (sortByCallCount) params.sortByCallCount = 'true';
     if (needFollowup) params.needFollowup = needFollowup;
-    const name = prompt("Name this filter:")?.trim();
-    if (!name) return;
+    
     const id = `${Date.now()}`;
     const next = [{ id, name, params }, ...savedFilters].slice(0, 20);
     persistSaved(next);
+    setShowSaveFilterDialog(false);
+    setFilterName("");
   };
   const applySavedFilter = (f: { id: string; name: string; params: Record<string,string> }) => {
     setQ(f.params.q || "");
@@ -748,6 +760,54 @@ function LeadsReports() {
           </TBody>
         </Table>
       </Card>
+
+      {/* Save Filter Dialog */}
+      <Dialog open={showSaveFilterDialog} onOpenChange={setShowSaveFilterDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">Save Filter</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Filter Name
+            </label>
+            <Input
+              type="text"
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+              placeholder="e.g., High Priority Leads"
+              className="w-full"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSaveFilter();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowSaveFilterDialog(false);
+                setFilterName("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveFilter}
+              disabled={!filterName.trim()}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Save Filter
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
