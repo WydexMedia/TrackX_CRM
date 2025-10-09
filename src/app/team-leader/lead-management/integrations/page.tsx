@@ -101,7 +101,7 @@ function AddIntegrationModal({ isOpen, onClose, onAdd }: AddIntegrationModalProp
               <select
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
                   errors.provider ? "border-red-300" : "border-slate-300"
                 }`}
               >
@@ -145,7 +145,7 @@ function AddIntegrationModal({ isOpen, onClose, onAdd }: AddIntegrationModalProp
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-cyan-600 hover:bg-cyan-700"
+                className="bg-primary hover:bg-primary/90"
               >
                 {isSubmitting ? (
                   <>
@@ -264,20 +264,20 @@ function ConnectedIntegrationCard({ integration, onDelete, onEdit }: {
   };
 
   return (
-    <Card className="bg-slate-50">
+    <Card className="border-slate-200/60 hover:shadow-md transition-all duration-200">
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
               {getProviderIcon(integration.provider)}
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900">{integration.name}</h3>
-              <p className="text-sm text-slate-600">{integration.email || getProviderLabel(integration.provider)}</p>
+              <h3 className="text-sm font-semibold text-slate-900">{integration.name}</h3>
+              <p className="text-xs text-slate-600">{integration.email || getProviderLabel(integration.provider)}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className="bg-yellow-100 text-yellow-800 gap-1">
+            <Badge className="bg-primary/10 text-primary border-primary/20 gap-1 text-xs">
               <User className="w-3 h-3" />
               {integration.level || "User level"}
             </Badge>
@@ -285,7 +285,7 @@ function ConnectedIntegrationCard({ integration, onDelete, onEdit }: {
               onClick={() => onEdit(integration)}
               variant="ghost"
               size="sm"
-              className="p-2 text-slate-400 hover:text-slate-600"
+              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100"
               title="Edit integration"
             >
               <Edit className="w-4 h-4" />
@@ -313,23 +313,23 @@ function BrowseIntegrationCard({ integration, onConnect }: {
   const IconComponent = integration.icon;
   
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="border-slate-200/60 hover:shadow-md transition-all duration-200">
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
-          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-            <IconComponent className="w-4 h-4 text-slate-600" />
+          <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center">
+            <IconComponent className="w-5 h-5 text-primary" />
           </div>
           <Button 
             onClick={() => onConnect(integration)}
             size="sm"
-            className="bg-green-600 hover:bg-green-700 gap-1"
+            className="bg-primary hover:bg-primary/90 gap-1"
           >
             <Plug className="w-3 h-3" />
             Connect
           </Button>
         </div>
-        <h3 className="font-semibold text-slate-900 mb-1">{integration.name}</h3>
-        <p className="text-sm text-slate-600 leading-relaxed">{integration.description}</p>
+        <h3 className="text-sm font-semibold text-slate-900 mb-1">{integration.name}</h3>
+        <p className="text-xs text-slate-600 leading-relaxed">{integration.description}</p>
       </CardContent>
     </Card>
   );
@@ -433,11 +433,11 @@ export default function IntegrationsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 bg-gradient-to-br from-slate-50 via-white to-slate-50 min-h-screen">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Integrations</h1>
-        <p className="text-slate-600">Connect your favorite apps to Trackx.</p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900 mb-1">Integrations</h1>
+        <p className="text-sm text-slate-600">Connect your favorite apps to Trackx and automate your workflow.</p>
       </div>
 
       {/* Error Message */}
@@ -459,9 +459,9 @@ export default function IntegrationsPage() {
       )}
 
       {/* Connected Section */}
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-slate-900">Connected</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Connected</h2>
           <Button
             onClick={refresh}
             disabled={refreshing}
@@ -470,22 +470,25 @@ export default function IntegrationsPage() {
             className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             title="Refresh integrations"
           >
-            <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           </Button>
         </div>
-        <Card className="bg-slate-50">
-          <CardContent className="p-4">
+        <Card className="border-slate-200/60">
+          <CardContent className="p-5">
             {loading ? (
-              <div className="flex items-center justify-center py-8">
+              <div className="flex items-center justify-center py-12">
                 <div className="flex items-center gap-3 text-slate-600">
                   <RefreshCw className="w-5 h-5 animate-spin" />
-                  <span>Loading integrations...</span>
+                  <span className="text-sm">Loading integrations...</span>
                 </div>
               </div>
             ) : rows.length === 0 ? (
-              <div className="text-center py-8">
-                <WifiOff className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-slate-500 text-sm">No connected integrations</p>
+              <div className="text-center py-12">
+                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <WifiOff className="w-6 h-6 text-slate-400" />
+                </div>
+                <p className="text-slate-500 text-sm font-medium mb-1">No connected integrations</p>
+                <p className="text-xs text-slate-400">Connect your first integration to get started</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -505,18 +508,18 @@ export default function IntegrationsPage() {
 
       {/* Browse Integrations Section */}
       <div>
-        <h2 className="text-xl font-semibold text-slate-900 mb-2">Browse Integrations</h2>
-        <p className="text-slate-600 mb-4">Discover new integrations.</p>
+        <h2 className="text-lg font-semibold text-slate-900 mb-1">Browse Integrations</h2>
+        <p className="text-sm text-slate-600 mb-4">Discover and connect new integrations.</p>
         
         {/* Search Bar */}
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
           <Input
             type="text"
-            placeholder="Search"
+            placeholder="Search integrations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
           />
         </div>
 
@@ -533,8 +536,11 @@ export default function IntegrationsPage() {
 
         {filteredBrowseIntegrations.length === 0 && searchQuery && (
           <div className="text-center py-12">
-            <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-slate-500">No integrations found matching "{searchQuery}"</p>
+            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Search className="w-6 h-6 text-slate-400" />
+            </div>
+            <p className="text-sm text-slate-500 font-medium mb-1">No integrations found</p>
+            <p className="text-xs text-slate-400">No results matching "{searchQuery}"</p>
           </div>
         )}
       </div>
