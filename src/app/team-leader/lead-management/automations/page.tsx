@@ -2,8 +2,18 @@
 
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipTrigger,
+  TooltipProvider 
+} from "@/components/ui/tooltip";
+import { Info, CheckCircle2 } from "lucide-react";
 
-interface Rule { id: string; label: string; description: string }
+interface Rule { id: string; label: string; description: string; details: string[] }
 
 const getRuleIcon = (id: string) => {
   switch (id) {
@@ -40,53 +50,53 @@ const getRuleIcon = (id: string) => {
   }
 };
 
-const getRuleColor = (id: string) => {
+const getRuleColor = (id: string, isActive: boolean) => {
+  if (isActive) {
+    return {
+      gradient: "from-primary to-primary/90",
+      border: "border-primary/20",
+      hoverBorder: "hover:border-primary/30"
+    };
+  }
+  return {
+    gradient: "from-slate-700 to-slate-800",
+    border: "border-slate-200/60",
+    hoverBorder: "hover:border-slate-300"
+  };
+};
+
+const getRuleDetails = (id: string): string[] => {
   switch (id) {
     case "ROUND_ROBIN":
-      return {
-        bg: "bg-blue-50",
-        text: "text-blue-700",
-        icon: "text-blue-600",
-        border: "border-blue-200",
-        activeBg: "bg-blue-100",
-        activeText: "text-blue-800"
-      };
+      return [
+        "Leads are distributed evenly among all available agents",
+        "Each agent gets the same number of leads over time",
+        "Simple and fair distribution method",
+        "Best for teams with similar skill levels"
+      ];
     case "CONVERSION_WEIGHTED":
-      return {
-        bg: "bg-green-50",
-        text: "text-green-700",
-        icon: "text-green-600",
-        border: "border-green-200",
-        activeBg: "bg-green-100",
-        activeText: "text-green-800"
-      };
+      return [
+        "Agents with higher conversion rates get more leads",
+        "Performance-based lead distribution",
+        "Optimizes for overall team conversion",
+        "Rewards top performers with quality leads"
+      ];
     case "HYBRID":
-      return {
-        bg: "bg-purple-50",
-        text: "text-purple-700",
-        icon: "text-purple-600",
-        border: "border-purple-200",
-        activeBg: "bg-purple-100",
-        activeText: "text-purple-800"
-      };
+      return [
+        "Combines round-robin with performance weighting",
+        "Ensures fair distribution while rewarding performance",
+        "Balanced approach for most teams",
+        "70% performance-based, 30% round-robin"
+      ];
     case "CUSTOM":
-      return {
-        bg: "bg-orange-50",
-        text: "text-orange-700",
-        icon: "text-orange-600",
-        border: "border-orange-200",
-        activeBg: "bg-orange-100",
-        activeText: "text-orange-800"
-      };
+      return [
+        "Advanced lead assignment based on custom criteria",
+        "Configure ad spend percentages (15%, 30%, etc.)",
+        "Multiple business rules and conditions",
+        "Highly customizable for complex scenarios"
+      ];
     default:
-      return {
-        bg: "bg-gray-50",
-        text: "text-gray-700",
-        icon: "text-gray-600",
-        border: "border-gray-200",
-        activeBg: "bg-gray-100",
-        activeText: "text-gray-800"
-      };
+      return [];
   }
 };
 
@@ -118,7 +128,8 @@ export default function AutomationsPage() {
       setRules(prev => [...prev, {
         id: "CUSTOM",
         label: "Custom Automation",
-        description: "Advanced lead assignment based on custom criteria including ad spend percentages and multiple business rules"
+        description: "Advanced lead assignment based on custom criteria including ad spend percentages and multiple business rules",
+        details: getRuleDetails("CUSTOM")
       }]);
     }
   }, [rules]);
@@ -132,245 +143,185 @@ export default function AutomationsPage() {
   }, [active]);
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Automation Rules</h1>
-            <p className="text-slate-600">Configure how leads are automatically assigned to agents</p>
+    <TooltipProvider delayDuration={0}>
+      <div className="p-6 bg-gradient-to-br from-slate-50 via-white to-slate-50 min-h-screen">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Automation Rules</h1>
+              <p className="text-sm text-slate-600 mt-1">Configure how leads are automatically assigned to agents</p>
+            </div>
+            {active && (
+              <Badge className="bg-primary/10 text-primary border border-primary/20 px-3 py-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                {rules.find(r => r.id === active)?.label || active}
+              </Badge>
+            )}
           </div>
         </div>
-        
-        {active && (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mt-4">
-            <div className="flex items-center gap-3">
-              <div className="text-emerald-600">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+
+        {/* Rules Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {rules.length === 0 ? (
+            <div className="col-span-2 bg-white border border-slate-200/60 rounded-lg p-12 text-center shadow-sm">
+              <div className="text-slate-400 mb-4">
+                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 </svg>
               </div>
-              <div>
-                <p className="font-medium text-emerald-800">
-                  Currently using: {rules.find(r => r.id === active)?.label || active}
-                </p>
-                <p className="text-sm text-emerald-700">
-                  All new leads will be assigned using this rule
-                </p>
-              </div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-2">No Automation Rules</h3>
+              <p className="text-xs text-slate-600">No automation rules are configured yet.</p>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Rules Grid */}
-      <div className="grid gap-6">
-        {rules.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
-            <div className="text-slate-400 mb-4">
-              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No Automation Rules</h3>
-            <p className="text-slate-600">No automation rules are configured yet. Contact your administrator to set up lead assignment rules.</p>
-          </div>
-        ) : (
-          rules.map((rule) => {
-            const colors = getRuleColor(rule.id);
-            const isActive = active === rule.id;
-            
-            return (
-              <div
-                key={rule.id}
-                className={`bg-white border-2 rounded-2xl p-6 transition-all duration-200 hover:shadow-lg ${
-                  isActive 
-                    ? `${colors.border} shadow-lg` 
-                    : "border-slate-200 hover:border-slate-300"
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className={`${colors.bg} ${colors.icon} p-3 rounded-xl`}>
-                        {getRuleIcon(rule.id)}
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-semibold text-slate-900">{rule.label}</h3>
-                        <div className="flex items-center gap-3 mt-1">
-                          {isActive ? (
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${colors.activeBg} ${colors.activeText}`}>
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                              Currently Active
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-700">
-                              Inactive
-                            </span>
-                          )}
+          ) : (
+            rules.map((rule) => {
+              const isActive = active === rule.id;
+              const colors = getRuleColor(rule.id, isActive);
+              const details = getRuleDetails(rule.id);
+              
+              return (
+                <Card
+                  key={rule.id}
+                  className={`border transition-all duration-200 hover:shadow-md ${
+                    isActive 
+                      ? `${colors.border} shadow-md` 
+                      : `border-slate-200/60 ${colors.hoverBorder}`
+                  }`}
+                >
+                  <CardContent className="p-0">
+                    {/* Gradient Header */}
+                    <div className={`bg-gradient-to-br ${colors.gradient} p-4`}>
+                      <div className="flex items-center justify-between text-white">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-white/20 p-2 rounded-lg">
+                            {getRuleIcon(rule.id)}
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-semibold">{rule.label}</h3>
+                            {isActive && (
+                              <Badge className="bg-white/20 text-white border-white/30 mt-1 h-5 text-[10px]">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Active
+                              </Badge>
+                            )}
+                          </div>
                         </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button className="bg-white/20 hover:bg-white/30 p-1.5 rounded-lg transition-colors">
+                              <Info className="w-4 h-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left" className="max-w-xs bg-white border border-slate-200 shadow-lg">
+                            <div className="space-y-1.5">
+                              <p className="font-semibold text-xs mb-2 text-slate-900">How it works:</p>
+                              {details.map((detail, idx) => (
+                                <p key={idx} className="text-xs text-slate-600">• {detail}</p>
+                              ))}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
-                    </div>
-                    
-                    <div className="mb-6">
-                      <p className="text-slate-700 leading-relaxed">{rule.description}</p>
                     </div>
 
-                    {/* Rule Details */}
-                    <div className={`${colors.bg} rounded-xl p-4 mb-4`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg className={`w-4 h-4 ${colors.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className={`text-sm font-medium ${colors.text}`}>How it works</span>
-                      </div>
-                      <div className="space-y-2">
-                        {rule.id === "ROUND_ROBIN" && (
-                          <ul className={`text-sm ${colors.text} space-y-1`}>
-                            <li>• Leads are distributed evenly among all available agents</li>
-                            <li>• Each agent gets the same number of leads over time</li>
-                            <li>• Simple and fair distribution method</li>
-                          </ul>
-                        )}
-                        {rule.id === "CONVERSION_WEIGHTED" && (
-                          <ul className={`text-sm ${colors.text} space-y-1`}>
-                            <li>• Agents with higher conversion rates get more leads</li>
-                            <li>• Performance-based lead distribution</li>
-                            <li>• Optimizes for overall team conversion</li>
-                          </ul>
-                        )}
-                        {rule.id === "HYBRID" && (
-                          <ul className={`text-sm ${colors.text} space-y-1`}>
-                            <li>• Combines round-robin with performance weighting</li>
-                            <li>• Ensures fair distribution while rewarding performance</li>
-                            <li>• Balanced approach for most teams</li>
-                          </ul>
-                        )}
-                        {rule.id === "CUSTOM" && (
-                          <ul className={`text-sm ${colors.text} space-y-1`}>
-                            <li>• Advanced lead assignment based on custom criteria</li>
-                            <li>• Configure ad spend percentages (15%, 30%, etc.)</li>
-                            <li>• Multiple business rules and conditions</li>
-                            <li>• Highly customizable for complex scenarios</li>
-                          </ul>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="ml-6 flex flex-col items-end gap-3">
-                    <button
-                      className={`px-6 py-3 rounded-xl font-medium text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-                        isActive
-                          ? `${colors.activeBg} ${colors.activeText} cursor-default`
-                          : "bg-slate-900 text-white hover:bg-slate-800 shadow-sm hover:shadow-md"
-                      }`}
-                      disabled={saving || isActive}
-                      onClick={async () => {
-                        if (isActive) return;
-                        
-                        // Show conversion rate modal for CONVERSION_WEIGHTED rule
-                        if (rule.id === "CONVERSION_WEIGHTED") {
-                          setPendingRuleId(rule.id);
-                          setSelectedConversionRates([]);
-                          setShowConversionModal(true);
-                          return;
-                        }
-                        
-                        // Show custom automation modal for CUSTOM rule
-                        if (rule.id === "CUSTOM") {
-                          setPendingRuleId(rule.id);
-                          setShowCustomModal(true);
-                          return;
-                        }
-                        
-                        setSaving(true);
-                        const res = await fetch("/api/tl/automations", { 
-                          method: "POST", 
-                          headers: { "Content-Type": "application/json" }, 
-                          body: JSON.stringify({ id: rule.id }), 
-                          cache: "no-store" 
-                        });
-                        
-                        if (res.ok) {
-                          toast.success(`${rule.label} activated successfully`);
-                        } else {
-                          toast.error("Failed to update automation");
-                        }
-                        
-                        try {
-                          if (typeof window !== "undefined") {
-                            localStorage.setItem("lead_assign_rule", rule.id);
-                            window.dispatchEvent(new CustomEvent("automation-rule-changed", { detail: { id: rule.id } }));
+                    {/* White Content */}
+                    <div className="p-4 bg-white">
+                      <p className="text-xs text-slate-600 mb-4 line-clamp-2">{rule.description}</p>
+                      <Button
+                        className={`w-full ${
+                          isActive
+                            ? "bg-slate-100 text-slate-500 cursor-not-allowed"
+                            : "bg-slate-900 hover:bg-slate-800 text-white"
+                        }`}
+                        disabled={saving || isActive}
+                        size="sm"
+                        onClick={async () => {
+                          if (isActive) return;
+                          
+                          // Show conversion rate modal for CONVERSION_WEIGHTED rule
+                          if (rule.id === "CONVERSION_WEIGHTED") {
+                            setPendingRuleId(rule.id);
+                            setSelectedConversionRates([]);
+                            setShowConversionModal(true);
+                            return;
                           }
-                        } catch {}
-                        
-                        await refresh();
-                        setSaving(false);
-                      }}
-                    >
-                      {saving ? (
-                        <div className="flex items-center gap-2">
-                          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Activating...
-                        </div>
-                      ) : isActive ? (
-                        <div className="flex items-center gap-2">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                          Active
-                        </div>
-                      ) : (
-                        "Activate Rule"
-                      )}
-                    </button>
-                    
-                    {isActive && (
-                      <div className="text-right">
-                        <div className="text-xs text-slate-500">Activated</div>
-                        <div className="text-xs text-slate-400">All new leads use this rule</div>
-                      </div>
-                    )}
-                  </div>
+                          
+                          // Show custom automation modal for CUSTOM rule
+                          if (rule.id === "CUSTOM") {
+                            setPendingRuleId(rule.id);
+                            setShowCustomModal(true);
+                            return;
+                          }
+                          
+                          setSaving(true);
+                          const res = await fetch("/api/tl/automations", { 
+                            method: "POST", 
+                            headers: { "Content-Type": "application/json" }, 
+                            body: JSON.stringify({ id: rule.id }), 
+                            cache: "no-store" 
+                          });
+                          
+                          if (res.ok) {
+                            toast.success(`${rule.label} activated successfully`);
+                          } else {
+                            toast.error("Failed to update automation");
+                          }
+                          
+                          try {
+                            if (typeof window !== "undefined") {
+                              localStorage.setItem("lead_assign_rule", rule.id);
+                              window.dispatchEvent(new CustomEvent("automation-rule-changed", { detail: { id: rule.id } }));
+                            }
+                          } catch {}
+                          
+                          await refresh();
+                          setSaving(false);
+                        }}
+                      >
+                        {saving ? (
+                          <>
+                            <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full mr-2"></div>
+                            Activating...
+                          </>
+                        ) : isActive ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Active
+                          </>
+                        ) : (
+                          "Activate Rule"
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+
+        {/* Information Panel */}
+        <div className="mt-6">
+          <Card className="border border-slate-200/60 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="text-slate-400 mt-0.5">
+                  <Info className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-semibold text-slate-900 mb-1">About Automation Rules</h3>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Automation rules determine how incoming leads are automatically assigned to your sales agents. 
+                    Only one rule can be active at a time. Changes take effect immediately for new leads.
+                  </p>
                 </div>
               </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Information Panel */}
-      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-2xl p-6">
-        <div className="flex items-start gap-4">
-          <div className="text-blue-600 mt-0.5">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="font-medium text-blue-900 mb-2">About Automation Rules</h3>
-            <p className="text-sm text-blue-800 leading-relaxed">
-              Automation rules determine how incoming leads are automatically assigned to your sales agents. 
-              Only one rule can be active at a time. Changes take effect immediately for new leads, 
-              but existing leads retain their current assignments.
-            </p>
-          </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
 
-      {/* Conversion Rate Selection Modal */}
-      {showConversionModal && (
+        {/* Conversion Rate Selection Modal */}
+        {showConversionModal && (
         <div className="fixed inset-0 bg-slate-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
             <div className="text-center mb-6">
@@ -695,7 +646,8 @@ export default function AutomationsPage() {
             </div>
           </div>
         </div>
-      )}
-    </div>
+        )}
+      </div>
+    </TooltipProvider>
   );
 }
