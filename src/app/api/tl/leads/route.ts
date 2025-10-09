@@ -34,6 +34,10 @@ export async function GET(req: NextRequest) {
     const sortByCallCount = searchParams.get("sortByCallCount") === "true";
     const callCountMin = searchParams.get("callCountMin") ? Number(searchParams.get("callCountMin")) : undefined;
     const callCountMax = searchParams.get("callCountMax") ? Number(searchParams.get("callCountMax")) : undefined;
+    
+    // Activity date range filters
+    const activityDateFrom = searchParams.get("activityDateFrom") || undefined;
+    const activityDateTo = searchParams.get("activityDateTo") || undefined;
 
     // Optional: filter by saved list
     const listId = searchParams.get("listId");
@@ -145,6 +149,17 @@ export async function GET(req: NextRequest) {
         s.setMonth(now.getMonth() - 1);
         filters.push(gte(leads.lastActivityAt, s) as any);
       }
+    }
+
+    // Activity date range filters
+    if (activityDateFrom) {
+      filters.push(gte(leads.lastActivityAt, new Date(activityDateFrom)) as any);
+    }
+    if (activityDateTo) {
+      // Add 1 day to include the entire end date
+      const endDate = new Date(activityDateTo);
+      endDate.setDate(endDate.getDate() + 1);
+      filters.push(lte(leads.lastActivityAt, endDate) as any);
     }
 
     const where = filters.length ? and(...filters) : undefined;

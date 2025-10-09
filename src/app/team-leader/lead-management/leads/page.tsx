@@ -122,6 +122,11 @@ export default function LeadsPage() {
     sortByCallCount: false,
     callCountMin: "",
     callCountMax: "",
+    owner: "",
+    stage: "",
+    source: "",
+    activityDateFrom: "",
+    activityDateTo: "",
   });
   
   // Bulk actions
@@ -194,6 +199,11 @@ export default function LeadsPage() {
       if (advancedFilters.sortByCallCount) sp.set("sortByCallCount", "true");
       if (advancedFilters.callCountMin) sp.set("callCountMin", advancedFilters.callCountMin);
       if (advancedFilters.callCountMax) sp.set("callCountMax", advancedFilters.callCountMax);
+      if (advancedFilters.owner) sp.set("owner", advancedFilters.owner);
+      if (advancedFilters.stage) sp.set("stage", advancedFilters.stage);
+      if (advancedFilters.source) sp.set("source", advancedFilters.source);
+      if (advancedFilters.activityDateFrom) sp.set("activityDateFrom", advancedFilters.activityDateFrom);
+      if (advancedFilters.activityDateTo) sp.set("activityDateTo", advancedFilters.activityDateTo);
     }
     
     sp.set("limit", String(pageSize));
@@ -402,6 +412,11 @@ export default function LeadsPage() {
       sortByCallCount: false,
       callCountMin: "",
       callCountMax: "",
+      owner: "",
+      stage: "",
+      source: "",
+      activityDateFrom: "",
+      activityDateTo: "",
     });
   };
 
@@ -419,6 +434,10 @@ export default function LeadsPage() {
     if (advancedFilters.emailDomain) count++;
     if (advancedFilters.excludeEarlyStages) count++;
     if (advancedFilters.callCountMin || advancedFilters.callCountMax) count++;
+    if (advancedFilters.owner) count++;
+    if (advancedFilters.stage) count++;
+    if (advancedFilters.source) count++;
+    if (advancedFilters.activityDateFrom || advancedFilters.activityDateTo) count++;
     return count;
   };
 
@@ -727,20 +746,96 @@ export default function LeadsPage() {
         {showAdvancedFilters && (
           <div className="bg-white border-b border-slate-200/60 p-4 shadow-sm">
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
-              {/* Date Range */}
+              {/* Created Date Range */}
               <select
                 value={advancedFilters.dateRange}
                 onChange={(e) => setAdvancedFilters(prev => ({ ...prev, dateRange: e.target.value }))}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">All Time</option>
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="last7days">Last 7 days</option>
-                <option value="last30days">Last 30 days</option>
-                <option value="thismonth">This month</option>
-                <option value="lastmonth">Last month</option>
+                <option value="">Created: All Time</option>
+                <option value="today">Created: Today</option>
+                <option value="yesterday">Created: Yesterday</option>
+                <option value="last7days">Created: Last 7 days</option>
+                <option value="last30days">Created: Last 30 days</option>
+                <option value="thismonth">Created: This month</option>
+                <option value="lastmonth">Created: Last month</option>
               </select>
+
+              {/* Owner Filter */}
+              <select
+                value={advancedFilters.owner}
+                onChange={(e) => setAdvancedFilters(prev => ({ ...prev, owner: e.target.value }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Owners</option>
+                <option value="unassigned">Unassigned</option>
+                {sales.map((s) => (
+                  <option key={s.code} value={s.code}>{s.name}</option>
+                ))}
+              </select>
+
+              {/* Stage Filter */}
+              <select
+                value={advancedFilters.stage}
+                onChange={(e) => setAdvancedFilters(prev => ({ ...prev, stage: e.target.value }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Stages</option>
+                <option value="Not contacted">Not contacted</option>
+                <option value="Qualified">Qualified</option>
+                <option value="Not interested">Not interested</option>
+                <option value="Interested">Interested</option>
+                <option value="To be nurtured">To be nurtured</option>
+                <option value="Junk">Junk</option>
+                <option value="Ask to call back">Ask to call back</option>
+                <option value="Attempt to contact">Attempt to contact</option>
+                <option value="Did not Connect">Did not Connect</option>
+                <option value="Customer">Customer</option>
+                <option value="Other Language">Other Language</option>
+              </select>
+
+              {/* Source Filter */}
+              <input
+                type="text"
+                placeholder="Source (e.g. Website, META, Google)"
+                value={advancedFilters.source}
+                onChange={(e) => setAdvancedFilters(prev => ({ ...prev, source: e.target.value }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+
+              {/* Last Activity */}
+              <select
+                value={advancedFilters.lastActivity}
+                onChange={(e) => setAdvancedFilters(prev => ({ ...prev, lastActivity: e.target.value }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Last Activity: Any</option>
+                <option value="today">Activity: Today</option>
+                <option value="last3days">Activity: Last 3 days</option>
+                <option value="lastweek">Activity: Last week</option>
+                <option value="lastmonth">Activity: Last month</option>
+                <option value="noactivity">No Activity</option>
+              </select>
+
+              {/* Activity Date Range - From */}
+              <input
+                type="date"
+                placeholder="Activity From"
+                value={advancedFilters.activityDateFrom}
+                onChange={(e) => setAdvancedFilters(prev => ({ ...prev, activityDateFrom: e.target.value }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                title="Activity From Date"
+              />
+
+              {/* Activity Date Range - To */}
+              <input
+                type="date"
+                placeholder="Activity To"
+                value={advancedFilters.activityDateTo}
+                onChange={(e) => setAdvancedFilters(prev => ({ ...prev, activityDateTo: e.target.value }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                title="Activity To Date"
+              />
 
               {/* Score Range */}
               <div className="flex gap-1">
