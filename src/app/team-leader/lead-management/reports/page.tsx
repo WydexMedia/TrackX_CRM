@@ -461,7 +461,7 @@ function LeadsReports() {
           <div className="ml-auto flex gap-2">
             <Button onClick={()=>{setQ(""); setStage(""); setOwner(""); setDateRange("last30days"); setHasEmail(""); setEmailDomain(""); setScoreMin(""); setScoreMax(""); setLastActivity(""); setConnected(false); setCallCountMin(""); setCallCountMax(""); setSortByDuration(false); setExcludeEarlyStages(false); setSortByCallCount(false); setNeedFollowup(""); setOffset(0);}} variant="outline" size="sm">Reset</Button>
             <Button onClick={()=>setShowAdvanced(v=>!v)} variant="outline" size="sm">{showAdvanced ? 'Hide Advanced' : 'Advanced Filters'}</Button>
-            <Button onClick={saveCurrentFilter} variant="outline" size="sm" className="border-primary text-primary hover:bg-primary/10">Save Filter</Button>
+            <Button onClick={saveCurrentFilter} variant="outline" size="sm" className="border-primary text-primary hover:bg-primary hover:text-white">Save Filter</Button>
             <Button onClick={exportCsv} size="sm" className="bg-slate-900 hover:bg-slate-800 text-white">Download CSV</Button>
           </div>
         </div>

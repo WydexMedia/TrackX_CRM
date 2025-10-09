@@ -612,7 +612,7 @@ export default function LeadsPage() {
                     }}
                     className={`w-full justify-between ${
                       currentView === view.id
-                        ? "bg-primary/10 text-primary hover:bg-primary/15 border border-primary/20 shadow-sm"
+                        ? "bg-primary/10 text-primary border border-primary/20 shadow-sm"
                         : "text-slate-700 hover:bg-slate-100"
                     }`}
                   >
@@ -970,7 +970,7 @@ export default function LeadsPage() {
                         <div className="text-sm font-medium">No leads found in this view</div>
                         <Button 
                           variant="outline"
-                          className="text-primary hover:text-primary/90 text-sm border-primary/30"
+                          className="text-primary hover:bg-primary hover:text-white text-sm border-primary/30"
                           onClick={() => setShowAdd(true)}
                         >
                           Add your first lead
