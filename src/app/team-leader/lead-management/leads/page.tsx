@@ -909,13 +909,13 @@ export default function LeadsPage() {
                     Auto
                   </button>
                   <button
-                    className="text-xs bg-cyan-600 text-white px-3 py-1 rounded hover:bg-cyan-700"
+                    className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
                     onClick={() => setCreateTaskOpen(true)}
                   >
                     Task
                   </button>
                   <button
-                    className="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                    className="text-xs bg-rose-600 text-white px-3 py-1 rounded hover:bg-rose-700"
                     onClick={() => setConfirmDeleteOpen(true)}
                   >
                     Delete
@@ -930,11 +930,12 @@ export default function LeadsPage() {
         <div className="flex-1 overflow-auto">
           <div className="bg-white">
             <Table>
-              <THead className="bg-gray-50 sticky top-0">
+              <THead className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 border-b border-slate-200">
                 <TR>
                   <TH className="w-12">
                     <input 
-                      type="checkbox" 
+                      type="checkbox"
+                      className="rounded border-slate-300 text-primary focus:ring-primary"
                       onChange={(e) => {
                         const next: Record<string, boolean> = {};
                         if (e.target.checked) rows.forEach((r) => (next[r.phone] = true));
@@ -942,34 +943,34 @@ export default function LeadsPage() {
                       }} 
                     />
                   </TH>
-                  <TH>Lead</TH>
-                  <TH>Stage</TH>
-                  <TH>Owner</TH>
-                  <TH>Source</TH>
-                  <TH>Score</TH>
-                  <TH>Last Activity</TH>
-                  <TH>Created</TH>
+                  <TH className="text-xs font-semibold text-slate-700">Lead</TH>
+                  <TH className="text-xs font-semibold text-slate-700">Stage</TH>
+                  <TH className="text-xs font-semibold text-slate-700">Owner</TH>
+                  <TH className="text-xs font-semibold text-slate-700">Source</TH>
+                  <TH className="text-xs font-semibold text-slate-700">Score</TH>
+                  <TH className="text-xs font-semibold text-slate-700">Last Activity</TH>
+                  <TH className="text-xs font-semibold text-slate-700">Created</TH>
                 </TR>
               </THead>
               <TBody>
                 {loading ? (
                   <TR>
-                    <TD className="text-center text-gray-500" colSpan={8}>
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-                        Loading leads...
+                    <TD className="text-center text-slate-500" colSpan={8}>
+                      <div className="flex items-center justify-center gap-2 py-8">
+                        <div className="w-4 h-4 border-2 border-slate-300 border-t-primary rounded-full animate-spin"></div>
+                        <span className="text-sm">Loading leads...</span>
                       </div>
                     </TD>
                   </TR>
                 ) : rows.length === 0 ? (
                   <TR>
-                    <TD className="text-center text-gray-500" colSpan={8}>
-                      <div className="flex flex-col items-center gap-2">
-                        <Clipboard className="w-12 h-12 text-gray-300" />
-                        <div>No leads found in this view</div>
+                    <TD className="text-center text-slate-500" colSpan={8}>
+                      <div className="flex flex-col items-center gap-3 py-12">
+                        <Clipboard className="w-12 h-12 text-slate-300" />
+                        <div className="text-sm font-medium">No leads found in this view</div>
                         <Button 
-                          variant="ghost"
-                          className="text-blue-600 hover:text-blue-700 text-sm"
+                          variant="outline"
+                          className="text-primary hover:text-primary/90 text-sm border-primary/30"
                           onClick={() => setShowAdd(true)}
                         >
                           Add your first lead
@@ -979,27 +980,28 @@ export default function LeadsPage() {
                   </TR>
                 ) : (
                   rows.map((lead) => (
-                    <TR key={lead.phone} className="hover:bg-gray-50 transition-colors">
+                    <TR key={lead.phone} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100">
                       <TD>
                         <input 
-                          type="checkbox" 
+                          type="checkbox"
+                          className="rounded border-slate-300 text-primary focus:ring-primary"
                           checked={!!selected[lead.phone]} 
                           onChange={(e) => setSelected({ ...selected, [lead.phone]: e.target.checked })} 
                         />
                       </TD>
                       <TD>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col gap-0.5">
                           <a 
                             href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
-                            className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                            className="font-medium text-sm text-primary hover:text-primary/80 hover:underline"
                           >
                             {lead.name || "Unknown"}
                           </a>
-                          <div className="text-xs text-gray-500 space-x-2">
-                            <span>{lead.phone}</span>
-                            {lead.email && <span>• {lead.email}</span>}
+                          <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
+                            <span className="font-mono">{lead.phone}</span>
+                            {lead.email && <span className="text-slate-400">• {lead.email}</span>}
                             {lead.callCount !== undefined && lead.callCount > 0 && (
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-slate-300">
                                 {lead.callCount} calls
                               </Badge>
                             )}
@@ -1021,25 +1023,25 @@ export default function LeadsPage() {
                           </TooltipContent>
                         </Tooltip>
                       </TD>
-                      <TD className="text-gray-600">
+                      <TD className="text-slate-600 text-sm">
                         {(sales.find((s) => s.code === lead.ownerId)?.name) || lead.ownerId || "—"}
                       </TD>
                       <TD>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
                           {getSourceIcon(lead.source || "")}
-                          <span className="text-gray-600">{lead.source || "—"}</span>
+                          <span className="text-slate-600 text-sm">{lead.source || "—"}</span>
                         </div>
                       </TD>
                       <TD>
-                        <div className="flex items-center gap-1">
-                          <span className="font-mono text-sm">{lead.score ?? 0}</span>
-                          {(lead.score ?? 0) >= 80 && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-sm font-medium text-slate-700">{lead.score ?? 0}</span>
+                          {(lead.score ?? 0) >= 80 && <Star className="w-3.5 h-3.5 text-amber-500 fill-current" />}
                         </div>
                       </TD>
-                      <TD className="text-gray-600 text-xs">
+                      <TD className="text-slate-500 text-xs">
                         {lead.lastActivityAt ? new Date(lead.lastActivityAt).toLocaleDateString() : "—"}
                       </TD>
-                      <TD className="text-gray-600 text-xs">
+                      <TD className="text-slate-500 text-xs">
                         {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : "—"}
                       </TD>
                     </TR>
@@ -1052,18 +1054,18 @@ export default function LeadsPage() {
 
         {/* Pagination */}
         {total > 0 && (
-          <div className="bg-white border-t border-gray-200 px-6 py-3">
+          <div className="bg-white border-t border-slate-200/60 px-6 py-3 shadow-sm">
             <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-slate-600 font-medium">
                 Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total}
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600">Show:</label>
+                  <label className="text-xs text-slate-600">Show:</label>
                   <select
                     value={pageSize}
                     onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                    className="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-primary focus:border-primary"
                   >
                     <option value={10}>10</option>
                     <option value={15}>15</option>
@@ -1071,7 +1073,7 @@ export default function LeadsPage() {
                     <option value={50}>50</option>
                     <option value={100}>100</option>
                   </select>
-                  <span className="text-sm text-gray-600">per page</span>
+                  <span className="text-xs text-slate-600">per page</span>
                 </div>
                 {total > pageSize && (
                   <div className="flex gap-2">
@@ -1080,6 +1082,7 @@ export default function LeadsPage() {
                       size="sm"
                       disabled={page === 1}
                       onClick={() => setPage(p => Math.max(1, p - 1))}
+                      className="border-slate-300"
                     >
                       Previous
                     </Button>
@@ -1088,6 +1091,7 @@ export default function LeadsPage() {
                       size="sm"
                       disabled={page * pageSize >= total}
                       onClick={() => setPage(p => p + 1)}
+                      className="border-slate-300"
                     >
                       Next
                     </Button>
