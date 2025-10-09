@@ -87,6 +87,37 @@ export async function POST(req: NextRequest) {
       await db.insert(tasks).values(values as any);
       return new Response(JSON.stringify({ success: true }), { status: 201 });
     }
+    if (action === "bulkStageUpdate") {
+      const { phones, stage, actorId } = body as { phones: string[]; stage: string; actorId?: string };
+      if (!Array.isArray(phones) || !stage) {
+        return new Response(JSON.stringify({ success: false, error: "phones[] and stage required" }), { status: 400 });
+      }
+      // Capture previous stages before update
+      const existing = await db
+        .select({ phone: leads.phone, stage: leads.stage })
+        .from(leads)
+        .where(tenantId ? and(inArray(leads.phone, phones), eq(leads.tenantId, tenantId)) : inArray(leads.phone, phones));
+      const prevStageByPhone = new Map(existing.map((r: any) => [r.phone, r.stage as string]));
+
+      // Update stages
+      await db.update(leads)
+        .set({ stage, updatedAt: new Date() })
+        .where(tenantId ? and(inArray(leads.phone, phones), eq(leads.tenantId, tenantId)) : inArray(leads.phone, phones));
+      
+      // Create timeline events for stage changes
+      const eventValues = phones.map((p) => ({
+        leadPhone: p,
+        type: "STAGE_CHANGE",
+        data: { from: prevStageByPhone.get(p) || "Unknown", to: stage, actorId: actorId || "system" },
+        at: new Date(),
+        actorId: actorId || null,
+        tenantId: tenantId || null,
+      }));
+      if (eventValues.length) {
+        await db.insert(leadEvents).values(eventValues as any);
+      }
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    }
     if (action === "autoAssign") {
       const { phones, actorId } = body as { phones: string[]; actorId?: string };
       if (!Array.isArray(phones) || phones.length === 0) {

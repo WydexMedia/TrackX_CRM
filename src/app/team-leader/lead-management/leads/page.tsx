@@ -133,6 +133,10 @@ export default function LeadsPage() {
 
   // Bulk: add to list
   const [addToListId, setAddToListId] = useState<string>("");
+  
+  // Bulk: update stage
+  const [bulkStage, setBulkStage] = useState<string>("");
+  const [updatingStage, setUpdatingStage] = useState(false);
 
   // Predefined list views with Lucide icons
   const defaultViews: ListView[] = [
@@ -269,6 +273,35 @@ export default function LeadsPage() {
       toast.error("Failed to delete leads");
     } finally {
       setConfirmDeleteOpen(false);
+    }
+  };
+
+  const performBulkStageUpdate = async () => {
+    if (phones.length === 0 || !bulkStage) return;
+    try {
+      setUpdatingStage(true);
+      const actorId = getActorId();
+      const res = await authenticatedFetch("/api/tl/leads", { 
+        method: "PATCH", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ 
+          phones, 
+          stage: bulkStage,
+          actorId 
+        }) 
+      });
+      if (res.ok) {
+        toast.success(`Updated stage for ${phones.length} lead(s) to "${bulkStage}"`);
+        setSelected({});
+        setBulkStage("");
+        refreshData();
+      } else {
+        toast.error("Stage update failed");
+      }
+    } catch {
+      toast.error("Stage update failed");
+    } finally {
+      setUpdatingStage(false);
     }
   };
 
@@ -907,6 +940,31 @@ export default function LeadsPage() {
                       <span className="inline-block h-3 w-3 rounded-full border-2 border-white/80 border-t-transparent animate-spin" />
                     )}
                     Auto
+                  </button>
+                  <select
+                    className="text-xs border border-primary/30 rounded px-2 py-1 focus:ring-1 focus:ring-primary"
+                    value={bulkStage}
+                    onChange={(e) => setBulkStage(e.target.value)}
+                  >
+                    <option value="">Change stage...</option>
+                    <option value="Not contacted">Not contacted</option>
+                    <option value="Qualified">Qualified</option>
+                    <option value="Not interested">Not interested</option>
+                    <option value="Interested">Interested</option>
+                    <option value="To be nurtured">To be nurtured</option>
+                    <option value="Junk">Junk</option>
+                    <option value="Ask to call back">Ask to call back</option>
+                    <option value="Attempt to contact">Attempt to contact</option>
+                    <option value="Did not Connect">Did not Connect</option>
+                    <option value="Customer">Customer</option>
+                    <option value="Other Language">Other Language</option>
+                  </select>
+                  <button
+                    className="text-xs bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700 disabled:opacity-50"
+                    disabled={!bulkStage || updatingStage}
+                    onClick={performBulkStageUpdate}
+                  >
+                    {updatingStage ? "Updating..." : "Update"}
                   </button>
                   <button
                     className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"

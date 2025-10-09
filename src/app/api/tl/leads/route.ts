@@ -277,6 +277,65 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// Bulk update leads (stage, assignment, etc.)
+export async function PATCH(req: NextRequest) {
+  try {
+    // Authenticate the request
+    const authResult = await authenticateToken(req as any);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+    }
+
+    const body = await req.json();
+    const { phones, stage, actorId } = body || {};
+    
+    if (!Array.isArray(phones) || phones.length === 0) {
+      return new Response(JSON.stringify({ success: false, error: "phones[] required" }), { status: 400 });
+    }
+    
+    let tenantId: number;
+    try {
+      tenantId = await requireTenantIdFromRequest(req as any);
+    } catch {
+      return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
+    }
+
+    // Bulk stage update
+    if (stage) {
+      // Capture previous stages before update
+      const existing = await db
+        .select({ phone: leads.phone, stage: leads.stage })
+        .from(leads)
+        .where(and(inArray(leads.phone, phones), eq(leads.tenantId, tenantId)));
+      const prevStageByPhone = new Map(existing.map((r: any) => [r.phone, r.stage as string]));
+
+      // Update stages
+      await db.update(leads)
+        .set({ stage, updatedAt: new Date() })
+        .where(and(inArray(leads.phone, phones), eq(leads.tenantId, tenantId)));
+      
+      // Create timeline events for stage changes
+      const eventValues = phones.map((p) => ({
+        leadPhone: p,
+        type: "STAGE_CHANGE",
+        data: { from: prevStageByPhone.get(p) || "Unknown", to: stage, actorId: actorId || "system" },
+        at: new Date(),
+        actorId: actorId || null,
+        tenantId: tenantId,
+      }));
+      if (eventValues.length) {
+        await db.insert(leadEvents).values(eventValues as any);
+      }
+      
+      return new Response(JSON.stringify({ success: true, updated: phones.length }), { status: 200 });
+    }
+
+    return new Response(JSON.stringify({ success: false, error: "No update action specified" }), { status: 400 });
+  } catch (e: any) {
+    return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to update leads" }), { status: 500 });
+  }
+}
+
 // Bulk delete leads by phone list
 export async function DELETE(req: NextRequest) {
   try {
