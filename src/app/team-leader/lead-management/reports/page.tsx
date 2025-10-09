@@ -9,9 +9,11 @@ import { authenticatedFetch } from "@/lib/tokenValidation";
 
 export default function ReportsPage() {
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-2">Reports</h1>
-      <p className="text-sm text-slate-500 mb-4">Export packs, scheduled mails</p>
+    <div className="p-6 bg-gradient-to-br from-slate-50 via-white to-slate-50 min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Reports</h1>
+        <p className="text-sm text-slate-600 mt-1">Export packs, scheduled mails, and detailed analytics</p>
+      </div>
 
       <LeadsReports />
     </div>
@@ -263,42 +265,40 @@ function LeadsReports() {
   }, [offset, limit, total]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Daily Conversions Card */}
-        <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 border-blue-200 shadow-sm hover:shadow-md transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800">Daily Conversions</h3>
-                  <p className="text-sm text-slate-600">Recent daily trends</p>
-                </div>
+        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Daily Conversions</h3>
+                <p className="text-xs text-slate-600">Recent daily trends</p>
               </div>
             </div>
-            <div className="space-y-3 max-h-64 overflow-auto custom-scrollbar">
+            <div className="space-y-2 max-h-64 overflow-auto custom-scrollbar">
               {agg?.trends?.daily?.length ? agg.trends.daily.map((d: any) => (
-                <div key={String(d.period)} className="flex items-center justify-between p-3 bg-white/70 rounded-xl hover:bg-white/90 transition-colors">
-                  <span className="text-slate-700 font-medium">{new Date(d.period).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                <div key={String(d.period)} className="flex items-center justify-between p-2.5 bg-white/80 rounded-lg hover:bg-white transition-colors border border-primary/10">
+                  <span className="text-xs text-slate-700 font-medium">{new Date(d.period).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-blue-600">{d.conversions}</span>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span className="text-lg font-bold text-primary">{d.conversions}</span>
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></div>
                   </div>
                 </div>
               )) : (
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <p className="text-slate-500 font-medium">No data available</p>
+                  <p className="text-xs text-slate-500">No data available</p>
                 </div>
               )}
             </div>
@@ -306,38 +306,36 @@ function LeadsReports() {
         </Card>
 
         {/* Weekly Conversions Card */}
-        <Card className="bg-gradient-to-br from-emerald-50 to-green-100 border-emerald-200 shadow-sm hover:shadow-md transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800">Weekly Conversions</h3>
-                  <p className="text-sm text-slate-600">Weekly performance</p>
-                </div>
+        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Weekly Conversions</h3>
+                <p className="text-xs text-slate-600">Weekly performance</p>
               </div>
             </div>
-            <div className="space-y-3 max-h-64 overflow-auto custom-scrollbar">
+            <div className="space-y-2 max-h-64 overflow-auto custom-scrollbar">
               {agg?.trends?.weekly?.length ? agg.trends.weekly.map((d: any) => (
-                <div key={String(d.period)} className="flex items-center justify-between p-3 bg-white/70 rounded-xl hover:bg-white/90 transition-colors">
-                  <span className="text-slate-700 font-medium">Week of {new Date(d.period).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                <div key={String(d.period)} className="flex items-center justify-between p-2.5 bg-white/80 rounded-lg hover:bg-white transition-colors border border-primary/10">
+                  <span className="text-xs text-slate-700 font-medium">Week of {new Date(d.period).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-emerald-600">{d.conversions}</span>
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span className="text-lg font-bold text-primary">{d.conversions}</span>
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></div>
                   </div>
                 </div>
               )) : (
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <p className="text-slate-500 font-medium">No data available</p>
+                  <p className="text-xs text-slate-500">No data available</p>
                 </div>
               )}
             </div>
@@ -345,38 +343,36 @@ function LeadsReports() {
         </Card>
 
         {/* Monthly Conversions Card */}
-        <Card className="bg-gradient-to-br from-purple-50 to-violet-100 border-purple-200 shadow-sm hover:shadow-md transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800">Monthly Conversions</h3>
-                  <p className="text-sm text-slate-600">Monthly overview</p>
-                </div>
+        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Monthly Conversions</h3>
+                <p className="text-xs text-slate-600">Monthly overview</p>
               </div>
             </div>
-            <div className="space-y-3 max-h-64 overflow-auto custom-scrollbar">
+            <div className="space-y-2 max-h-64 overflow-auto custom-scrollbar">
               {agg?.trends?.monthly?.length ? agg.trends.monthly.map((d: any) => (
-                <div key={String(d.period)} className="flex items-center justify-between p-3 bg-white/70 rounded-xl hover:bg-white/90 transition-colors">
-                  <span className="text-slate-700 font-medium">{new Date(d.period).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</span>
+                <div key={String(d.period)} className="flex items-center justify-between p-2.5 bg-white/80 rounded-lg hover:bg-white transition-colors border border-primary/10">
+                  <span className="text-xs text-slate-700 font-medium">{new Date(d.period).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-purple-600">{d.conversions}</span>
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                    <span className="text-lg font-bold text-primary">{d.conversions}</span>
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></div>
                   </div>
                 </div>
               )) : (
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <p className="text-slate-500 font-medium">No data available</p>
+                  <p className="text-xs text-slate-500">No data available</p>
                 </div>
               )}
             </div>
@@ -384,25 +380,30 @@ function LeadsReports() {
         </Card>
       </div>
       {/* Calls per Lead Section */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-800">Calls per Lead</h3>
-          </div>
+      <Card className="border-slate-200/60">
+        <CardContent className="p-5">
+          <h3 className="text-sm font-semibold text-slate-900 mb-4">Calls per Lead</h3>
           <div className="space-y-2">
             {agg?.callsPerLead?.length ? agg.callsPerLead.map((c: any) => (
-              <div key={c.leadPhone} className="flex justify-between text-sm">
-                <span className="text-slate-600">{c.leadPhone}</span>
-                <span className="text-slate-700">Started: {c.started} • Completed: {c.completed}</span>
+              <div key={c.leadPhone} className="flex justify-between items-center p-2.5 bg-slate-50/80 rounded-lg hover:bg-slate-100/80 transition-colors border border-slate-100">
+                <span className="text-xs font-medium text-slate-700">{c.leadPhone}</span>
+                <span className="text-xs text-slate-600">Started: {c.started} • Completed: {c.completed}</span>
               </div>
             )) : (
-              <div className="text-slate-500 text-sm">No call data</div>
+              <div className="text-center py-8">
+                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                </div>
+                <p className="text-xs text-slate-500">No call data</p>
+              </div>
             )}
           </div>
         </CardContent>
       </Card>
-      <Card>
-        <CardContent className="p-4">
+      <Card className="border-slate-200/60">
+        <CardContent className="p-5">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex-1 min-w-[200px]">
               <label className="block text-xs text-slate-500 mb-1">Search</label>
@@ -448,8 +449,8 @@ function LeadsReports() {
           <div className="ml-auto flex gap-2">
             <Button onClick={()=>{setQ(""); setStage(""); setOwner(""); setDateRange("last30days"); setHasEmail(""); setEmailDomain(""); setScoreMin(""); setScoreMax(""); setLastActivity(""); setConnected(false); setCallCountMin(""); setCallCountMax(""); setSortByDuration(false); setExcludeEarlyStages(false); setSortByCallCount(false); setNeedFollowup(""); setOffset(0);}} variant="outline" size="sm">Reset</Button>
             <Button onClick={()=>setShowAdvanced(v=>!v)} variant="outline" size="sm">{showAdvanced ? 'Hide Advanced' : 'Advanced Filters'}</Button>
-            <Button onClick={saveCurrentFilter} variant="outline" size="sm" className="border-blue-600 text-blue-700">Save Filter</Button>
-            <Button onClick={exportCsv} size="sm" className="bg-slate-800 hover:bg-slate-900">Download CSV</Button>
+            <Button onClick={saveCurrentFilter} variant="outline" size="sm" className="border-primary text-primary hover:bg-primary/10">Save Filter</Button>
+            <Button onClick={exportCsv} size="sm" className="bg-slate-900 hover:bg-slate-800 text-white">Download CSV</Button>
           </div>
         </div>
 
@@ -543,37 +544,37 @@ function LeadsReports() {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm font-medium mb-3">By Stage</div>
+        <Card className="border-slate-200/60">
+          <CardContent className="p-5">
+            <div className="text-sm font-semibold text-slate-900 mb-4">By Stage</div>
             <div className="space-y-2">
               {stageSummary.map(([s, c]) => (
-                <div key={s} className="flex justify-between text-sm">
-                  <span className="text-slate-600">{s}</span>
-                  <span className="font-medium">{c}</span>
+                <div key={s} className="flex justify-between items-center p-2 bg-slate-50/80 rounded-lg hover:bg-slate-100/80 transition-colors border border-slate-100">
+                  <span className="text-xs text-slate-700">{s}</span>
+                  <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">{c}</Badge>
                 </div>
               ))}
-              {stageSummary.length === 0 && <div className="text-slate-500 text-sm">No data</div>}
+              {stageSummary.length === 0 && <div className="text-center py-8 text-xs text-slate-500">No data</div>}
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm font-medium mb-3">By Owner (Top 12)</div>
+        <Card className="border-slate-200/60">
+          <CardContent className="p-5">
+            <div className="text-sm font-semibold text-slate-900 mb-4">By Owner (Top 12)</div>
             <div className="space-y-2">
               {ownerSummary.map((o) => (
-                <div key={o.code} className="flex justify-between text-sm">
-                  <span className="text-slate-600">{o.name}</span>
-                  <span className="font-medium">{o.count}</span>
+                <div key={o.code} className="flex justify-between items-center p-2 bg-slate-50/80 rounded-lg hover:bg-slate-100/80 transition-colors border border-slate-100">
+                  <span className="text-xs text-slate-700">{o.name}</span>
+                  <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">{o.count}</Badge>
                 </div>
               ))}
-              {ownerSummary.length === 0 && <div className="text-slate-500 text-sm">No data</div>}
+              {ownerSummary.length === 0 && <div className="text-center py-8 text-xs text-slate-500">No data</div>}
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm font-medium mb-3">Connected Leads Filter</div>
+        <Card className="border-slate-200/60">
+          <CardContent className="p-5">
+            <div className="text-sm font-semibold text-slate-900 mb-4">Connected Leads Filter</div>
             <select 
               className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2" 
               value={connected ? "true" : ""} 
@@ -591,9 +592,9 @@ function LeadsReports() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm font-medium mb-3">Successful Connections Filter</div>
+        <Card className="border-slate-200/60">
+          <CardContent className="p-5">
+            <div className="text-sm font-semibold text-slate-900 mb-4">Successful Connections Filter</div>
             <select 
               className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2" 
               value={excludeEarlyStages ? "true" : ""} 
@@ -611,9 +612,9 @@ function LeadsReports() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm font-medium mb-3">Call Count Filter</div>
+        <Card className="border-slate-200/60">
+          <CardContent className="p-5">
+            <div className="text-sm font-semibold text-slate-900 mb-4">Call Count Filter</div>
             <div className="flex gap-2 mb-2">
               <Input 
                 type="number" 
@@ -646,9 +647,9 @@ function LeadsReports() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm font-medium mb-3">Sorting Options</div>
+        <Card className="border-slate-200/60">
+          <CardContent className="p-5">
+            <div className="text-sm font-semibold text-slate-900 mb-4">Sorting Options</div>
             <select 
               className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-2" 
               value={sortByCallCount ? "true" : ""} 
@@ -669,13 +670,13 @@ function LeadsReports() {
       </div>
 
 
-      <Card className="overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 text-sm">
-          <div className="text-slate-600">
+      <Card className="overflow-hidden border-slate-200/60">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 text-xs">
+          <div className="text-slate-600 font-medium">
             {loading ? 'Loading...' : `Showing ${pagination.from}–${pagination.to} of ${total} • Page ${pagination.currentPage} of ${pagination.totalPages}`}
           </div>
           <div className="flex items-center gap-2">
-            <select className="border border-slate-300 rounded-md px-2 py-1 text-sm" value={limit} onChange={e=>{setOffset(0); setLimit(Number(e.target.value));}}>
+            <select className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary focus:border-primary" value={limit} onChange={e=>{setOffset(0); setLimit(Number(e.target.value));}}>
               <option value={25}>25</option>
               <option value={50}>50</option>
               <option value={100}>100</option>
@@ -689,6 +690,7 @@ function LeadsReports() {
                   onClick={()=>setOffset((p - 1) * limit)}
                   variant={p === pagination.currentPage ? "default" : "outline"}
                   size="sm"
+                  className={p === pagination.currentPage ? "bg-slate-900 hover:bg-slate-800" : ""}
                 >{p}</Button>
               ))}
               <Button disabled={pagination.currentPage === pagination.totalPages} onClick={()=>setOffset(offset + limit)} variant="outline" size="sm">Next</Button>
@@ -715,23 +717,23 @@ function LeadsReports() {
             {rows.map((r) => (
               <TR 
                 key={r.phone} 
-                className="cursor-pointer transition-colors"
+                className="cursor-pointer hover:bg-slate-50/50 transition-colors"
                 onClick={() => window.location.href = `/team-leader/lead-management/leads/${encodeURIComponent(r.phone)}`}
               >
-                <TD className="text-blue-600 underline">{r.phone}</TD>
-                <TD>{r.name || '—'}</TD>
-                <TD>{r.email || '—'}</TD>
-                <TD>{r.source || '—'}</TD>
-                <TD>{r.stage}</TD>
-                <TD>{r.score ?? '—'}</TD>
-                <TD>{ownersMap[r.ownerId || ''] || r.ownerId || '—'}</TD>
-                <TD>{r.createdAt ? new Date(r.createdAt).toLocaleString() : '—'}</TD>
-                <TD>{r.lastActivityAt ? new Date(r.lastActivityAt).toLocaleString() : '—'}</TD>
+                <TD className="text-primary font-medium underline">{r.phone}</TD>
+                <TD className="text-slate-700">{r.name || '—'}</TD>
+                <TD className="text-slate-700">{r.email || '—'}</TD>
+                <TD className="text-slate-700">{r.source || '—'}</TD>
+                <TD className="text-slate-700">{r.stage}</TD>
+                <TD className="text-slate-700">{r.score ?? '—'}</TD>
+                <TD className="text-slate-700">{ownersMap[r.ownerId || ''] || r.ownerId || '—'}</TD>
+                <TD className="text-slate-700">{r.createdAt ? new Date(r.createdAt).toLocaleString() : '—'}</TD>
+                <TD className="text-slate-700">{r.lastActivityAt ? new Date(r.lastActivityAt).toLocaleString() : '—'}</TD>
                 <TD>
-                  <Badge className={`${
-                    (r.callCount || 0) > 5 ? 'bg-green-100 text-green-800' :
-                    (r.callCount || 0) > 2 ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-slate-100 text-slate-800'
+                  <Badge className={`text-xs ${
+                    (r.callCount || 0) > 5 ? 'bg-primary/10 text-primary border-primary/20' :
+                    (r.callCount || 0) > 2 ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                    'bg-slate-100 text-slate-700 border-slate-200'
                   }`}>
                     {r.callCount || 0}
                   </Badge>
