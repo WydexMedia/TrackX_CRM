@@ -5,10 +5,12 @@ import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open: boolean; onClose: () => void; onCreated: () => void; onListCreated?: (list: { id: number; name: string }) => void }) {
-  const [form, setForm] = useState<{ phone: string; name?: string; email?: string; source?: string; stage?: string; score?: number }>({ phone: "" });
+  const [form, setForm] = useState<{ phone: string; name?: string; email?: string; source?: string; stage?: string; score?: number; notes?: string }>({ phone: "" });
   const [submitting, setSubmitting] = useState(false);
   const [lists, setLists] = useState<Array<{ id: number; name: string }>>([]);
   const [selectedListId, setSelectedListId] = useState<string>("");
@@ -19,7 +21,7 @@ export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open
   // Load lists when modal opens
   useEffect(() => {
     if (open) {
-      fetch("/api/tl/lists")
+      authenticatedFetch("/api/tl/lists")
         .then((r) => r.json())
         .then((d) => setLists(d?.rows || []))
         .catch(() => {});
@@ -30,7 +32,7 @@ export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open
     if (!newListName.trim()) return;
     try {
       setCreatingList(true);
-      const res = await fetch("/api/tl/lists", { 
+      const res = await authenticatedFetch("/api/tl/lists", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ name: newListName }) 
@@ -78,6 +80,13 @@ export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open
           <Input placeholder="Name" value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input placeholder="Email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <Input placeholder="Source" value={form.source || ""} onChange={(e) => setForm({ ...form, source: e.target.value })} />
+          <Textarea 
+            placeholder="Notes (optional)" 
+            value={form.notes || ""} 
+            onChange={(e) => setForm({ ...form, notes: e.target.value })} 
+            rows={3}
+            className="resize-none"
+          />
           
           {/* List Selection */}
           <div className="space-y-2">
@@ -117,7 +126,7 @@ export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open
               if (selectedListId) {
                 payload.listId = Number(selectedListId);
               }
-              const res = await fetch("/api/tl/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+              const res = await authenticatedFetch("/api/tl/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
               if (res.ok) toast.success("Lead added"); else toast.error("Failed to add lead");
               setSubmitting(false);
               onCreated();
@@ -177,7 +186,8 @@ const FORM_FIELDS = [
   { key: 'score', label: 'Lead Score', required: false, description: 'Numerical score for lead quality' },
   { key: 'consent', label: 'Marketing Consent', required: false, description: 'Whether lead consented to marketing' },
   { key: 'utm', label: 'UTM Parameters', required: false, description: 'Campaign tracking parameters' },
-  { key: 'owner', label: 'Owner', required: false, description: 'Assign to salesperson by email (preferred) or code' }
+  { key: 'owner', label: 'Owner', required: false, description: 'Assign to salesperson by email (preferred) or code' },
+  { key: 'notes', label: 'Notes', required: false, description: 'Additional notes or comments about the lead' }
 ];
 
 export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: { open: boolean; onClose: () => void; onImported: () => void; onListCreated?: (list: { id: number; name: string }) => void }) {
@@ -200,7 +210,7 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
   // Load lists when modal opens
   useEffect(() => {
     if (open) {
-      fetch("/api/tl/lists")
+      authenticatedFetch("/api/tl/lists")
         .then((r) => r.json())
         .then((d) => setLists(d?.rows || []))
         .catch(() => {});
@@ -211,7 +221,7 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
     if (!newListName.trim()) return;
     try {
       setCreatingList(true);
-      const res = await fetch("/api/tl/lists", { 
+      const res = await authenticatedFetch("/api/tl/lists", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ name: newListName }) 
@@ -477,7 +487,7 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
       if (selectedListId) {
         payload.listId = Number(selectedListId);
       }
-      const res = await fetch("/api/tl/leads/import", {
+      const res = await authenticatedFetch("/api/tl/leads/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -786,7 +796,7 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
                 if (selectedListId) {
                   payload.listId = Number(selectedListId);
                 }
-                const res = await fetch("/api/tl/leads/import", {
+                const res = await authenticatedFetch("/api/tl/leads/import", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify(payload),

@@ -223,7 +223,7 @@ export async function POST(req: NextRequest) {
     } catch {
       return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
     }
-    const { phone, name, email, source, stage, score, listId } = body || {};
+    const { phone, name, email, source, stage, score, listId, notes } = body || {};
     if (!phone || typeof phone !== "string" || phone.trim() === "") {
       return new Response(JSON.stringify({ success: false, error: "phone is required" }), { status: 400 });
     }
@@ -241,6 +241,17 @@ export async function POST(req: NextRequest) {
     // timeline event for creation
     if (inserted[0]?.phone) {
       await db.insert(leadEvents).values({ leadPhone: inserted[0].phone, type: "CREATED", data: { source: inserted[0].source }, at: new Date(), tenantId: tenantId } as any);
+      
+      // Add note event if notes provided
+      if (notes && typeof notes === "string" && notes.trim()) {
+        await db.insert(leadEvents).values({
+          leadPhone: inserted[0].phone,
+          type: "NOTE_ADDED",
+          data: { note: notes.trim() },
+          at: new Date(),
+          tenantId: tenantId,
+        } as any);
+      }
       
       // Add to list if listId is provided
       if (listId && typeof listId === "number") {

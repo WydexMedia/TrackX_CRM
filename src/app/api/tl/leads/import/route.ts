@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
       ownerLookup = null;
     }
     const phoneToOwnerEmail = new Map<string, string>();
+    const phoneToNotes = new Map<string, string>();
     const values = rows
       .map((r: any) => {
         const phone = normalizePhone(r.phone);
@@ -79,6 +80,11 @@ export async function POST(req: NextRequest) {
           } else if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(ownerRaw)) {
             resolvedOwner = ownerRaw;
           }
+        }
+        // Capture notes for later event creation
+        const notes = safeStr(r.notes, 5000);
+        if (phone && notes) {
+          phoneToNotes.set(phone, notes);
         }
         return {
           phone: phone || undefined,
@@ -126,6 +132,18 @@ export async function POST(req: NextRequest) {
           tenantId: tenantId,
         }));
       if (assigned.length) await db.insert(leadEvents).values(assigned as any);
+      
+      // NOTE_ADDED events for imported notes
+      const noteEvents = inserted
+        .filter((r) => r.phone && phoneToNotes.has(r.phone))
+        .map((r: { phone: string }) => ({
+          leadPhone: r.phone,
+          type: "NOTE_ADDED",
+          data: { note: phoneToNotes.get(r.phone) },
+          at: new Date(),
+          tenantId: tenantId,
+        }));
+      if (noteEvents.length) await db.insert(leadEvents).values(noteEvents as any);
       
       // Add to list if listId is provided
       if (listId && typeof listId === "number" && inserted.length > 0) {
