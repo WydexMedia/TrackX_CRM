@@ -65,21 +65,21 @@ export default function Sidebar() {
 
   return (
     <aside className={cn(
-      "hidden md:flex h-screen flex-col border-r border-slate-200 bg-white shadow-sm transition-all duration-300",
-      isCollapsed ? "w-16" : "w-72"
+      "hidden md:flex h-screen flex-col border-r border-slate-200/60 bg-gradient-to-b from-slate-50 to-white shadow-sm transition-all duration-300",
+      isCollapsed ? "w-16" : "w-64"
     )}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-100">
+      <div className="flex items-center justify-between p-4 border-b border-slate-200/60">
         {!isCollapsed && (
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center shadow-sm">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
-              <div className="text-lg font-bold text-slate-900">Team Lead</div>
-              <div className="text-xs text-slate-500">Lead Management</div>
+              <div className="text-sm font-semibold text-slate-900">Team Lead</div>
+              <div className="text-xs text-slate-500">Management</div>
             </div>
           </div>
         )}
@@ -87,7 +87,7 @@ export default function Sidebar() {
           variant="ghost"
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2"
+          className="p-1.5 hover:bg-slate-100"
         >
           <svg className={cn("w-4 h-4 text-slate-600 transition-transform", isCollapsed && "rotate-180")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
@@ -96,7 +96,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {items.map(({ href, label, icon: Icon, badge }) => {
           const active = pathname === href || (href !== "/team-leader/lead-management" && pathname?.startsWith(href));
           
@@ -104,19 +104,19 @@ export default function Sidebar() {
             <Link
               href={href}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 hover:bg-slate-50",
-                active && "bg-blue-50 text-blue-700 shadow-sm border border-blue-100",
-                !active && "text-slate-700 hover:text-slate-900"
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                active && "bg-primary/10 text-primary shadow-sm border border-primary/20",
+                !active && "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
               )}
             >
-              <Icon className={cn("h-5 w-5 flex-shrink-0", active && "text-blue-600")} />
+              <Icon className={cn("h-4 w-4 flex-shrink-0", active && "text-primary")} />
               {!isCollapsed && (
                 <>
-                  <span className="flex-1">{label}</span>
+                  <span className="flex-1 text-xs">{label}</span>
                   {badge === "automation" && shortRule && (
                     <Badge 
                       variant="outline" 
-                      className={cn("text-[10px] px-2 py-0.5", shortRule.color)}
+                      className={cn("text-[9px] px-1.5 py-0 h-4", shortRule.color)}
                       title={shortRule.title}
                     >
                       {shortRule.short}
@@ -134,7 +134,7 @@ export default function Sidebar() {
                   <TooltipTrigger asChild>
                     {linkContent}
                   </TooltipTrigger>
-                  <TooltipContent side="right">
+                  <TooltipContent side="right" className="text-xs">
                     <p>{label}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -142,7 +142,7 @@ export default function Sidebar() {
                 linkContent
               )}
               {active && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 rounded-r-full" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
               )}
             </div>
           );
@@ -151,20 +151,20 @@ export default function Sidebar() {
 
       {/* Footer */}
       {!isCollapsed && (
-        <div className="p-3 border-t border-slate-100">
-          <Card className="bg-slate-50">
-            <CardContent className="flex items-center gap-3 p-3">
-              <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
-                <svg className="w-4 h-4 text-slate-600" fill="currentColor" viewBox="0 0 20 20">
+        <div className="p-2.5 border-t border-slate-200/60">
+          <div className="bg-gradient-to-br from-slate-100 to-slate-50 rounded-lg p-3 border border-slate-200/60">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
+                <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-900 truncate">Team Leader</div>
-                <div className="text-xs text-slate-500">v1.0.0</div>
+                <div className="text-xs font-semibold text-slate-900 truncate">Team Leader</div>
+                <div className="text-[10px] text-slate-500">v1.0.0</div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       )}
     </aside>

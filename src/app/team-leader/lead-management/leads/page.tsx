@@ -426,14 +426,14 @@ export default function LeadsPage() {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       {/* Collapsible Sidebar with List Views */}
-      <div className={`${sidebarCollapsed ? 'w-16' : 'w-80'} bg-white border-r border-gray-200 flex flex-col transition-all duration-300`}>
-        <div className="p-4 border-b border-gray-200">
+      <div className={`${sidebarCollapsed ? 'w-16' : 'w-72'} bg-gradient-to-b from-slate-50 to-white border-r border-slate-200/60 flex flex-col transition-all duration-300 shadow-sm`}>
+        <div className="p-4 border-b border-slate-200/60">
           <div className="flex items-center justify-between mb-4">
             {!sidebarCollapsed && (
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-semibold text-gray-900">Lead Lists</h1>
+                <h1 className="text-sm font-semibold text-slate-900">Lead Lists</h1>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -502,13 +502,13 @@ export default function LeadsPage() {
           
           {/* Advanced Filters Toggle */}
           {!sidebarCollapsed && showAdvancedFilters && getActiveAdvancedFilterCount() > 0 && (
-            <div className="mb-3 flex items-center justify-between bg-blue-50 px-3 py-2 rounded-lg">
-              <span className="text-sm text-blue-700 font-medium">
+            <div className="mb-3 flex items-center justify-between bg-primary/10 px-3 py-2 rounded-lg border border-primary/20">
+              <span className="text-xs text-primary font-medium">
                 {getActiveAdvancedFilterCount()} advanced filter{getActiveAdvancedFilterCount() > 1 ? 's' : ''} active
               </span>
               <button
                 onClick={clearAdvancedFilters}
-                className="text-xs text-blue-600 hover:text-blue-800"
+                className="text-xs text-primary hover:text-primary/80 font-medium"
               >
                 Clear
               </button>
@@ -539,10 +539,10 @@ export default function LeadsPage() {
                   {lists.map((l) => (
                     <div
                       key={`list-${l.id}`}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors ${
+                      className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-colors ${
                         currentView === `list-${l.id}`
-                          ? "bg-blue-50 text-blue-700 border border-blue-200"
-                          : "text-gray-700 hover:bg-gray-50"
+                          ? "bg-primary/10 text-primary border border-primary/20 shadow-sm"
+                          : "text-slate-700 hover:bg-slate-100"
                       }`}
                     >
                       <Button
@@ -603,21 +603,25 @@ export default function LeadsPage() {
                 return (
                   <Button
                     key={view.id}
-                    variant={currentView === view.id ? "default" : "ghost"}
+                    variant="ghost"
                     size="sm"
                     onClick={() => {
                       setCurrentView(view.id);
                       setPage(1);
                       setSelected({});
                     }}
-                    className="w-full justify-between"
+                    className={`w-full justify-between ${
+                      currentView === view.id
+                        ? "bg-primary/10 text-primary hover:bg-primary/15 border border-primary/20 shadow-sm"
+                        : "text-slate-700 hover:bg-slate-100"
+                    }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <IconComponent className="w-5 h-5 flex-shrink-0" />
-                      <span className="font-medium">{view.name}</span>
+                    <div className="flex items-center gap-2.5">
+                      <IconComponent className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-xs font-medium">{view.name}</span>
                     </div>
                     {view.count !== undefined && (
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-[10px] h-5 px-1.5">
                         {view.count}
                       </Badge>
                     )}
@@ -688,7 +692,7 @@ export default function LeadsPage() {
       <div className="flex-1 flex flex-col">
         {/* Advanced Filters Panel */}
         {showAdvancedFilters && (
-          <div className="bg-white border-b border-gray-200 p-4">
+          <div className="bg-white border-b border-slate-200/60 p-4 shadow-sm">
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
               {/* Date Range */}
               <select
@@ -774,11 +778,11 @@ export default function LeadsPage() {
         )}
 
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-white border-b border-slate-200/60 px-6 py-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <ViewIcon className="w-6 h-6" />
+              <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                <ViewIcon className="w-5 h-5 text-primary" />
                 {viewTitle}
                 {isListView && (
                   <span className="text-sm text-gray-500 font-normal">
@@ -798,15 +802,15 @@ export default function LeadsPage() {
 
             {/* Bulk Actions */}
             {phones.length > 0 && (
-              <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg">
-                <span className="text-sm text-blue-700 font-medium">
+              <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg border border-primary/20">
+                <span className="text-sm text-primary font-medium">
                   {phones.length} selected
                 </span>
                 <div className="flex gap-1">
                   {lists.length > 0 && (
                     <>
                       <select
-                        className="text-xs border border-blue-200 rounded px-2 py-1"
+                        className="text-xs border border-primary/30 rounded px-2 py-1 focus:ring-1 focus:ring-primary"
                         value={addToListId}
                         onChange={(e) => setAddToListId(e.target.value)}
                       >
@@ -816,7 +820,7 @@ export default function LeadsPage() {
                         ))}
                       </select>
                       <button
-                        className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 disabled:opacity-50"
+                        className="text-xs bg-primary text-white px-3 py-1 rounded hover:bg-primary/90 disabled:opacity-50"
                         disabled={!addToListId}
                         onClick={async () => {
                           try {
@@ -843,7 +847,7 @@ export default function LeadsPage() {
                     </>
                   )}
                   <select
-                    className="text-xs border border-blue-200 rounded px-2 py-1"
+                    className="text-xs border border-primary/30 rounded px-2 py-1 focus:ring-1 focus:ring-primary"
                     value={assignee}
                     onChange={(e) => setAssignee(e.target.value)}
                   >
