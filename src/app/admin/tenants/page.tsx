@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Users, Globe, Calendar, CheckCircle, XCircle, ExternalLink, Trash2, Plus } from "lucide-react";
 import toast from "react-hot-toast";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 interface Tenant {
   id: number;
@@ -30,7 +31,7 @@ export default function AdminTenantsPage() {
 
   const fetchTenants = async () => {
     try {
-      const response = await fetch("/api/admin/tenants");
+      const response = await authenticatedFetch("/api/admin/tenants");
       if (response.ok) {
         const data = await response.json();
         setTenants(data.tenants || []);
@@ -49,7 +50,7 @@ export default function AdminTenantsPage() {
       setDeletingTenant(tenantId);
       const toastId = toast.loading("Deleting tenant...");
 
-      const response = await fetch(`/api/admin/tenants/${tenantId}`, {
+      const response = await authenticatedFetch(`/api/admin/tenants/${tenantId}`, {
         method: "DELETE",
       });
 

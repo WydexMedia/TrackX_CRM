@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
-import { setupPeriodicTokenValidation } from '@/lib/tokenValidation';
+import { setupPeriodicTokenValidation, authenticatedFetch } from '@/lib/tokenValidation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -155,7 +155,7 @@ export default function JuniorLeaderPage() {
   const fetchTeamData = async (userEmail: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/tl/team-management?userId=${encodeURIComponent(userEmail)}`);
+      const response = await authenticatedFetch(`/api/tl/team-management?userId=${encodeURIComponent(userEmail)}`);
       if (response.ok) {
         const data = await response.json();
         setTeamData(data.teamData);
@@ -172,7 +172,7 @@ export default function JuniorLeaderPage() {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch("/api/analytics");
+      const response = await authenticatedFetch("/api/analytics");
       if (response.ok) {
         const data = await response.json();
         setAnalytics(data);

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from 'react-hot-toast';
 import Link from "next/link";
-import { setupPeriodicTokenValidation } from '@/lib/tokenValidation';
+import { setupPeriodicTokenValidation, authenticatedFetch } from '@/lib/tokenValidation';
 import TenantLogo from "@/components/TenantLogo";
 import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
@@ -247,9 +247,9 @@ export default function TeamLeaderPage() {
       };
       
       const [analyticsRes, usersRes, credentialsRes] = await Promise.all([
-        fetch("/api/analytics", { headers }),
-        fetch("/api/users", { headers }),
-        fetch("/api/users/credentials", { headers })
+        authenticatedFetch("/api/analytics", { headers }),
+        authenticatedFetch("/api/users", { headers }),
+        authenticatedFetch("/api/users/credentials", { headers })
       ]);
 
       if (analyticsRes.ok && usersRes.ok && credentialsRes.ok) {
@@ -312,7 +312,7 @@ export default function TeamLeaderPage() {
     try {
       // Make API call to save profile data
       const token = localStorage.getItem('token');
-      const response = await fetch("/api/users", {
+      const response = await authenticatedFetch("/api/users", {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
@@ -373,7 +373,7 @@ export default function TeamLeaderPage() {
     try {
       // Make API call to change password
       const token = localStorage.getItem('token');
-      const response = await fetch("/api/users/change-password", {
+      const response = await authenticatedFetch("/api/users/change-password", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -408,7 +408,7 @@ export default function TeamLeaderPage() {
     setIsAddingUser(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch("/api/users", {
+      const res = await authenticatedFetch("/api/users", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -470,7 +470,7 @@ export default function TeamLeaderPage() {
     setIsDeletingUser(userId);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`/api/users?id=${userId}`, {
+      const res = await authenticatedFetch(`/api/users?id=${userId}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`

@@ -252,7 +252,7 @@ export default function DashboardPage() {
 
       // Load current user from API (fresh target, etc.)
       const identifier = encodeURIComponent(u.email || u.code);
-      const loadUser = fetch(`/api/users/current?identifier=${identifier}`)
+      const loadUser = authenticatedFetch(`/api/users/current?identifier=${identifier}`)
         .then((res) => res.json())
         .then((userData) => {
           const updated = userData?.success ? { ...u, ...userData.user } : u;
@@ -283,7 +283,7 @@ export default function DashboardPage() {
         if (!currentUser) return Promise.resolve([]);
         
         console.log('Loading sales for user:', currentUser);
-        return fetch("/api/sales", {
+        return authenticatedFetch("/api/sales", {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -368,7 +368,7 @@ export default function DashboardPage() {
   // ------------- handlers -------------
   const refreshSales = () => {
     if (!user) return;
-    fetch("/api/sales", {
+    authenticatedFetch("/api/sales", {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }

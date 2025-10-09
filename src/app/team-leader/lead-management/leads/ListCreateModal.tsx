@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 export function ListCreateModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (list: { id: number; name: string }) => void }) {
   const [name, setName] = useState("");
@@ -11,7 +12,7 @@ export function ListCreateModal({ open, onClose, onCreated }: { open: boolean; o
     if (!name.trim()) return;
     try {
       setSaving(true);
-      const res = await fetch("/api/tl/lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+      const res = await authenticatedFetch("/api/tl/lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
       const data = await res.json();
       if (res.ok && data?.list) {
         onCreated(data.list);

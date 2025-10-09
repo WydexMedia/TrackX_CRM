@@ -19,6 +19,7 @@ import {
   Eye,
   EyeOff
 } from "lucide-react";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 interface Tenant {
   id: number;
@@ -73,7 +74,7 @@ export default function TenantDetailPage() {
 
   const fetchTenantDetails = async () => {
     try {
-      const response = await fetch(`/api/admin/tenants/${params.id}`);
+      const response = await authenticatedFetch(`/api/admin/tenants/${params.id}`);
       if (response.ok) {
         const data = await response.json();
         setTenant(data.tenant);
@@ -87,7 +88,7 @@ export default function TenantDetailPage() {
 
   const fetchTeamLeaders = async () => {
     try {
-      const response = await fetch(`/api/admin/tenants/${params.id}/team-leaders`);
+      const response = await authenticatedFetch(`/api/admin/tenants/${params.id}/team-leaders`);
       if (response.ok) {
         const data = await response.json();
         setTeamLeaders(data.teamLeaders || []);
@@ -113,7 +114,7 @@ export default function TenantDetailPage() {
     }
 
     try {
-      const response = await fetch(`/api/admin/tenants/${params.id}/team-leaders`, {
+      const response = await authenticatedFetch(`/api/admin/tenants/${params.id}/team-leaders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -167,7 +168,7 @@ export default function TenantDetailPage() {
     if (!editingLeader?._id) return;
 
     try {
-      const response = await fetch(`/api/admin/tenants/${params.id}/team-leaders/${editingLeader._id}`, {
+      const response = await authenticatedFetch(`/api/admin/tenants/${params.id}/team-leaders/${editingLeader._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -195,7 +196,7 @@ export default function TenantDetailPage() {
     if (!confirm("Are you sure you want to delete this team leader?")) return;
 
     try {
-      const response = await fetch(`/api/admin/tenants/${params.id}/team-leaders/${leaderId}`, {
+      const response = await authenticatedFetch(`/api/admin/tenants/${params.id}/team-leaders/${leaderId}`, {
         method: "DELETE",
       });
 

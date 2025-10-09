@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 interface User {
   code: string;
@@ -53,7 +54,7 @@ export default function TeamManagementPage() {
         return;
       }
 
-      const response = await fetch(`/api/tl/team-management?userId=${encodeURIComponent(user.email)}`);
+      const response = await authenticatedFetch(`/api/tl/team-management?userId=${encodeURIComponent(user.email)}`);
       if (response.ok) {
         const data = await response.json();
         setTeamData(data.teamData);
@@ -73,7 +74,7 @@ export default function TeamManagementPage() {
       setPromotingUser(salespersonCode);
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       
-      const response = await fetch("/api/tl/team-management", {
+      const response = await authenticatedFetch("/api/tl/team-management", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -103,7 +104,7 @@ export default function TeamManagementPage() {
       setAssigningUser(salespersonCode);
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       
-      const response = await fetch("/api/tl/team-management", {
+      const response = await authenticatedFetch("/api/tl/team-management", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -136,7 +137,7 @@ export default function TeamManagementPage() {
       setUnassigningUser(salespersonCode);
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       
-      const response = await fetch("/api/tl/team-management", {
+      const response = await authenticatedFetch("/api/tl/team-management", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -168,7 +169,7 @@ export default function TeamManagementPage() {
       setDemotingUser(jlCode);
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       
-      const response = await fetch("/api/tl/team-management", {
+      const response = await authenticatedFetch("/api/tl/team-management", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 interface TaskRow { 
   id: number; 
@@ -111,7 +112,7 @@ export default function TasksPage() {
 
   async function refresh() {
     setLoading(true);
-    const d = await fetch("/api/tl/tasks").then((r) => r.json());
+    const d = await authenticatedFetch("/api/tl/tasks").then((r) => r.json());
     setRows(d.rows || []);
     setLoading(false);
   }
@@ -145,7 +146,7 @@ export default function TasksPage() {
     setBulkLoading(true);
     try {
       const promises = selectedTasks.map(id =>
-        fetch("/api/tl/tasks", { 
+        authenticatedFetch("/api/tl/tasks", { 
           method: "PATCH", 
           headers: { "Content-Type": "application/json" }, 
           body: JSON.stringify({ id, status: "DONE" }) 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 interface AgentKPI {
   user: { id: string; name: string };
@@ -84,11 +85,11 @@ export default function AgentsPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/tl/agents/kpis").then((r) => r.json()).then((d) => setRows(d.rows || [])).finally(() => setLoading(false));
+    authenticatedFetch("/api/tl/agents/kpis").then((r) => r.json()).then((d) => setRows(d.rows || [])).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    fetch("/api/users")
+    authenticatedFetch("/api/users")
       .then((r) => r.json())
       .then((all) => {
         const onlySales = (Array.isArray(all) ? all : []).filter((u: any) => (u.role ?? 'sales') === "sales");

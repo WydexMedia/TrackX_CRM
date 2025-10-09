@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent } from "@/components/ui/card";
+import { authenticatedFetch } from "@/lib/tokenValidation";
 
 const items = [
   { href: "/team-leader/lead-management", label: "Overview", icon: Icons.LayoutDashboard, badge: null },
@@ -30,7 +31,7 @@ export default function Sidebar() {
   useEffect(() => {
     const controller = new AbortController();
     const load = () => {
-      fetch("/api/tl/automations", { cache: "no-store", signal: controller.signal })
+      authenticatedFetch("/api/tl/automations", { cache: "no-store", signal: controller.signal })
         .then((r) => r.json())
         .then((d) => setActiveRule(d.active || ""))
         .catch(() => {});

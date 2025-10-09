@@ -237,7 +237,7 @@ export default function LeadsPage() {
       .catch(() => {});
 
     // Load saved lists
-    fetch("/api/tl/lists")
+    authenticatedFetch("/api/tl/lists")
       .then((r) => r.json())
       .then((d) => setLists(d?.rows || []))
       .catch(() => {});
@@ -282,7 +282,7 @@ export default function LeadsPage() {
       setCreatingTask(true);
       const dueAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
       
-      const res = await fetch("/api/tl/queue", { 
+      const res = await authenticatedFetch("/api/tl/queue", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ 
@@ -824,7 +824,7 @@ export default function LeadsPage() {
                         disabled={!addToListId}
                         onClick={async () => {
                           try {
-                            const res = await fetch("/api/tl/lists", {
+                            const res = await authenticatedFetch("/api/tl/lists", {
                               method: "PUT",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({ listId: Number(addToListId), phones }),
