@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { and, eq, asc } from "drizzle-orm";
 import { db } from "@/db/client";
-import { leadStages } from "@/db/schema";
+import { leadStages, leads } from "@/db/schema";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
 import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
 
@@ -99,6 +99,19 @@ export async function PATCH(req: NextRequest) {
       return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
     }
 
+    // Get the current stage data (before update) to check if name is changing
+    const currentStage = await db
+      .select()
+      .from(leadStages)
+      .where(and(eq(leadStages.id, id), eq(leadStages.tenantId, tenantId)))
+      .limit(1);
+
+    if (!currentStage.length) {
+      return new Response(JSON.stringify({ success: false, error: "Stage not found or unauthorized" }), { status: 404 });
+    }
+
+    const oldStageName = currentStage[0].name;
+
     const updateData: any = { updatedAt: new Date() };
     if (name && typeof name === "string" && name.trim()) {
       updateData.name = name.trim();
@@ -116,8 +129,21 @@ export async function PATCH(req: NextRequest) {
       .where(and(eq(leadStages.id, id), eq(leadStages.tenantId, tenantId)))
       .returning();
 
-    if (!updated.length) {
-      return new Response(JSON.stringify({ success: false, error: "Stage not found or unauthorized" }), { status: 404 });
+    // If stage name was changed, update all leads with the old stage name to the new stage name
+    if (name && name.trim() !== oldStageName) {
+      const newStageName = name.trim();
+      console.log(`Updating leads from stage "${oldStageName}" to "${newStageName}" for tenant ${tenantId}`);
+      
+      const updatedLeads = await db
+        .update(leads)
+        .set({ stage: newStageName, updatedAt: new Date() })
+        .where(and(
+          eq(leads.stage, oldStageName),
+          eq(leads.tenantId, tenantId)
+        ))
+        .returning({ phone: leads.phone });
+
+      console.log(`Updated ${updatedLeads.length} leads to new stage name`);
     }
 
     return new Response(JSON.stringify({ success: true, stage: updated[0] }), { status: 200 });

@@ -530,6 +530,13 @@ export default function SettingsPage() {
               </p>
             </div>
 
+            <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <p className="text-xs text-amber-800">
+                <strong>Note:</strong> Renaming a stage will automatically update all existing leads with this stage to the new name.
+              </p>
+            </div>
+
             {editingStage?.isDefault && (
               <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
