@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent } from "@/components/ui/card";
 import { authenticatedFetch } from "@/lib/tokenValidation";
+import { useTenant } from "@/hooks/useTenant";
 
 const items = [
   { href: "/team-leader", label: "Overview", icon: Icons.LayoutDashboard, badge: null },
@@ -29,6 +30,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [activeRule, setActiveRule] = useState<string>("");
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { subdomain } = useTenant();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -81,8 +83,10 @@ export default function Sidebar() {
               </svg>
             </div>
             <div>
-              <div className="text-sm font-semibold text-slate-900">Team Lead</div>
-              <div className="text-xs text-slate-500">Management</div>
+              <div className="text-sm font-semibold text-slate-900 capitalize">
+                {subdomain ? subdomain.split('.')[0] : 'Wydex'}
+              </div>
+              <div className="text-xs text-slate-500">CRM Dashboard</div>
             </div>
           </div>
         )}
@@ -156,7 +160,7 @@ export default function Sidebar() {
       <div className="p-3 border-t border-slate-200/60">
         {!isCollapsed && (
           <div className="text-center">
-            <p className="text-[10px] text-slate-500">CRM Lead Management</p>
+            <p className="text-[10px] text-slate-500">TrackX CRM</p>
             <p className="text-[9px] text-slate-400 mt-0.5">v2.0</p>
           </div>
         )}
