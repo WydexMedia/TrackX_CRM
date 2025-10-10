@@ -226,91 +226,120 @@ export default function LeadManagementOverviewPage() {
         </Card>
       </div>
 
-      {/* Top Performers Stage */}
+      {/* Top Performers */}
       {topPerformers.length > 0 && (
-        <div className="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 rounded-2xl shadow-2xl mb-8 overflow-hidden relative">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-10 left-10 w-32 h-32 bg-yellow-400 rounded-full"></div>
-            <div className="absolute top-32 right-20 w-24 h-24 bg-purple-400 rounded-full"></div>
-            <div className="absolute bottom-20 left-1/4 w-40 h-40 bg-blue-400 rounded-full"></div>
-          </div>
-
-          <div className="relative z-10 p-8">
-            <div className="text-center mb-8">
-              <h2 className="text-4xl font-bold text-white mb-2">🏆 Top Performers</h2>
-              <p className="text-purple-200 text-lg">This Month's Champions</p>
+        <Card className="mb-6 border border-slate-200/60 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2.5 mb-6">
+              <div className="bg-gradient-to-br from-amber-600 to-amber-700 text-white p-2 rounded-lg shadow-sm">
+                <Crown className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Top Performers of the Month</h2>
+                <p className="text-xs text-slate-500">This month's champions</p>
+              </div>
             </div>
 
-            <div className="flex justify-center items-end space-x-4 md:space-x-8 lg:space-x-12">
-              {/* 2nd Place */}
-              {topPerformers.length > 1 && (
-                <div className="flex flex-col items-center transform translate-y-4">
-                  <div className="relative">
-                    <div className="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center shadow-lg border-4 border-gray-200">
-                      <span className="text-2xl md:text-3xl font-bold text-gray-700">🥈</span>
-                    </div>
-                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">2</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-center">
-                    <div className="text-white font-semibold text-sm md:text-base">{topPerformers[1].name}</div>
-                    <div className="text-purple-200 text-xs md:text-sm">₹{topPerformers[1].achievedTarget.toLocaleString()}</div>
-                  </div>
-                </div>
-              )}
-
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* 1st Place */}
               {topPerformers.length > 0 && (
-                <div className="flex flex-col items-center">
-                  <div className="relative">
-                    <div className="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-yellow-200 animate-pulse">
-                      <Crown className="w-8 h-8 md:w-10 md:h-10 text-yellow-800" />
+                <Card className="border-2 border-yellow-400 bg-gradient-to-br from-yellow-50 to-white shadow-md hover:shadow-lg transition-all duration-200">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <Badge className="bg-yellow-400 text-yellow-900 font-bold">
+                        🥇 #1
+                      </Badge>
+                      <div className="bg-yellow-100 p-2 rounded-lg">
+                        <Crown className="w-5 h-5 text-yellow-700" />
+                      </div>
                     </div>
-                    <Badge className="absolute -top-2 -right-2 w-10 h-10 bg-yellow-400 text-yellow-800 font-bold text-lg p-0 flex items-center justify-center">
-                      1
-                    </Badge>
-                  </div>
-                  <div className="mt-4 text-center">
-                    <div className="text-white font-bold text-lg md:text-xl">{topPerformers[0].name}</div>
-                    <div className="text-yellow-200 text-sm md:text-base font-semibold">₹{topPerformers[0].achievedTarget.toLocaleString()}</div>
-                  </div>
-                </div>
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-bold text-slate-900">{topPerformers[0].name}</h3>
+                      <div className="text-sm text-slate-600">{topPerformers[0].email}</div>
+                      <div className="pt-2 border-t border-yellow-200">
+                        <div className="text-xs text-slate-500">Achieved</div>
+                        <div className="text-2xl font-bold text-yellow-700">₹{topPerformers[0].achievedTarget.toLocaleString()}</div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500">Target: ₹{topPerformers[0].target.toLocaleString()}</span>
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          {((topPerformers[0].achievedTarget / topPerformers[0].target) * 100).toFixed(1)}%
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* 2nd Place */}
+              {topPerformers.length > 1 && (
+                <Card className="border-2 border-slate-300 bg-gradient-to-br from-slate-50 to-white shadow-md hover:shadow-lg transition-all duration-200">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <Badge className="bg-slate-300 text-slate-700 font-bold">
+                        🥈 #2
+                      </Badge>
+                      <div className="bg-slate-100 p-2 rounded-lg">
+                        <TrendingUp className="w-5 h-5 text-slate-600" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-bold text-slate-900">{topPerformers[1].name}</h3>
+                      <div className="text-sm text-slate-600">{topPerformers[1].email}</div>
+                      <div className="pt-2 border-t border-slate-200">
+                        <div className="text-xs text-slate-500">Achieved</div>
+                        <div className="text-2xl font-bold text-slate-700">₹{topPerformers[1].achievedTarget.toLocaleString()}</div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500">Target: ₹{topPerformers[1].target.toLocaleString()}</span>
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          {((topPerformers[1].achievedTarget / topPerformers[1].target) * 100).toFixed(1)}%
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
 
               {/* 3rd Place */}
               {topPerformers.length > 2 && (
-                <div className="flex flex-col items-center transform translate-y-8">
-                  <div className="relative">
-                    <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-orange-300 to-orange-500 rounded-full flex items-center justify-center shadow-lg border-4 border-orange-200">
-                      <span className="text-xl md:text-2xl font-bold text-orange-700">🥉</span>
+                <Card className="border-2 border-orange-300 bg-gradient-to-br from-orange-50 to-white shadow-md hover:shadow-lg transition-all duration-200">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <Badge className="bg-orange-300 text-orange-800 font-bold">
+                        🥉 #3
+                      </Badge>
+                      <div className="bg-orange-100 p-2 rounded-lg">
+                        <TrendingUp className="w-5 h-5 text-orange-600" />
+                      </div>
                     </div>
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-orange-400 rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold text-xs">3</span>
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-bold text-slate-900">{topPerformers[2].name}</h3>
+                      <div className="text-sm text-slate-600">{topPerformers[2].email}</div>
+                      <div className="pt-2 border-t border-orange-200">
+                        <div className="text-xs text-slate-500">Achieved</div>
+                        <div className="text-2xl font-bold text-orange-700">₹{topPerformers[2].achievedTarget.toLocaleString()}</div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500">Target: ₹{topPerformers[2].target.toLocaleString()}</span>
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          {((topPerformers[2].achievedTarget / topPerformers[2].target) * 100).toFixed(1)}%
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-4 text-center">
-                    <div className="text-white font-semibold text-sm md:text-base">{topPerformers[2].name}</div>
-                    <div className="text-orange-200 text-xs md:text-sm">₹{topPerformers[2].achievedTarget.toLocaleString()}</div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
-
-            {/* Stage Platform */}
-            <div className="mt-8 flex justify-center">
-              <div className="w-80 h-4 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 rounded-full shadow-lg"></div>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Lead Management Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200 overflow-hidden">
             <CardContent className="p-0">
-            <div className="bg-gradient-to-br from-rose-600 to-rose-700 p-4">
+            <div className="bg-gradient-to-br from-rose-600 to-rose-400 p-4">
                 <div className="flex items-center justify-between text-white">
                   <div>
                   <p className="text-xs font-medium opacity-90">SLA at Risk</p>
@@ -347,7 +376,7 @@ export default function LeadManagementOverviewPage() {
 
         <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200 overflow-hidden">
           <CardContent className="p-0">
-            <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-4">
+            <div className="bg-gradient-to-br from-blue-600 to-blue-400 p-4">
               <div className="flex items-center justify-between text-white">
                 <div>
                   <p className="text-xs font-medium opacity-90">Leads Today</p>
