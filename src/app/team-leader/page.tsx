@@ -51,13 +51,27 @@ export default function LeadManagementOverviewPage() {
     authenticatedFetch("/api/tl/overview")
       .then((r) => r.json())
       .then((d) => setWidgets(d.widgets || { slaAtRisk: 0, leadsToday: 0, qualifiedRate: 0 }))
-      .catch(() => {});
+      .catch((error) => {
+        console.error('Failed to fetch overview:', error);
+        setWidgets({ slaAtRisk: 0, leadsToday: 0, qualifiedRate: 0 });
+      });
 
     // Fetch sales analytics
     authenticatedFetch("/api/analytics")
       .then((r) => r.json())
-      .then((data) => setAnalytics(data || []))
-      .catch(() => {})
+      .then((data) => {
+        // Ensure data is an array
+        if (Array.isArray(data)) {
+          setAnalytics(data);
+        } else {
+          console.error('Analytics data is not an array:', data);
+          setAnalytics([]);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to fetch analytics:', error);
+        setAnalytics([]);
+      })
       .finally(() => setLoading(false));
 
     // Fetch today's sales for leaderboard (use public endpoint to get all team sales)
@@ -91,7 +105,10 @@ export default function LeadManagementOverviewPage() {
         
         setTodayLeaderboard(sortedLeaderboard);
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.error('Failed to fetch leaderboard:', error);
+        setTodayLeaderboard([]);
+      });
   }, []);
 
   useEffect(() => {
@@ -115,12 +132,12 @@ export default function LeadManagementOverviewPage() {
       .catch(() => setActivities([]));
   }, []);
 
-  // Calculate sales metrics
-  const totalTarget = analytics.reduce((sum, user) => sum + user.target, 0);
-  const totalAchieved = analytics.reduce((sum, user) => sum + user.achievedTarget, 0);
-  const totalPending = analytics.reduce((sum, user) => sum + user.pendingTarget, 0);
-  const totalTodayCollection = analytics.reduce((sum, user) => sum + user.todayCollection, 0);
-  const topPerformers = [...analytics].sort((a, b) => b.achievedTarget - a.achievedTarget);
+  // Calculate sales metrics (with safe fallbacks)
+  const totalTarget = Array.isArray(analytics) ? analytics.reduce((sum, user) => sum + (user.target || 0), 0) : 0;
+  const totalAchieved = Array.isArray(analytics) ? analytics.reduce((sum, user) => sum + (user.achievedTarget || 0), 0) : 0;
+  const totalPending = Array.isArray(analytics) ? analytics.reduce((sum, user) => sum + (user.pendingTarget || 0), 0) : 0;
+  const totalTodayCollection = Array.isArray(analytics) ? analytics.reduce((sum, user) => sum + (user.todayCollection || 0), 0) : 0;
+  const topPerformers = Array.isArray(analytics) ? [...analytics].sort((a, b) => (b.achievedTarget || 0) - (a.achievedTarget || 0)) : [];
 
   // Dynamic greeting based on local time
   const greeting = (() => {
@@ -302,9 +319,9 @@ export default function LeadManagementOverviewPage() {
                         <div className="text-2xl font-bold text-yellow-700">₹{topPerformers[0].achievedTarget.toLocaleString()}</div>
                       </div>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500">Target: ₹{topPerformers[0].target.toLocaleString()}</span>
+                        <span className="text-slate-500">Target: ₹{(topPerformers[0].target || 0).toLocaleString()}</span>
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                          {((topPerformers[0].achievedTarget / topPerformers[0].target) * 100).toFixed(1)}%
+                          {topPerformers[0].target > 0 ? ((topPerformers[0].achievedTarget / topPerformers[0].target) * 100).toFixed(1) : 0}%
                         </Badge>
                       </div>
                     </div>
@@ -332,9 +349,9 @@ export default function LeadManagementOverviewPage() {
                         <div className="text-2xl font-bold text-slate-700">₹{topPerformers[1].achievedTarget.toLocaleString()}</div>
                       </div>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500">Target: ₹{topPerformers[1].target.toLocaleString()}</span>
+                        <span className="text-slate-500">Target: ₹{(topPerformers[1].target || 0).toLocaleString()}</span>
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                          {((topPerformers[1].achievedTarget / topPerformers[1].target) * 100).toFixed(1)}%
+                          {topPerformers[1].target > 0 ? ((topPerformers[1].achievedTarget / topPerformers[1].target) * 100).toFixed(1) : 0}%
                         </Badge>
                       </div>
                     </div>
@@ -362,9 +379,9 @@ export default function LeadManagementOverviewPage() {
                         <div className="text-2xl font-bold text-orange-700">₹{topPerformers[2].achievedTarget.toLocaleString()}</div>
                       </div>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500">Target: ₹{topPerformers[2].target.toLocaleString()}</span>
+                        <span className="text-slate-500">Target: ₹{(topPerformers[2].target || 0).toLocaleString()}</span>
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                          {((topPerformers[2].achievedTarget / topPerformers[2].target) * 100).toFixed(1)}%
+                          {topPerformers[2].target > 0 ? ((topPerformers[2].achievedTarget / topPerformers[2].target) * 100).toFixed(1) : 0}%
                         </Badge>
                       </div>
                     </div>
