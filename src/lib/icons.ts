@@ -24,6 +24,7 @@ import {
   Plus,
   Archive,
   TrendingUp,
+  Trophy,
 } from "lucide-react";
 
 export const Icons = {
@@ -52,6 +53,7 @@ export const Icons = {
   Plus,
   Archive,
   TrendingUp,
+  Trophy,
 };
 
 

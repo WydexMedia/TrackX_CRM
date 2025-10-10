@@ -6,7 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { authenticatedFetch } from "@/lib/tokenValidation";
-import { Users, Target, TrendingUp, Clock, DollarSign, Crown } from "lucide-react";
+import { Users, Target, TrendingUp, Clock, DollarSign, Crown, Trophy, ArrowRight } from "lucide-react";
+
+type Sale = {
+  ogaName: string;
+  amount: number;
+  newAdmission: string;
+  createdAt?: string;
+};
 
 interface Analytics {
   _id: string;
@@ -31,6 +38,7 @@ export default function LeadManagementOverviewPage() {
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [teamLeader, setTeamLeader] = useState<{ name: string } | null>(null);
   const [analytics, setAnalytics] = useState<Analytics[]>([]);
+  const [todayLeaderboard, setTodayLeaderboard] = useState<Array<{ name: string; total: number; count: number }>>([]);
 
   useEffect(() => {
     // Get user info
@@ -51,6 +59,39 @@ export default function LeadManagementOverviewPage() {
       .then((data) => setAnalytics(data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    // Fetch today's sales for leaderboard (use public endpoint to get all team sales)
+    fetch("/api/public/leaderboard")
+      .then((r) => r.json())
+      .then((data) => {
+        const sales: Sale[] = Array.isArray(data) ? data : [];
+        const today = new Date();
+        const targetDay = today.toISOString().split('T')[0];
+        const todaySales = sales.filter(sale => {
+          if (!sale.createdAt) return false;
+          const saleDay = new Date(sale.createdAt).toISOString().split('T')[0];
+          return saleDay === targetDay;
+        });
+
+        // Build leaderboard
+        const leaderboard: Record<string, { name: string; total: number; count: number }> = {};
+        for (const sale of todaySales) {
+          if (!leaderboard[sale.ogaName]) {
+            leaderboard[sale.ogaName] = { name: sale.ogaName, total: 0, count: 0 };
+          }
+          leaderboard[sale.ogaName].total += Number(sale.amount);
+          if (((sale.newAdmission ?? '') + '').trim().toLowerCase() === 'yes') {
+            leaderboard[sale.ogaName].count += 1;
+          }
+        }
+        
+        const sortedLeaderboard = Object.values(leaderboard)
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 3);
+        
+        setTodayLeaderboard(sortedLeaderboard);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -131,7 +172,7 @@ export default function LeadManagementOverviewPage() {
               {greeting}, {teamLeader?.name || "Team Leader"}! 👋
             </h1>
             <p className="text-sm text-slate-600 mt-1">
-              Presale Lead Management & Sales Revenue Dashboard
+              Lead Management & Sales Revenue Dashboard
             </p>
           </div>
           <div className="text-right bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm">
@@ -355,7 +396,7 @@ export default function LeadManagementOverviewPage() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
-                </div>
+                  </div>
                 </div>
               </div>
               <div className="p-3 bg-white">
@@ -443,8 +484,8 @@ export default function LeadManagementOverviewPage() {
           </Card>
       </div>
 
-      {/* Quick Actions & Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      {/* Quick Actions, Recent Activity & Today's Leaderboard */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <Card className="border border-slate-200/60 shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center gap-2.5 mb-4">
@@ -484,8 +525,55 @@ export default function LeadManagementOverviewPage() {
 
         <Card className="border border-slate-200/60 shadow-sm">
           <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="bg-gradient-to-br from-amber-600 to-amber-700 text-white p-2 rounded-lg shadow-sm">
+                  <Trophy className="w-4 h-4" />
+                </div>
+                <h2 className="text-sm font-semibold text-slate-900">Today's Top 3</h2>
+              </div>
+              <Link href="/team-leader/daily-leaderboard">
+                <Button variant="ghost" size="sm" className="h-7 text-xs text-primary hover:text-primary/80">
+                  View All <ArrowRight className="w-3 h-3 ml-1" />
+                </Button>
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {todayLeaderboard.length === 0 ? (
+                <div className="text-xs text-slate-500 text-center py-4">No sales yet today</div>
+              ) : (
+                todayLeaderboard.map((seller, index) => {
+                  const badges = [
+                    { icon: "🥇", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
+                    { icon: "🥈", color: "bg-slate-200 text-slate-700 border-slate-300" },
+                    { icon: "🥉", color: "bg-orange-200 text-orange-700 border-orange-300" }
+                  ];
+                  const badge = badges[index];
+                  
+                  return (
+                    <div key={seller.name} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <Badge variant="outline" className={`${badge.color} font-bold text-[10px] px-1.5`}>
+                          {badge.icon} #{index + 1}
+                        </Badge>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-slate-900 truncate">{seller.name}</div>
+                          <div className="text-[10px] text-slate-500">{seller.count} sales</div>
+                        </div>
+                      </div>
+                      <div className="text-xs font-bold text-green-600">₹{seller.total.toLocaleString()}</div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-slate-200/60 shadow-sm">
+          <CardContent className="p-5">
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="bg-gradient-to-br from-amber-600 to-amber-700 text-white p-2 rounded-lg shadow-sm">
+              <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-2 rounded-lg shadow-sm">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
