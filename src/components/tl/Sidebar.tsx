@@ -12,14 +12,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { authenticatedFetch } from "@/lib/tokenValidation";
 
 const items = [
-  { href: "/team-leader/lead-management", label: "Overview", icon: Icons.LayoutDashboard, badge: null },
-  { href: "/team-leader/lead-management/leads", label: "Leads", icon: Icons.UserSquare2, badge: null },
-  { href: "/team-leader/lead-management/tasks", label: "Tasks", icon: Icons.AlarmClock, badge: null },
-  { href: "/team-leader/lead-management/automations", label: "Automations", icon: Icons.Workflow, badge: "automation" },
-  { href: "/team-leader/lead-management/analytics", label: "Analytics", icon: Icons.BarChart3, badge: null },
-  { href: "/team-leader/lead-management/reports", label: "Reports", icon: Icons.PieChart, badge: null },
-  { href: "/team-leader/lead-management/integrations", label: "Integrations", icon: Icons.Plug, badge: null },
-  { href: "/team-leader/lead-management/settings", label: "Settings", icon: Icons.Settings, badge: null },
+  { href: "/team-leader", label: "Overview", icon: Icons.LayoutDashboard, badge: null },
+  { href: "/team-leader/leads", label: "Leads", icon: Icons.UserSquare2, badge: null },
+  { href: "/team-leader/tasks", label: "Tasks", icon: Icons.AlarmClock, badge: null },
+  { href: "/team-leader/automations", label: "Automations", icon: Icons.Workflow, badge: "automation" },
+  { href: "/team-leader/analytics", label: "Analytics", icon: Icons.BarChart3, badge: null },
+  { href: "/team-leader/reports", label: "Reports", icon: Icons.PieChart, badge: null },
+  { href: "/team-leader/sales", label: "Sales Management", icon: Icons.TrendingUp, badge: null },
+  { href: "/team-leader/team-management", label: "Team Management", icon: Icons.Users, badge: null },
+  { href: "/team-leader/integrations", label: "Integrations", icon: Icons.Plug, badge: null },
+  { href: "/team-leader/settings", label: "Settings", icon: Icons.Settings, badge: null },
 ];
 
 export default function Sidebar() {
@@ -98,7 +100,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-2 py-3 space-y-0.5">
         {items.map(({ href, label, icon: Icon, badge }) => {
-          const active = pathname === href || (href !== "/team-leader/lead-management" && pathname?.startsWith(href));
+          const active = pathname === href || (href !== "/team-leader" && pathname?.startsWith(href));
           
           const linkContent = (
             <Link
@@ -149,40 +151,13 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer - Home Link */}
-      <div className="p-2.5 border-t border-slate-200/60">
-        {isCollapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href="/team-leader"
-                className={cn(
-                  "flex items-center justify-center rounded-lg px-3 py-2.5 transition-all duration-200",
-                  pathname === "/team-leader" 
-                    ? "bg-primary/10 text-primary shadow-sm border border-primary/20" 
-                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-                )}
-              >
-                <Icons.Home className={cn("h-4 w-4", pathname === "/team-leader" && "text-primary")} />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">
-              <p>Home</p>
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <Link
-            href="/team-leader"
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-              pathname === "/team-leader" 
-                ? "bg-primary/10 text-primary shadow-sm border border-primary/20" 
-                : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-            )}
-          >
-            <Icons.Home className={cn("h-4 w-4 flex-shrink-0", pathname === "/team-leader" && "text-primary")} />
-            <span className="flex-1 text-xs">Home</span>
-          </Link>
+      {/* Footer Info */}
+      <div className="p-3 border-t border-slate-200/60">
+        {!isCollapsed && (
+          <div className="text-center">
+            <p className="text-[10px] text-slate-500">CRM Lead Management</p>
+            <p className="text-[9px] text-slate-400 mt-0.5">v2.0</p>
+          </div>
         )}
       </div>
     </aside>

@@ -1330,7 +1330,7 @@ export default function TasksPage() {
                               </span>
                             </button>
                             {lead?.phone && (
-                              <a href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
+                              <a href={`/team-leader/leads/${encodeURIComponent(lead.phone)}`} 
                                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium">
                                 <Phone size={12} />
                                 {lead.phone}
@@ -1395,7 +1395,7 @@ export default function TasksPage() {
                               </span>
                             </button>
                             {lead?.phone && (
-                              <a href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
+                              <a href={`/team-leader/leads/${encodeURIComponent(lead.phone)}`} 
                                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium">
                                 <Phone size={12} />
                                 {lead.phone}

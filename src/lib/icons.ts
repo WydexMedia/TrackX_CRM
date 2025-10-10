@@ -23,6 +23,7 @@ import {
   FileUp,
   Plus,
   Archive,
+  TrendingUp,
 } from "lucide-react";
 
 export const Icons = {
@@ -50,6 +51,7 @@ export const Icons = {
   FileUp,
   Plus,
   Archive,
+  TrendingUp,
 };
 
 

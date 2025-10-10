@@ -481,7 +481,7 @@ export default function JuniorLeaderPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Button
-                onClick={() => router.push("/team-leader/lead-management")}
+                onClick={() => router.push("/team-leader")}
                 variant="outline"
                 className="flex items-center justify-center h-auto py-3"
               >

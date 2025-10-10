@@ -188,7 +188,7 @@ export default function LeadDetailPage() {
       const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete lead");
       toast.success("Lead deleted");
-      window.location.href = "/team-leader/lead-management/leads";
+      window.location.href = "/team-leader/leads";
     } catch {
       toast.error("Failed to delete lead");
     } finally {
@@ -401,7 +401,7 @@ export default function LeadDetailPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm text-slate-500"><Link href="/team-leader/lead-management/leads" className="hover:underline">Leads</Link> / {lead?.phone}</div>
+          <div className="text-sm text-slate-500"><Link href="/team-leader/leads" className="hover:underline">Leads</Link> / {lead?.phone}</div>
           <h1 className="text-2xl font-semibold">{lead?.name || lead?.phone}</h1>
                           <div className="text-sm text-slate-600">{lead?.email || "—"} • Source: {lead?.source || "—"} • Stage: {lead?.stage || "Not contacted"}</div>
         </div>

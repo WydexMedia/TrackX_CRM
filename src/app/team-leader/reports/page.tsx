@@ -733,7 +733,7 @@ function LeadsReports() {
               <TR 
                 key={r.phone} 
                 className="cursor-pointer hover:bg-slate-50/50 transition-colors"
-                onClick={() => window.location.href = `/team-leader/lead-management/leads/${encodeURIComponent(r.phone)}`}
+                onClick={() => window.location.href = `/team-leader/leads/${encodeURIComponent(r.phone)}`}
               >
                 <TD className="text-primary font-medium underline">{r.phone}</TD>
                 <TD className="text-slate-700">{r.name || '—'}</TD>

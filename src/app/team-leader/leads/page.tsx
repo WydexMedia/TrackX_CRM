@@ -1136,7 +1136,7 @@ export default function LeadsPage() {
                       <TD>
                         <div className="flex flex-col gap-0.5">
                           <a 
-                            href={`/team-leader/lead-management/leads/${encodeURIComponent(lead.phone)}`} 
+                            href={`/team-leader/leads/${encodeURIComponent(lead.phone)}`} 
                             className="font-medium text-sm text-primary hover:text-primary/80 hover:underline"
                           >
                             {lead.name || "Unknown"}
