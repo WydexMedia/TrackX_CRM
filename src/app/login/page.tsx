@@ -275,13 +275,6 @@ export default function LoginPage() {
     }
   }, [router]);
 
-  // Redirect to dashboard when user is logged in
-  useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
-
   // Show login form only
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
