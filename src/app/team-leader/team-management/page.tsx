@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { authenticatedFetch } from "@/lib/tokenValidation";
-import { Eye, EyeOff, Settings, Users, Plus, Edit, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Settings, Users, Plus, Edit, Trash2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 interface User {
@@ -61,6 +61,7 @@ export default function TeamManagementPage() {
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [isDeletingUser, setIsDeletingUser] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchTeamData();
@@ -514,7 +515,28 @@ export default function TeamManagementPage() {
         {/* Sales Persons Section */}
         <Card className="border border-slate-200/60 shadow-sm">
           <CardHeader className="bg-slate-50/50 border-b border-slate-200/60">
-            <CardTitle className="text-lg text-slate-900">Sales Persons</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg text-slate-900">Sales Persons</CardTitle>
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search by name, email, or code..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-64 h-9 border-slate-200"
+                  />
+                </div>
+                <div className="text-sm text-slate-600 font-medium">
+                  {teamData.salesPersons.filter(sp => 
+                    sp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    sp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    sp.code.toLowerCase().includes(searchTerm.toLowerCase())
+                  ).length} of {teamData.salesPersons.length} members
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {teamData.salesPersons.length === 0 ? (
@@ -526,19 +548,31 @@ export default function TeamManagementPage() {
                     <TR>
                       <TH>Name</TH>
                       <TH>Email</TH>
+                      <TH>Target</TH>
                       <TH>Assigned To</TH>
                       <TH>Role Management</TH>
                       <TH>Member Actions</TH>
                     </TR>
                   </THead>
                   <TBody>
-                    {teamData.salesPersons.map((salesperson) => (
+                    {teamData.salesPersons
+                      .filter(sp => 
+                        sp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        sp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        sp.code.toLowerCase().includes(searchTerm.toLowerCase())
+                      )
+                      .map((salesperson) => (
                       <TR key={salesperson.code}>
                         <TD>
                           <div className="text-sm font-medium text-gray-900">{salesperson.name}</div>
                         </TD>
                         <TD>
-                          <div className="text-sm text-gray-900">{salesperson.email}</div>
+                          <div className="text-sm text-slate-900">{salesperson.email}</div>
+                        </TD>
+                        <TD>
+                          <div className="text-sm font-semibold text-slate-900">
+                            ₹{(salesperson.target || 0).toLocaleString()}
+                          </div>
                         </TD>
                         <TD>
                           {salesperson.assignedTo ? (

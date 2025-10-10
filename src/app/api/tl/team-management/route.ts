@@ -15,6 +15,7 @@ interface User {
   name: string;
   email: string;
   role: string;
+  target?: number;
   tenantSubdomain?: string;
 }
 
@@ -44,13 +45,14 @@ export async function GET(request: NextRequest) {
 
     // Debug scans only in non-production
     if (process.env.NODE_ENV !== "production") {
-      const allUsersInDb = await users.find(filter, { projection: { email: 1, role: 1, tenantSubdomain: 1, code: 1, name: 1 } }).toArray();
+      const allUsersInDb = await users.find(filter, { projection: { email: 1, role: 1, tenantSubdomain: 1, code: 1, name: 1, target: 1 } }).toArray();
       console.log("All users in database:", allUsersInDb.map((u: any) => ({ 
         email: u.email, 
         role: u.role, 
         tenantSubdomain: u.tenantSubdomain,
         code: u.code,
-        name: u.name
+        name: u.name,
+        target: u.target
       })));
       
       const salesUsers = await users.find({ ...filter, role: "sales" }, { projection: { email: 1, code: 1 } }).toArray();
@@ -73,7 +75,7 @@ export async function GET(request: NextRequest) {
     const currentUser = await users.findOne({ 
       email: userId,
       ...filter
-    }, { projection: { _id: 0, code: 1, name: 1, email: 1, role: 1, tenantSubdomain: 1 } }) as User | null;
+    }, { projection: { _id: 0, code: 1, name: 1, email: 1, role: 1, target: 1, tenantSubdomain: 1 } }) as User | null;
     
     if (process.env.NODE_ENV !== "production") {
       console.log("User lookup result:", currentUser ? "Found" : "Not found");
@@ -101,7 +103,7 @@ export async function GET(request: NextRequest) {
     const allUsers = await users.find({
       ...filter,
       role: { $in: ["teamleader", "jl", "sales"] }
-    }, { projection: { _id: 0, code: 1, name: 1, email: 1, role: 1 } }).toArray() as User[];
+    }, { projection: { _id: 1, code: 1, name: 1, email: 1, role: 1, target: 1 } }).toArray() as User[];
 
     if (process.env.NODE_ENV !== "production") {
       console.log("Found users with filtered roles:", allUsers.length);
@@ -145,10 +147,12 @@ export async function GET(request: NextRequest) {
       // Team Leader sees all users and their assignments
       teamData = {
         allUsers: allUsers.map((user: User) => ({
+          _id: user._id,
           code: user.code,
           name: user.name,
           email: user.email,
           role: user.role,
+          target: user.target || 0,
           assignedTo: user.role === "sales" ? salesToJlMap.get(user.code) : null
         })),
         juniorLeaders: allUsers.filter((user: User) => user.role === "jl").map((jl: User) => ({

@@ -44,11 +44,7 @@ const PROVIDER_OPTIONS = [
 ];
 
 const BROWSE_INTEGRATIONS = [
-  { name: "Zoho Books", description: "Connect your Zoho Books account to Trackx", icon: BookOpen, provider: "ZOHO_BOOKS" },
-  { name: "Wafeq", description: "Connect your Wafeq account to Trackx", icon: FileText, provider: "WAFEQ" },
-  { name: "Telr", description: "Connect your Telr account to Trackx", icon: CreditCard, provider: "TELR" },
   { name: "Forms", description: "Connect your Forms account to Trackx, set webhook to https://api.Trackx.com/api/webhooks/forms", icon: FileSpreadsheet, provider: "FORMS" },
-  { name: "Zoho Mail", description: "Connect your Zoho Mail account to Trackx", icon: Mail, provider: "ZOHO_MAIL" },
   { name: "Gmail", description: "Connect your Gmail account to Trackx", icon: Mail, provider: "GMAIL" },
   { name: "Outlook", description: "Connect your Outlook account to Trackx", icon: Mail, provider: "OUTLOOK" },
   { name: "WhatsApp", description: "Connect your WhatsApp Business account to Trackx", icon: MessageSquare, provider: "WHATSAPP" },
