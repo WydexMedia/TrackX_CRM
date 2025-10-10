@@ -1,21 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { authenticatedFetch } from "@/lib/tokenValidation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { 
-  GripVertical, 
   Plus, 
   Edit, 
   Trash2, 
-  Save, 
-  X,
+  Save,
   AlertCircle,
   Settings as SettingsIcon,
-  Palette
+  Palette,
+  ChevronUp,
+  ChevronDown,
+  Info,
+  Layers,
+  Sparkles,
+  RefreshCw
 } from "lucide-react";
 
 interface Stage {
@@ -28,25 +35,19 @@ interface Stage {
 }
 
 const COLOR_OPTIONS = [
-  { value: "slate", label: "Slate", bg: "bg-slate-100", text: "text-slate-800", border: "border-slate-200" },
-  { value: "gray", label: "Gray", bg: "bg-gray-100", text: "text-gray-800", border: "border-gray-200" },
-  { value: "red", label: "Red", bg: "bg-red-100", text: "text-red-800", border: "border-red-200" },
-  { value: "orange", label: "Orange", bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-200" },
-  { value: "amber", label: "Amber", bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-200" },
-  { value: "yellow", label: "Yellow", bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-200" },
-  { value: "lime", label: "Lime", bg: "bg-lime-100", text: "text-lime-800", border: "border-lime-200" },
-  { value: "green", label: "Green", bg: "bg-green-100", text: "text-green-800", border: "border-green-200" },
-  { value: "emerald", label: "Emerald", bg: "bg-emerald-100", text: "text-emerald-800", border: "border-emerald-200" },
-  { value: "teal", label: "Teal", bg: "bg-teal-100", text: "text-teal-800", border: "border-teal-200" },
-  { value: "cyan", label: "Cyan", bg: "bg-cyan-100", text: "text-cyan-800", border: "border-cyan-200" },
-  { value: "sky", label: "Sky", bg: "bg-sky-100", text: "text-sky-800", border: "border-sky-200" },
-  { value: "blue", label: "Blue", bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-200" },
-  { value: "indigo", label: "Indigo", bg: "bg-indigo-100", text: "text-indigo-800", border: "border-indigo-200" },
-  { value: "violet", label: "Violet", bg: "bg-violet-100", text: "text-violet-800", border: "border-violet-200" },
-  { value: "purple", label: "Purple", bg: "bg-purple-100", text: "text-purple-800", border: "border-purple-200" },
-  { value: "fuchsia", label: "Fuchsia", bg: "bg-fuchsia-100", text: "text-fuchsia-800", border: "border-fuchsia-200" },
-  { value: "pink", label: "Pink", bg: "bg-pink-100", text: "text-pink-800", border: "border-pink-200" },
-  { value: "rose", label: "Rose", bg: "bg-rose-100", text: "text-rose-800", border: "border-rose-200" },
+  { value: "slate", label: "Slate", bg: "bg-slate-100", text: "text-slate-800", border: "border-slate-200", dot: "bg-slate-500" },
+  { value: "gray", label: "Gray", bg: "bg-gray-100", text: "text-gray-800", border: "border-gray-200", dot: "bg-gray-500" },
+  { value: "red", label: "Red", bg: "bg-red-100", text: "text-red-800", border: "border-red-200", dot: "bg-red-500" },
+  { value: "orange", label: "Orange", bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-200", dot: "bg-orange-500" },
+  { value: "amber", label: "Amber", bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-200", dot: "bg-amber-500" },
+  { value: "yellow", label: "Yellow", bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-200", dot: "bg-yellow-500" },
+  { value: "green", label: "Green", bg: "bg-green-100", text: "text-green-800", border: "border-green-200", dot: "bg-green-500" },
+  { value: "emerald", label: "Emerald", bg: "bg-emerald-100", text: "text-emerald-800", border: "border-emerald-200", dot: "bg-emerald-500" },
+  { value: "cyan", label: "Cyan", bg: "bg-cyan-100", text: "text-cyan-800", border: "border-cyan-200", dot: "bg-cyan-500" },
+  { value: "blue", label: "Blue", bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-200", dot: "bg-blue-500" },
+  { value: "indigo", label: "Indigo", bg: "bg-indigo-100", text: "text-indigo-800", border: "border-indigo-200", dot: "bg-indigo-500" },
+  { value: "purple", label: "Purple", bg: "bg-purple-100", text: "text-purple-800", border: "border-purple-200", dot: "bg-purple-500" },
+  { value: "pink", label: "Pink", bg: "bg-pink-100", text: "text-pink-800", border: "border-pink-200", dot: "bg-pink-500" },
 ];
 
 export default function SettingsPage() {
@@ -179,10 +180,8 @@ export default function SettingsPage() {
     const reordered = [...stages];
     [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
 
-    // Update local state immediately for smooth UX
     setStages(reordered);
 
-    // Update backend
     try {
       await Promise.all([
         authenticatedFetch("/api/tl/stages", {
@@ -198,7 +197,7 @@ export default function SettingsPage() {
       ]);
     } catch (error) {
       toast.error("Failed to reorder stages");
-      loadStages(); // Reload on error
+      loadStages();
     }
   };
 
@@ -208,176 +207,209 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-            <SettingsIcon className="w-5 h-5 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 p-6">
+      <div className="max-w-5xl mx-auto">
+        {/* Compact Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-emerald-600 rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
+              <SettingsIcon className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+              <p className="text-xs text-slate-500">Manage pipeline stages</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-            <p className="text-sm text-slate-500">Manage your lead stages, territories, and preferences</p>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={loadStages}
+              variant="outline"
+              size="sm"
+              className="border-slate-200 hover:bg-slate-50"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              Refresh
+            </Button>
+            <Button
+              onClick={() => setShowAddModal(true)}
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-black shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              Add Stage
+            </Button>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Stages Management - Takes 2 columns */}
-        <div className="lg:col-span-2">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
-                    <Palette className="w-4 h-4 text-slate-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Lead Stages</h2>
-                    <p className="text-xs text-slate-500">Customize your sales pipeline stages</p>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* Main Stage List - 3 columns */}
+          <div className="lg:col-span-3">
+            <Card className="border-slate-200/60 shadow-sm">
+              <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-5 py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-slate-600" />
+                    <h2 className="text-sm font-semibold text-slate-900">Pipeline Stages</h2>
+                    <Badge variant="outline" className="text-xs">{stages.length}</Badge>
                   </div>
                 </div>
-                <Button
-                  onClick={() => setShowAddModal(true)}
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Stage
-                </Button>
               </div>
-            </div>
 
-    <div className="p-6">
-              {loading ? (
-                <div className="text-center py-12">
-                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-                  <p className="text-sm text-slate-500 mt-3">Loading stages...</p>
-                </div>
-              ) : stages.length === 0 ? (
-                <div className="text-center py-12">
-                  <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-sm text-slate-500">No stages found. Add your first stage to get started.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {stages.map((stage, index) => {
-                    const colorClasses = getColorClasses(stage.color);
-                    return (
-                      <div
-                        key={stage.id}
-                        className="group flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all duration-200 bg-white"
-                      >
-                        {/* Drag Handle */}
-                        <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => moveStage(stage.id, "up")}
-                            disabled={index === 0}
-                            className="text-slate-400 hover:text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed"
+              <CardContent className="p-4">
+                {loading ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-3 border-solid border-primary border-r-transparent"></div>
+                  </div>
+                ) : stages.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Layers className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p className="text-sm text-slate-500">No stages found</p>
+                    <Button onClick={() => setShowAddModal(true)} size="sm" className="mt-3">
+                      Add Stage
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <AnimatePresence mode="popLayout">
+                      {stages.map((stage, index) => {
+                        const colorClasses = getColorClasses(stage.color);
+                        return (
+                          <motion.div
+                            key={stage.id}
+                            layout
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="group"
                           >
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => moveStage(stage.id, "down")}
-                            disabled={index === stages.length - 1}
-                            className="text-slate-400 hover:text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                          >
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </div>
+                            <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-200/60 hover:border-slate-300 bg-white hover:shadow-sm transition-all">
+                              {/* Reorder buttons */}
+                              <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => moveStage(stage.id, "up")}
+                                  disabled={index === 0}
+                                  className="text-slate-400 hover:text-primary disabled:opacity-20 disabled:cursor-not-allowed p-0.5"
+                                >
+                                  <ChevronUp className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => moveStage(stage.id, "down")}
+                                  disabled={index === stages.length - 1}
+                                  className="text-slate-400 hover:text-primary disabled:opacity-20 disabled:cursor-not-allowed p-0.5"
+                                >
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
 
-                        {/* Order Badge */}
-                        <div className="flex-shrink-0 w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                          <span className="text-xs font-bold text-slate-600">{index + 1}</span>
-                        </div>
+                              {/* Order number */}
+                              <div className="flex-shrink-0 w-7 h-7 bg-slate-100 rounded-md flex items-center justify-center">
+                                <span className="text-xs font-bold text-slate-600">{index + 1}</span>
+                              </div>
 
-                        {/* Stage Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium border ${colorClasses.bg} ${colorClasses.text} ${colorClasses.border}`}>
-                              {stage.name}
-                            </span>
-                            {stage.isDefault && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                                Default
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                              {/* Color dot */}
+                              <div className={`w-2.5 h-2.5 rounded-full ${colorClasses.dot} flex-shrink-0`}></div>
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => {
-                              setEditingStage(stage);
-                              setFormData({ name: stage.name, color: stage.color });
-                            }}
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit stage"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setShowDeleteConfirm(stage.id)}
-                            disabled={stage.isDefault}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                            title={stage.isDefault ? "Cannot delete default stage" : "Delete stage"}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                              {/* Stage name */}
+                              <div className="flex-1 min-w-0 flex items-center gap-2">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${colorClasses.bg} ${colorClasses.text} ${colorClasses.border}`}>
+                                  {stage.name}
+                                </span>
+                                {stage.isDefault && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30">
+                                    Default
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {/* Action buttons */}
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => {
+                                    setEditingStage(stage);
+                                    setFormData({ name: stage.name, color: stage.color });
+                                  }}
+                                  className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setShowDeleteConfirm(stage.id)}
+                                  disabled={stage.isDefault}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-400"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </div>
+                )}
+
+                {/* Compact Info */}
+                {!loading && stages.length > 0 && (
+                  <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                    <div className="flex gap-2">
+                      <Info className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <div className="text-xs text-slate-700">
+                        <p className="font-medium mb-1">Tips</p>
+                        <p className="text-slate-600">Use arrows to reorder • Default stages can be edited • Renaming updates all leads automatically</p>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
-              {/* Info Box */}
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <div className="flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-blue-900">
-                    <p className="font-medium mb-1">Stage Management Tips</p>
-                    <ul className="text-xs space-y-1 text-blue-800">
-                      <li>• Use the arrows to reorder stages in your pipeline</li>
-                      <li>• Default stages can be edited but not deleted</li>
-                      <li>• Choose colors that match your workflow (e.g., green for positive, red for negative)</li>
-                      <li>• Stage order reflects your typical sales progression</li>
-                    </ul>
+          {/* Compact Sidebar */}
+          <div className="space-y-4">
+            {/* Stats */}
+            <Card className="border-slate-200/60 shadow-sm">
+              <CardContent className="p-4">
+                <h3 className="text-xs font-semibold text-slate-600 mb-3 uppercase tracking-wide">Overview</h3>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-600">Total</span>
+                    <span className="text-lg font-bold text-slate-900">{stages.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-600">Default</span>
+                    <span className="text-lg font-bold text-primary">{stages.filter(s => s.isDefault).length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-600">Custom</span>
+                    <span className="text-lg font-bold text-emerald-600">{stages.filter(s => !s.isDefault).length}</span>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
+              </CardContent>
+            </Card>
 
-        {/* Other Settings - Placeholder */}
-        <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Quick Settings</h2>
-            <div className="space-y-3 text-sm text-slate-600">
-              <div className="flex items-center justify-between py-2 border-b border-slate-100">
-                <span>Fields Manager</span>
-                <span className="text-xs text-slate-400">Coming soon</span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-slate-100">
-                <span>Territories</span>
-                <span className="text-xs text-slate-400">Coming soon</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span>Consent Settings</span>
-                <span className="text-xs text-slate-400">Coming soon</span>
-              </div>
-            </div>
+            {/* Color Preview */}
+            <Card className="border-slate-200/60 shadow-sm">
+              <CardContent className="p-4">
+                <h3 className="text-xs font-semibold text-slate-600 mb-3 uppercase tracking-wide">Colors</h3>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {COLOR_OPTIONS.slice(0, 12).map((color) => (
+                    <div
+                      key={color.value}
+                      className={`w-full h-7 rounded ${color.bg} border ${color.border}`}
+                      title={color.label}
+                    ></div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2 text-center">
+                  {COLOR_OPTIONS.length} colors available
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
 
-      {/* Add Stage Modal */}
+      {/* Compact Add Modal */}
       <Dialog open={showAddModal} onOpenChange={(open) => { 
         if (!open) { 
           setShowAddModal(false); 
@@ -386,94 +418,66 @@ export default function SettingsPage() {
       }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="w-5 h-5 text-blue-600" />
-              Add New Stage
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Plus className="w-4 h-4 text-black" />
+              </div>
+              Add Stage
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">
-                Stage Name
-              </label>
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Stage Name</label>
               <Input
-                placeholder="e.g. Demo Scheduled"
+                placeholder="e.g., Demo Scheduled"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-2 block">
-                Color
-              </label>
-              <div className="grid grid-cols-5 gap-2">
+              <label className="text-sm font-medium text-slate-700 mb-2 block">Color</label>
+              <div className="grid grid-cols-6 gap-1.5">
                 {COLOR_OPTIONS.map((color) => {
                   const isSelected = formData.color === color.value;
                   return (
                     <button
                       key={color.value}
                       onClick={() => setFormData({ ...formData, color: color.value })}
-                      className={`p-2 rounded-lg border-2 transition-all ${
-                        isSelected 
-                          ? 'border-blue-500 shadow-md scale-105' 
-                          : 'border-slate-200 hover:border-slate-300'
+                      className={`relative p-2 rounded-lg border-2 transition-all ${
+                        isSelected ? 'border-primary scale-105' : 'border-slate-200 hover:border-slate-300'
                       }`}
-                      title={color.label}
                     >
-                      <div className={`w-full h-8 rounded ${color.bg} flex items-center justify-center`}>
-                        <span className={`text-xs font-medium ${color.text}`}>Aa</span>
-                      </div>
+                      <div className={`w-full h-6 rounded ${color.bg}`}></div>
+                      {isSelected && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                          <svg className="w-2.5 h-2.5 text-black" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
                     </button>
                   );
                 })}
               </div>
               <p className="text-xs text-slate-500 mt-2">
-                Selected: <span className="font-medium">{COLOR_OPTIONS.find(c => c.value === formData.color)?.label}</span>
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-              <p className="text-xs text-amber-800">
-                New stages will be added to the end of your pipeline
+                {COLOR_OPTIONS.find(c => c.value === formData.color)?.label}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 mt-6">
-            <Button 
-              variant="ghost" 
-              onClick={() => {
-                setShowAddModal(false);
-                setFormData({ name: "", color: "slate" });
-              }}
-            >
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="ghost" onClick={() => {setShowAddModal(false); setFormData({ name: "", color: "slate" });}}>
               Cancel
             </Button>
-            <Button
-              onClick={handleAddStage}
-              disabled={saving || !formData.name.trim()}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {saving ? (
-                <>
-                  <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin mr-2" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-1" />
-                  Add Stage
-                </>
-              )}
+            <Button onClick={handleAddStage} disabled={saving || !formData.name.trim()} className="bg-primary hover:bg-primary/90 text-black">
+              {saving ? "Adding..." : "Add Stage"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Stage Modal */}
+      {/* Compact Edit Modal */}
       <Dialog open={!!editingStage} onOpenChange={(open) => { 
         if (!open) { 
           setEditingStage(null); 
@@ -482,132 +486,103 @@ export default function SettingsPage() {
       }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Edit className="w-5 h-5 text-blue-600" />
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
+                <Edit className="w-4 h-4 text-white" />
+              </div>
               Edit Stage
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">
-                Stage Name
-              </label>
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Stage Name</label>
               <Input
                 placeholder="Stage name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-2 block">
-                Color
-              </label>
-              <div className="grid grid-cols-5 gap-2">
+              <label className="text-sm font-medium text-slate-700 mb-2 block">Color</label>
+              <div className="grid grid-cols-6 gap-1.5">
                 {COLOR_OPTIONS.map((color) => {
                   const isSelected = formData.color === color.value;
                   return (
                     <button
                       key={color.value}
                       onClick={() => setFormData({ ...formData, color: color.value })}
-                      className={`p-2 rounded-lg border-2 transition-all ${
-                        isSelected 
-                          ? 'border-blue-500 shadow-md scale-105' 
-                          : 'border-slate-200 hover:border-slate-300'
+                      className={`relative p-2 rounded-lg border-2 transition-all ${
+                        isSelected ? 'border-emerald-500 scale-105' : 'border-slate-200 hover:border-slate-300'
                       }`}
-                      title={color.label}
                     >
-                      <div className={`w-full h-8 rounded ${color.bg} flex items-center justify-center`}>
-                        <span className={`text-xs font-medium ${color.text}`}>Aa</span>
-                      </div>
+                      <div className={`w-full h-6 rounded ${color.bg}`}></div>
+                      {isSelected && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
+                          <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
                     </button>
                   );
                 })}
               </div>
               <p className="text-xs text-slate-500 mt-2">
-                Selected: <span className="font-medium">{COLOR_OPTIONS.find(c => c.value === formData.color)?.label}</span>
+                {COLOR_OPTIONS.find(c => c.value === formData.color)?.label}
               </p>
             </div>
 
-            <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-              <p className="text-xs text-amber-800">
-                <strong>Note:</strong> Renaming a stage will automatically update all existing leads with this stage to the new name.
+            <div className="p-3 bg-amber-50/80 border border-amber-200/60 rounded-lg">
+              <p className="text-xs text-amber-900">
+                <strong>Note:</strong> Renaming will update all existing leads automatically.
               </p>
             </div>
 
             {editingStage?.isDefault && (
-              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                <p className="text-xs text-blue-800">
-                  This is a default stage. You can edit it but cannot delete it.
+              <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg">
+                <p className="text-xs text-slate-700">
+                  <Sparkles className="w-3 h-3 inline mr-1 text-primary" />
+                  Default stage - can be edited but not deleted.
                 </p>
               </div>
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-2 mt-6">
-            <Button 
-              variant="ghost" 
-              onClick={() => {
-                setEditingStage(null);
-                setFormData({ name: "", color: "slate" });
-              }}
-            >
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="ghost" onClick={() => {setEditingStage(null); setFormData({ name: "", color: "slate" });}}>
               Cancel
             </Button>
-            <Button
-              onClick={handleUpdateStage}
-              disabled={saving || !formData.name.trim()}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {saving ? (
-                <>
-                  <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin mr-2" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-1" />
-                  Update Stage
-                </>
-              )}
+            <Button onClick={handleUpdateStage} disabled={saving || !formData.name.trim()} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              {saving ? "Updating..." : "Update"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Modal */}
+      {/* Compact Delete Modal */}
       <Dialog open={!!showDeleteConfirm} onOpenChange={(open) => { if (!open) setShowDeleteConfirm(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertCircle className="w-5 h-5" />
+            <DialogTitle className="flex items-center gap-2 text-lg text-red-600">
+              <Trash2 className="w-5 h-5" />
               Delete Stage?
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600">
-              Are you sure you want to delete this stage? This action cannot be undone.
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700">
+              Are you sure? This action cannot be undone.
             </p>
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-xs text-amber-800">
-                <strong>Warning:</strong> Existing leads with this stage will not be affected, but the stage won't appear in dropdowns anymore.
+            <div className="p-3 bg-red-50/80 border border-red-200/60 rounded-lg">
+              <p className="text-xs text-red-900">
+                Existing leads with this stage will keep it, but it won't appear in dropdowns.
               </p>
             </div>
           </div>
-          <div className="flex items-center justify-end gap-2 mt-6">
-            <Button variant="ghost" onClick={() => setShowDeleteConfirm(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => showDeleteConfirm && handleDeleteStage(showDeleteConfirm)}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              <Trash2 className="w-4 h-4 mr-1" />
-              Delete Stage
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="ghost" onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
+            <Button onClick={() => showDeleteConfirm && handleDeleteStage(showDeleteConfirm)} variant="destructive">
+              Delete
             </Button>
           </div>
         </DialogContent>
