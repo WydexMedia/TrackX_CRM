@@ -15,12 +15,12 @@ const items = [
   { href: "/team-leader", label: "Overview", icon: Icons.LayoutDashboard, badge: null },
   { href: "/team-leader/leads", label: "Leads", icon: Icons.UserSquare2, badge: null },
   { href: "/team-leader/tasks", label: "Tasks", icon: Icons.AlarmClock, badge: null },
-  { href: "/team-leader/daily-leaderboard", label: "Today's Leaderboard", icon: Icons.Trophy, badge: null },
   { href: "/team-leader/automations", label: "Automations", icon: Icons.Workflow, badge: "automation" },
   { href: "/team-leader/analytics", label: "Analytics", icon: Icons.BarChart3, badge: null },
   { href: "/team-leader/reports", label: "Reports", icon: Icons.PieChart, badge: null },
   { href: "/team-leader/sales", label: "Sales Management", icon: Icons.TrendingUp, badge: null },
   { href: "/team-leader/team-management", label: "Team Management", icon: Icons.Users, badge: null },
+  { href: "/team-leader/daily-leaderboard", label: "Today's Sales", icon: Icons.Trophy, badge: null },
   { href: "/team-leader/integrations", label: "Integrations", icon: Icons.Plug, badge: null },
   { href: "/team-leader/settings", label: "Settings", icon: Icons.Settings, badge: null },
 ];
