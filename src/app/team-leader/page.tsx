@@ -1,4 +1,3 @@
-// Enhanced Homepage Component
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,17 +6,50 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { authenticatedFetch } from "@/lib/tokenValidation";
+import { Users, Target, TrendingUp, Clock, DollarSign, Crown } from "lucide-react";
+
+interface Analytics {
+  _id: string;
+  name: string;
+  code: string;
+  email: string;
+  target: number;
+  achievedTarget: number;
+  pendingTarget: number;
+  todayCollection: number;
+  lastMonthCollection: number;
+  daysPending: number;
+  totalSales: number;
+  todaySales: number;
+  thisMonthSales: number;
+}
 
 export default function LeadManagementOverviewPage() {
   const [widgets, setWidgets] = useState<{ slaAtRisk: number; leadsToday: number; qualifiedRate: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [activities, setActivities] = useState<Array<{ id: number; at: string; title: string; detail: string; color: string }>>([]);
   const [showAllActivities, setShowAllActivities] = useState(false);
+  const [teamLeader, setTeamLeader] = useState<{ name: string } | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics[]>([]);
 
   useEffect(() => {
+    // Get user info
+    const user = localStorage.getItem("user");
+    if (user) {
+      setTeamLeader(JSON.parse(user));
+    }
+
+    // Fetch lead management overview
     authenticatedFetch("/api/tl/overview")
       .then((r) => r.json())
       .then((d) => setWidgets(d.widgets || { slaAtRisk: 0, leadsToday: 0, qualifiedRate: 0 }))
+      .catch(() => {});
+
+    // Fetch sales analytics
+    authenticatedFetch("/api/analytics")
+      .then((r) => r.json())
+      .then((data) => setAnalytics(data || []))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
@@ -42,50 +74,12 @@ export default function LeadManagementOverviewPage() {
       .catch(() => setActivities([]));
   }, []);
 
-  const metrics = [
-    {
-      title: "SLA at Risk",
-      value: widgets?.slaAtRisk || 0,
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-        </svg>
-      ),
-      color: "text-rose-600",
-      bgColor: "bg-rose-50",
-      borderColor: "border-rose-200",
-      gradient: "from-rose-600 to-rose-700",
-      trend: widgets?.slaAtRisk && widgets.slaAtRisk > 0 ? "critical" : "good"
-    },
-    {
-      title: "Leads Today",
-      value: widgets?.leadsToday || 0,
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      ),
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-200",
-      gradient: "from-blue-600 to-blue-700",
-      trend: "neutral"
-    },
-    {
-      title: "Qualified Rate",
-      value: `${widgets?.qualifiedRate || 0}%`,
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2 2z" />
-        </svg>
-      ),
-      color: "text-primary",
-      bgColor: "bg-primary/10",
-      borderColor: "border-primary/20",
-      gradient: "from-primary to-primary/80",
-      trend: (widgets?.qualifiedRate || 0) >= 70 ? "good" : (widgets?.qualifiedRate || 0) >= 50 ? "neutral" : "poor"
-    }
-  ];
+  // Calculate sales metrics
+  const totalTarget = analytics.reduce((sum, user) => sum + user.target, 0);
+  const totalAchieved = analytics.reduce((sum, user) => sum + user.achievedTarget, 0);
+  const totalPending = analytics.reduce((sum, user) => sum + user.pendingTarget, 0);
+  const totalTodayCollection = analytics.reduce((sum, user) => sum + user.todayCollection, 0);
+  const topPerformers = [...analytics].sort((a, b) => b.achievedTarget - a.achievedTarget);
 
   // Dynamic greeting based on local time
   const greeting = (() => {
@@ -133,63 +127,294 @@ export default function LeadManagementOverviewPage() {
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{greeting}! 👋</h1>
-            <p className="text-sm text-slate-600 mt-1">Here's what's happening with your leads today</p>
+            <h1 className="text-3xl font-bold text-slate-900">
+              {greeting}, {teamLeader?.name || "Team Leader"}! 👋
+            </h1>
+            <p className="text-sm text-slate-600 mt-1">
+              Presale Lead Management & Sales Revenue Dashboard
+            </p>
           </div>
           <div className="text-right bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm">
             <div className="text-xs text-slate-500">Last updated</div>
-            <div className="text-xs font-semibold text-slate-900">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+            <div className="text-xs font-semibold text-slate-900">
+              {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Metrics Grid */}
+      {/* Sales Performance Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+        <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Users className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
+              <div className="ml-3">
+                <p className="text-xs font-medium text-slate-600">Team Members</p>
+                <p className="text-2xl font-bold text-slate-900">{loading ? "..." : analytics.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <Target className="w-5 h-5 text-green-600" />
+                </div>
+              </div>
+              <div className="ml-3">
+                <p className="text-xs font-medium text-slate-600">Total Target</p>
+                <p className="text-xl font-bold text-slate-900">₹{totalTarget.toLocaleString()}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-purple-600" />
+                </div>
+              </div>
+              <div className="ml-3">
+                <p className="text-xs font-medium text-slate-600">Achieved</p>
+                <p className="text-xl font-bold text-slate-900">₹{totalAchieved.toLocaleString()}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-orange-600" />
+                </div>
+              </div>
+              <div className="ml-3">
+                <p className="text-xs font-medium text-slate-600">Pending</p>
+                <p className="text-xl font-bold text-slate-900">₹{totalPending.toLocaleString()}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200">
+          <CardContent className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                  <DollarSign className="w-5 h-5 text-red-600" />
+                </div>
+              </div>
+              <div className="ml-3">
+                <p className="text-xs font-medium text-slate-600">Today's Collection</p>
+                <p className="text-xl font-bold text-slate-900">₹{totalTodayCollection.toLocaleString()}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top Performers Stage */}
+      {topPerformers.length > 0 && (
+        <div className="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 rounded-2xl shadow-2xl mb-8 overflow-hidden relative">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 left-10 w-32 h-32 bg-yellow-400 rounded-full"></div>
+            <div className="absolute top-32 right-20 w-24 h-24 bg-purple-400 rounded-full"></div>
+            <div className="absolute bottom-20 left-1/4 w-40 h-40 bg-blue-400 rounded-full"></div>
+          </div>
+
+          <div className="relative z-10 p-8">
+            <div className="text-center mb-8">
+              <h2 className="text-4xl font-bold text-white mb-2">🏆 Top Performers</h2>
+              <p className="text-purple-200 text-lg">This Month's Champions</p>
+            </div>
+
+            <div className="flex justify-center items-end space-x-4 md:space-x-8 lg:space-x-12">
+              {/* 2nd Place */}
+              {topPerformers.length > 1 && (
+                <div className="flex flex-col items-center transform translate-y-4">
+                  <div className="relative">
+                    <div className="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center shadow-lg border-4 border-gray-200">
+                      <span className="text-2xl md:text-3xl font-bold text-gray-700">🥈</span>
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">2</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <div className="text-white font-semibold text-sm md:text-base">{topPerformers[1].name}</div>
+                    <div className="text-purple-200 text-xs md:text-sm">₹{topPerformers[1].achievedTarget.toLocaleString()}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* 1st Place */}
+              {topPerformers.length > 0 && (
+                <div className="flex flex-col items-center">
+                  <div className="relative">
+                    <div className="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-yellow-200 animate-pulse">
+                      <Crown className="w-8 h-8 md:w-10 md:h-10 text-yellow-800" />
+                    </div>
+                    <Badge className="absolute -top-2 -right-2 w-10 h-10 bg-yellow-400 text-yellow-800 font-bold text-lg p-0 flex items-center justify-center">
+                      1
+                    </Badge>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <div className="text-white font-bold text-lg md:text-xl">{topPerformers[0].name}</div>
+                    <div className="text-yellow-200 text-sm md:text-base font-semibold">₹{topPerformers[0].achievedTarget.toLocaleString()}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3rd Place */}
+              {topPerformers.length > 2 && (
+                <div className="flex flex-col items-center transform translate-y-8">
+                  <div className="relative">
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-orange-300 to-orange-500 rounded-full flex items-center justify-center shadow-lg border-4 border-orange-200">
+                      <span className="text-xl md:text-2xl font-bold text-orange-700">🥉</span>
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-orange-400 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">3</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <div className="text-white font-semibold text-sm md:text-base">{topPerformers[2].name}</div>
+                    <div className="text-orange-200 text-xs md:text-sm">₹{topPerformers[2].achievedTarget.toLocaleString()}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Stage Platform */}
+            <div className="mt-8 flex justify-center">
+              <div className="w-80 h-4 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 rounded-full shadow-lg"></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lead Management Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {metrics.map((metric, index) => (
-          <Card key={metric.title} className="border border-slate-200/60 hover:shadow-md transition-all duration-200 overflow-hidden">
+        <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200 overflow-hidden">
             <CardContent className="p-0">
-              <div className={`bg-gradient-to-br ${metric.gradient} p-4`}>
+            <div className="bg-gradient-to-br from-rose-600 to-rose-700 p-4">
                 <div className="flex items-center justify-between text-white">
                   <div>
-                    <p className="text-xs font-medium opacity-90">{metric.title}</p>
+                  <p className="text-xs font-medium opacity-90">SLA at Risk</p>
                     <div className="text-3xl font-bold mt-1">
                       {loading ? (
                         <div className="animate-pulse bg-white/20 h-10 w-20 rounded"></div>
                       ) : (
-                        metric.value
+                      widgets?.slaAtRisk || 0
                       )}
                     </div>
                   </div>
                   <div className="bg-white/20 p-2.5 rounded-lg">
-                    {metric.icon}
-                  </div>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
                 </div>
               </div>
               <div className="p-3 bg-white">
                 <div className="flex items-center justify-between">
-                  {metric.trend === "critical" && (
+                {widgets?.slaAtRisk && widgets.slaAtRisk > 0 ? (
                     <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-[10px]">
                       ⚠️ Critical
                     </Badge>
-                  )}
-                  {metric.trend === "good" && (
+                ) : (
                     <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
                       ✓ Good
                     </Badge>
                   )}
-                  {metric.trend === "neutral" && (
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200 overflow-hidden">
+          <CardContent className="p-0">
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-4">
+              <div className="flex items-center justify-between text-white">
+                <div>
+                  <p className="text-xs font-medium opacity-90">Leads Today</p>
+                  <div className="text-3xl font-bold mt-1">
+                    {loading ? (
+                      <div className="animate-pulse bg-white/20 h-10 w-20 rounded"></div>
+                    ) : (
+                      widgets?.leadsToday || 0
+                    )}
+                  </div>
+                </div>
+                <div className="bg-white/20 p-2.5 rounded-lg">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div className="p-3 bg-white">
                     <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 text-[10px]">
                       • Tracking
                     </Badge>
-                  )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200 overflow-hidden">
+          <CardContent className="p-0">
+            <div className="bg-gradient-to-br from-primary to-primary/80 p-4">
+              <div className="flex items-center justify-between text-white">
+                <div>
+                  <p className="text-xs font-medium opacity-90">Qualified Rate</p>
+                  <div className="text-3xl font-bold mt-1">
+                    {loading ? (
+                      <div className="animate-pulse bg-white/20 h-10 w-20 rounded"></div>
+                    ) : (
+                      `${widgets?.qualifiedRate || 0}%`
+                    )}
+                  </div>
                 </div>
+                <div className="bg-white/20 p-2.5 rounded-lg">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2 2z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div className="p-3 bg-white">
+              {(widgets?.qualifiedRate || 0) >= 70 ? (
+                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
+                  ✓ Good
+                </Badge>
+              ) : (widgets?.qualifiedRate || 0) >= 50 ? (
+                <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 text-[10px]">
+                  • Tracking
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-[10px]">
+                  ⚠️ Needs Attention
+                </Badge>
+              )}
               </div>
             </CardContent>
           </Card>
-        ))}
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions & Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <Card className="border border-slate-200/60 shadow-sm">
           <CardContent className="p-5">
@@ -214,17 +439,15 @@ export default function LeadManagementOverviewPage() {
                 </svg>
                 Assign Tasks
               </Link>
-              <Link href="/team-leader/queue" className="flex items-center gap-2 p-3 border border-slate-200/60 rounded-lg hover:bg-slate-50 hover:border-primary/30 transition-all text-xs font-medium text-slate-700 hover:text-primary">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                View Queue
+              <Link href="/team-leader/sales" className="flex items-center gap-2 p-3 border border-slate-200/60 rounded-lg hover:bg-slate-50 hover:border-primary/30 transition-all text-xs font-medium text-slate-700 hover:text-primary">
+                <TrendingUp className="w-4 h-4" />
+                Sales Analytics
               </Link>
               <Link href="/team-leader/analytics" className="flex items-center gap-2 p-3 border border-slate-200/60 rounded-lg hover:bg-slate-50 hover:border-primary/30 transition-all text-xs font-medium text-slate-700 hover:text-primary">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2 2z" />
                 </svg>
-                Analytics
+                Lead Analytics
               </Link>
             </div>
           </CardContent>
@@ -298,9 +521,11 @@ export default function LeadManagementOverviewPage() {
                   <p className="text-xs text-rose-700 mt-1">
                     {widgets.slaAtRisk} lead{widgets.slaAtRisk !== 1 ? 's are' : ' is'} at risk of missing SLA targets. Immediate attention required.
                   </p>
+                  <Link href="/team-leader/leads">
                   <Button variant="ghost" className="mt-2 p-0 h-auto text-xs text-rose-700 hover:text-rose-800 font-medium">
                     View Details →
                   </Button>
+                  </Link>
                 </div>
               </div>
             </div>

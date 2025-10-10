@@ -765,128 +765,19 @@ export default function TeamLeaderPage() {
   if (!teamLeader) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       <Toaster position="top-right" />
 
-    {/* Standard Header */}
-    <div className="bg-white shadow-lg border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Top Navigation Bar */}
-        <div className="flex justify-between items-center py-4">
-          <div className="flex items-center space-x-4">
-            {/* Logo Section */}
-            <div className="flex items-center space-x-3">
-              {subdomain && (
-                <TenantLogo 
-                  subdomain={subdomain} 
-                  className="w-10 h-10 rounded-lg shadow-sm"
-                  fallbackText={subdomain.toUpperCase().slice(0, 2)}
-                />
-              )}
-              
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-            </div>
-            
-            {/* Title Section */}
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Page Header */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Team Analytics Dashboard
-              </h1>
-              <p className="text-gray-600 text-sm">
-                Welcome back, <span className="font-semibold text-blue-600">{teamLeader.name}</span>
-              </p>
+              <h1 className="text-2xl font-bold text-slate-900">Sales Management</h1>
+              <p className="text-sm text-slate-600 mt-1">Revenue analytics and team performance tracking</p>
             </div>
           </div>
-          
-          {/* Action Buttons */}
-          <div className="flex items-center space-x-3">
-            <Button
-              onClick={() => setShowCredentials(true)}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              <Settings className="w-4 h-4" />
-              Credentials
-            </Button>
-            
-            <Button
-              onClick={() => setShowAddUser(true)}
-              size="sm"
-              className="gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Member
-            </Button>
-            
-            {/* Profile Dropdown */}
-            <DropdownMenu open={showProfileDropdown} onOpenChange={setShowProfileDropdown}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <User className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="px-2 py-1.5">
-                  <p className="text-sm font-medium">{teamLeader?.name}</p>
-                  <p className="text-xs text-muted-foreground">{teamLeader?.email}</p>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setShowEditProfile(true);
-                    setShowProfileDropdown(false);
-                  }}
-                >
-                  <Settings className="w-4 h-4 mr-2" />
-                  Edit Profile
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleLogout}
-                  className="text-red-600 focus:text-red-600"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
         </div>
-
-        {/* Navigation Tabs */}
-        <div className="border-t border-gray-200 pt-4 pb-6">
-          <nav className="flex space-x-2">
-            <Button variant="ghost" asChild className="gap-2">
-              <Link href="/leaderboard">
-                <TrendingUp className="w-4 h-4" />
-                Sales Leaderboard
-              </Link>
-            </Button>
-            
-            <Button variant="ghost" asChild className="gap-2">
-              <Link href="/team-leader">
-                <Users className="w-4 h-4" />
-                Lead Management
-              </Link>
-            </Button>
-
-            <Button variant="ghost" asChild className="gap-2">
-              <Link href="/team-leader/team-management">
-                <Users className="w-4 h-4" />
-                Team Management
-              </Link>
-            </Button>
-          </nav>
-        </div>
-      </div>
-    </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Top Performers Stage */}
         <div className="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 rounded-2xl shadow-2xl mb-8 overflow-hidden relative">
           {/* Background Pattern */}
@@ -966,117 +857,117 @@ export default function TeamLeaderPage() {
         </div>
         
 
-          {/* Standard Analytics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
+          {/* Analytics Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+          <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200">
+            <CardContent className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                     <Users className="w-5 h-5 text-blue-600" />
                   </div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Team Members</p>
-                  <p className="text-2xl font-bold text-gray-900">{analytics.length}</p>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-slate-600">Team Members</p>
+                  <p className="text-2xl font-bold text-slate-900">{analytics.length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-6">
+          <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200">
+            <CardContent className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                     <Target className="w-5 h-5 text-green-600" />
                   </div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Target</p>
-                  <p className="text-2xl font-bold text-gray-900">₹{totalTarget.toLocaleString()}</p>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-slate-600">Total Target</p>
+                  <p className="text-xl font-bold text-slate-900">₹{totalTarget.toLocaleString()}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-6">
+          <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200">
+            <CardContent className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                     <TrendingUp className="w-5 h-5 text-purple-600" />
                   </div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Achieved</p>
-                  <p className="text-2xl font-bold text-gray-900">₹{totalAchieved.toLocaleString()}</p>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-slate-600">Achieved</p>
+                  <p className="text-xl font-bold text-slate-900">₹{totalAchieved.toLocaleString()}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-6">
+          <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200">
+            <CardContent className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
                     <Clock className="w-5 h-5 text-orange-600" />
                   </div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Pending</p>
-                  <p className="text-2xl font-bold text-gray-900">₹{totalPending.toLocaleString()}</p>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-slate-600">Pending</p>
+                  <p className="text-xl font-bold text-slate-900">₹{totalPending.toLocaleString()}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-6">
+          <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200">
+            <CardContent className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
                     <DollarSign className="w-5 h-5 text-red-600" />
                   </div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Today's Collection</p>
-                  <p className="text-2xl font-bold text-gray-900">₹{totalTodayCollection.toLocaleString()}</p>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-slate-600">Today's Collection</p>
+                  <p className="text-xl font-bold text-slate-900">₹{totalTodayCollection.toLocaleString()}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Standard Search and Filters */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
+        {/* Search and Filters */}
+        <Card className="mb-6 border border-slate-200/60 shadow-sm">
+          <CardContent className="p-5">
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
               <div className="flex-1 max-w-md">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     type="text"
                     placeholder="Search by name, code, or email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 border-slate-200"
                   />
                 </div>
               </div>
-              <div className="text-sm text-gray-600">
-                Showing {filteredAndSortedAnalytics.length} of {analytics.length} team members
+              <div className="text-sm text-slate-600 font-medium">
+                {filteredAndSortedAnalytics.length} of {analytics.length} members
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Standard Analytics Table */}
-        <Card className="overflow-hidden">
-          <CardHeader>
-            <CardTitle>Team Performance Analytics</CardTitle>
-            <p className="text-sm text-gray-500 mt-1">Overview of your sales team's performance</p>
+        {/* Performance Analytics Table */}
+        <Card className="overflow-hidden border border-slate-200/60 shadow-sm">
+          <CardHeader className="bg-slate-50/50 border-b border-slate-200/60">
+            <CardTitle className="text-lg text-slate-900">Team Performance Analytics</CardTitle>
+            <p className="text-sm text-slate-600 mt-1">Comprehensive overview of your sales team's performance metrics</p>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -1171,7 +1062,6 @@ export default function TeamLeaderPage() {
                         )}
                       </div>
                     </TH>
-                    <TH>Actions</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -1238,55 +1128,8 @@ export default function TeamLeaderPage() {
                           )}
                         </TD>
                         <TD className="whitespace-nowrap">
-                          <div className="text-sm font-semibold text-gray-900">{user.totalSales}</div>
-                          <div className="text-xs text-gray-500">{user.thisMonthSales} this month</div>
-                        </TD>
-                        <TD className="whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                const u = users.find(u => u._id === user._id);
-                                if (u) {
-                                  setEditingUser({
-                                    _id: u._id,
-                                    name: u.name,
-                                    code: u.code,
-                                    email: u.email,
-                                    role: u.role,
-                                    target: typeof u.target === 'number' ? u.target : 0
-                                  });
-                                }
-                              }}
-                              className="h-8 px-2 text-blue-600 hover:text-blue-900"
-                            >
-                              <Edit className="w-3 h-3 mr-1" />
-                              Edit
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteUser(user._id)}
-                              disabled={isDeletingUser === user._id}
-                              className={`h-8 px-2 ${isDeletingUser === user._id
-                                  ? 'text-gray-400 cursor-not-allowed'
-                                  : 'text-red-600 hover:text-red-900'
-                                }`}
-                            >
-                              {isDeletingUser === user._id ? (
-                                <div className="flex items-center space-x-1">
-                                  <div className="animate-spin h-3 w-3 border-2 border-gray-400 border-t-transparent rounded-full"></div>
-                                  <span>Deleting...</span>
-                                </div>
-                              ) : (
-                                <>
-                                  <Trash2 className="w-3 h-3 mr-1" />
-                                  Delete
-                                </>
-                              )}
-                            </Button>
-                          </div>
+                          <div className="text-sm font-semibold text-slate-900">{user.totalSales}</div>
+                          <div className="text-xs text-slate-500">{user.thisMonthSales} this month</div>
                         </TD>
                       </TR>
                     );
