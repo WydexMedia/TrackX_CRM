@@ -56,6 +56,7 @@ export default function LeadDetailPage() {
   const [callStatus, setCallStatus] = useState<string>("");
   const [callNotes, setCallNotes] = useState<string>("");
   const [loggingCall, setLoggingCall] = useState(false);
+  const [stages, setStages] = useState<Array<{ id: number; name: string; color: string }>>([]);
 
   // Delete confirm modal state
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -153,6 +154,12 @@ export default function LeadDetailPage() {
     
     // Fetch user names for actor resolution
     fetchUserNames();
+
+    // Load stages
+    authenticatedFetch("/api/tl/stages")
+      .then((r) => r.json())
+      .then((d) => setStages(d?.stages || []))
+      .catch(() => {});
   }, [phone]);
 
   useEffect(() => {
@@ -665,17 +672,11 @@ export default function LeadDetailPage() {
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select New Stage</option>
-                    <option value="Not contacted">Not contacted</option>
-                    <option value="Qualified">Qualified</option>
-                    <option value="Not interested">Not Interested</option>
-                    <option value="Interested">Interested</option>
-                    <option value="To be nurtured">To be Nurtured</option>
-                    <option value="Junk">Junk</option>
-                    <option value="Ask to call back">Ask to Call Back</option>
-                    <option value="Attempt to contact">Attempt to contact</option>
-                    <option value="Did not Connect">Did not Connect</option>
-                    <option value="Customer">Customer</option>
-                    <option value="Other Language">Other Language</option>
+                    {stages.map((stage) => (
+                      <option key={stage.id} value={stage.name}>
+                        {stage.name}
+                      </option>
+                    ))}
                   </select>
                   <textarea
                     placeholder="Stage change reason/notes..."

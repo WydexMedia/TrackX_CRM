@@ -747,6 +747,7 @@ export default function TasksPage() {
 
   // Filter state for leads
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>("all");
+  const [stages, setStages] = useState<Array<{ id: number; name: string; color: string }>>([]);
 
   // Pagination state for leads
   const [currentPage, setCurrentPage] = useState(1);
@@ -1039,6 +1040,14 @@ export default function TasksPage() {
   }, [ownerId, ownerIdEmail, ownerIdCode, ownerName]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    // Load stages
+    authenticatedFetch("/api/tl/stages")
+      .then((r) => r.json())
+      .then((d) => setStages(d?.stages || []))
+      .catch(() => {});
+  }, []);
 
   const openLeadModal = (lead: Lead) => {
     setSelectedLead(lead);
@@ -1427,17 +1436,11 @@ export default function TasksPage() {
                   className="px-3 py-2 text-black border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-full sm:w-auto"
                 >
                   <option value="all">All Statuses</option>
-                  <option value="Not contacted">Not contacted</option>
-                  <option value="Qualified">Qualified</option>
-                  <option value="Not interested">Not Interested</option>
-                  <option value="Interested">Interested</option>
-                  <option value="To be nurtured">To be Nurtured</option>
-                  <option value="Junk">Junk</option>
-                  <option value="Ask to call back">Ask to Call Back</option>
-                  <option value="Attempt to contact">Attempt to contact</option>
-                  <option value="Did not Connect">Did not Connect</option>
-                  <option value="Customer">Customer</option>
-                  <option value="Other Language">Other Language</option>
+                  {stages.map((stage) => (
+                    <option key={stage.id} value={stage.name}>
+                      {stage.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="text-sm text-gray-600 text-center sm:text-right">

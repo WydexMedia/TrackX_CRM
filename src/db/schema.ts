@@ -142,4 +142,22 @@ export const leadListItems = pgTable(
   })
 );
 
+// Lead stages - customizable per tenant
+export const leadStages = pgTable(
+  "lead_stages",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 64 }).notNull(),
+    color: varchar("color", { length: 32 }).notNull().default("slate"), // tailwind color name
+    order: integer("order").notNull().default(0),
+    isDefault: boolean("is_default").default(false), // Can't be deleted if true
+    tenantId: integer("tenant_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    stageTenantNameIdx: uniqueIndex("stage_tenant_name_idx").on(t.tenantId, t.name),
+  })
+);
+
 

@@ -36,6 +36,7 @@ function LeadsReports() {
   const [ownersMap, setOwnersMap] = React.useState<Record<string,string>>({});
   const [agg, setAgg] = React.useState<any>(null);
   const [showAdvanced, setShowAdvanced] = React.useState(false);
+  const [stages, setStages] = React.useState<Array<{ id: number; name: string; color: string }>>([]);
 
   // Advanced filter state
 
@@ -64,6 +65,14 @@ function LeadsReports() {
   // Debug: Log when component mounts
   React.useEffect(() => {
     console.log('Debug - LeadsReports component mounted');
+  }, []);
+
+  // Load stages
+  React.useEffect(() => {
+    authenticatedFetch("/api/tl/stages")
+      .then((r) => r.json())
+      .then((d) => setStages(d?.stages || []))
+      .catch(() => {});
   }, []);
   
   React.useEffect(() => {
@@ -425,17 +434,11 @@ function LeadsReports() {
             <label className="block text-xs text-slate-500 mb-1">Stage</label>
             <select className="border border-slate-300 rounded-md px-3 py-2 text-sm" value={stage} onChange={e=>{setOffset(0); setStage(e.target.value);}}>
               <option value="">All Stages</option>
-              <option value="Not contacted">📞 Not contacted</option>
-              <option value="Qualified">⭐ Qualified</option>
-              <option value="Not interested">❌ Not interested</option>
-              <option value="Interested">🤝 Interested</option>
-              <option value="To be nurtured">🌱 To be nurtured</option>
-              <option value="Junk">🗑️ Junk</option>
-              <option value="Ask to call back">📞 Ask to call back</option>
-              <option value="Attempt to contact">📱 Attempt to contact</option>
-              <option value="Did not Connect">🔌 Did not Connect</option>
-              <option value="Customer">💼 Customer</option>
-              <option value="Other Language">🌐 Other Language</option>
+              {stages.map((stage) => (
+                <option key={stage.id} value={stage.name}>
+                  {stage.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>

@@ -88,6 +88,7 @@ export default function LeadsPage() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [assignee, setAssignee] = useState<string>("");
   const [autoAssigning, setAutoAssigning] = useState(false);
+  const [stages, setStages] = useState<Array<{ id: number; name: string; color: string }>>([]);
   
   // Sidebar collapse state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -254,6 +255,12 @@ export default function LeadsPage() {
     authenticatedFetch("/api/tl/lists")
       .then((r) => r.json())
       .then((d) => setLists(d?.rows || []))
+      .catch(() => {});
+
+    // Load stages
+    authenticatedFetch("/api/tl/stages")
+      .then((r) => r.json())
+      .then((d) => setStages(d?.stages || []))
       .catch(() => {});
   }, []);
 
@@ -441,16 +448,12 @@ export default function LeadsPage() {
     return count;
   };
 
-  const getStageColor = (stage: string) => {
-    switch (stage) {
-      case "Customer": return "bg-green-100 text-green-800";
-      case "Qualified": return "bg-blue-100 text-blue-800";
-      case "Interested": return "bg-purple-100 text-purple-800";
-      case "Not interested": return "bg-red-100 text-red-800";
-      case "To be nurtured": return "bg-yellow-100 text-yellow-800";
-      case "Not contacted": return "bg-gray-100 text-gray-800";
-      default: return "bg-slate-100 text-slate-700";
-    }
+  const getStageColor = (stageName: string) => {
+    const stageData = stages.find(s => s.name === stageName);
+    if (!stageData) return "bg-slate-100 text-slate-700";
+    
+    const color = stageData.color;
+    return `bg-${color}-100 text-${color}-800`;
   };
 
   const getSourceIcon = (source: string) => {
@@ -781,17 +784,11 @@ export default function LeadsPage() {
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">All Stages</option>
-                <option value="Not contacted">Not contacted</option>
-                <option value="Qualified">Qualified</option>
-                <option value="Not interested">Not interested</option>
-                <option value="Interested">Interested</option>
-                <option value="To be nurtured">To be nurtured</option>
-                <option value="Junk">Junk</option>
-                <option value="Ask to call back">Ask to call back</option>
-                <option value="Attempt to contact">Attempt to contact</option>
-                <option value="Did not Connect">Did not Connect</option>
-                <option value="Customer">Customer</option>
-                <option value="Other Language">Other Language</option>
+                {stages.map((stage) => (
+                  <option key={stage.id} value={stage.name}>
+                    {stage.name}
+                  </option>
+                ))}
               </select>
 
               {/* Source Filter */}
@@ -1042,17 +1039,11 @@ export default function LeadsPage() {
                     onChange={(e) => setBulkStage(e.target.value)}
                   >
                     <option value="">Change stage...</option>
-                    <option value="Not contacted">Not contacted</option>
-                    <option value="Qualified">Qualified</option>
-                    <option value="Not interested">Not interested</option>
-                    <option value="Interested">Interested</option>
-                    <option value="To be nurtured">To be nurtured</option>
-                    <option value="Junk">Junk</option>
-                    <option value="Ask to call back">Ask to call back</option>
-                    <option value="Attempt to contact">Attempt to contact</option>
-                    <option value="Did not Connect">Did not Connect</option>
-                    <option value="Customer">Customer</option>
-                    <option value="Other Language">Other Language</option>
+                    {stages.map((stage) => (
+                      <option key={stage.id} value={stage.name}>
+                        {stage.name}
+                      </option>
+                    ))}
                   </select>
                   <button
                     className="text-xs bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700 disabled:opacity-50"
