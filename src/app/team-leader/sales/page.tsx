@@ -20,7 +20,6 @@ import {
   Target, 
   TrendingUp, 
   Clock, 
-  DollarSign, 
   Eye, 
   EyeOff, 
   Plus, 
@@ -506,99 +505,73 @@ export default function TeamLeaderPage() {
     setLoadingKPI(true);
     
     try {
-      // Fetch both daily reports and sales data
       const token = localStorage.getItem('token');
-      const headers = {
-        'Authorization': `Bearer ${token}`
-      };
       
-      const [dailyReportsResponse, salesResponse] = await Promise.all([
-        fetch('/api/daily-reports', { headers }),
-        fetch('/api/sales', { headers })
-      ]);
+      // Find the user ID from the users list
+      const userMatch = users.find(u => u.name.toLowerCase() === salesPerson.name.toLowerCase());
+      const userId = userMatch?._id || '';
       
-      const dailyReportsData = await dailyReportsResponse.json();
-      const salesData = await salesResponse.json();
-      
-      if (dailyReportsData.error) {
-        throw new Error(dailyReportsData.error);
+      // Fetch KPI data from backend API
+      const params = new URLSearchParams();
+      if (userId) {
+        params.append('salesPersonIds', userId);
       }
       
-      // Ensure salesData is an array before filtering
-      const salesArray = Array.isArray(salesData) ? salesData : [];
-      
-      // Filter sales data for the selected sales person
-      const salesPersonSales = salesArray.filter((sale: any) => 
-        sale.ogaName?.toLowerCase() === salesPerson.name.toLowerCase()
+      const response = await authenticatedFetch(
+        `/api/tl/kpis?${params.toString()}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
       );
       
-      // Create a map of daily sales amounts
-      const dailySalesMap = new Map();
-      const dailySalesCountMap = new Map();
-      
-      salesPersonSales.forEach((sale: any) => {
-        if (sale.createdAt) {
-          const saleDate = new Date(sale.createdAt).toISOString().split('T')[0];
-          const existingAmount = dailySalesMap.get(saleDate) || 0;
-          const existingCount = dailySalesCountMap.get(saleDate) || 0;
-          dailySalesMap.set(saleDate, existingAmount + (sale.amount || 0));
-          dailySalesCountMap.set(saleDate, existingCount + 1);
-        }
-      });
-      
-      // Get all unique dates from both daily reports and sales data
-      const allDates = new Set();
-      
-      // Add dates from daily reports
-      dailyReportsData.reports.forEach((report: any) => {
-        if (report.salespersons.some((sp: any) => 
-          sp.name.toLowerCase() === salesPerson.name.toLowerCase()
-        )) {
-          allDates.add(new Date(report.date).toISOString().split('T')[0]);
-        }
-      });
-      
-      // Add dates from sales data
-      salesPersonSales.forEach((sale: any) => {
-        if (sale.createdAt) {
-          allDates.add(new Date(sale.createdAt).toISOString().split('T')[0]);
-        }
-      });
-      
-                    // Create comprehensive daily data
-       const comprehensiveData = Array.from(allDates).map((dateStr) => {
-         const date = new Date(dateStr as string);
-         const dailyAmount = dailySalesMap.get(dateStr as string) || 0;
-        const salesCount = dailySalesCountMap.get(dateStr) || 0;
+      if (response.ok) {
+        const data = await response.json();
         
-        // Find corresponding daily report data
-        const dailyReport = dailyReportsData.reports.find((report: any) => {
-          const reportDate = new Date(report.date).toISOString().split('T')[0];
-          return reportDate === dateStr && report.salespersons.some((sp: any) => 
-            sp.name.toLowerCase() === salesPerson.name.toLowerCase()
-          );
+        console.log('📊 KPI Data Received:', {
+          kpiDataCount: data.kpiData?.length,
+          salesPersonName: salesPerson.name,
+          kpiData: data.kpiData,
+          teamSummary: data.teamSummary
         });
         
-        const salesPersonData = dailyReport?.salespersons.find((sp: any) => 
-          sp.name.toLowerCase() === salesPerson.name.toLowerCase()
+        // Find the specific salesperson's data
+        const userKPIData = data.kpiData.find((kpi: any) => 
+          kpi.name.toLowerCase() === salesPerson.name.toLowerCase()
         );
         
-        return {
-          _id: dailyReport?._id || `sales_${dateStr}`,
-          date: date.toISOString(),
-          dailyAmount: dailyAmount,
-          salesCount: salesCount,
-          leadsAssigned: salesPersonData?.prospects || 0,
-          salesConverted: salesCount,
-          // Use sales data for more accurate conversion calculation
-          conversionRate: salesPersonData?.prospects > 0 ? ((salesCount / salesPersonData.prospects) * 100).toFixed(1) : 0
-        };
-      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by date descending
-      
-      setKpiData(comprehensiveData);
+        console.log('🔍 Found User KPI:', {
+          found: !!userKPIData,
+          userName: userKPIData?.name,
+          dailyKPIsCount: userKPIData?.dailyKPIs?.length
+        });
+        
+        if (userKPIData && userKPIData.dailyKPIs) {
+          // Transform the data to match the existing format
+          const comprehensiveData = userKPIData.dailyKPIs.map((day: any) => ({
+            _id: `kpi_${day.date}`,
+            date: day.date,
+            dailyAmount: day.dailyAmount,
+            salesCount: day.salesCount,
+            leadsAssigned: day.leadsAssigned,
+            salesConverted: day.salesConverted,
+            conversionRate: day.conversionRate
+          }));
+          
+          console.log('✅ Setting KPI Data:', comprehensiveData.length, 'records');
+          setKpiData(comprehensiveData);
+        } else {
+          console.log('❌ No KPI data found for this salesperson');
+          setKpiData([]);
+        }
+      } else {
+        throw new Error('Failed to fetch KPI data');
+      }
     } catch (error) {
       console.error('Error fetching KPI data:', error);
       toast.error('Failed to load KPI data');
+      setKpiData([]);
     } finally {
       setLoadingKPI(false);
     }
@@ -928,7 +901,7 @@ export default function TeamLeaderPage() {
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-red-600" />
+                    <div className="w-5 h-5 text-red-600 flex items-center justify-center text-lg font-bold">₹</div>
                   </div>
                 </div>
                 <div className="ml-3">
@@ -1523,7 +1496,7 @@ export default function TeamLeaderPage() {
                           ₹{filteredKpiData.reduce((sum, report) => sum + (report.dailyAmount || 0), 0).toLocaleString()}
                         </p>
                       </div>
-                      <DollarSign className="w-8 h-8 text-purple-200" />
+                      <div className="w-8 h-8 text-purple-200 flex items-center justify-center text-2xl font-bold">₹</div>
                     </div>
                   </CardContent>
                 </Card>

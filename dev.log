@@ -1,0 +1,58 @@
+
+> trackx@0.1.0 dev
+> next dev --turbopack
+
+   ▲ Next.js 15.3.4 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.61:3000
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Compiled middleware in 65ms
+ ✓ Ready in 687ms
+ ✓ Compiled /api/users/validate-session in 280ms
+ POST /api/users/validate-session 200 in 1469ms
+ POST /api/users/validate-session 200 in 195ms
+ POST /api/users/validate-session 200 in 170ms
+ POST /api/users/validate-session 200 in 232ms
+ ✓ Compiled /api/tl/kpis in 255ms
+ ⨯ ./src/app/api/tl/kpis/route.ts:101:11
+Ecmascript file had an error
+[0m [90m  99 |[39m[0m
+[0m [90m 100 |[39m     [90m// Get all users (salespersons)[39m[0m
+[0m[31m[1m>[22m[39m[90m 101 |[39m     [36mconst[39m usersCollection [33m=[39m db[33m.[39mcollection([32m"users"[39m)[33m;[39m[0m
+[0m [90m     |[39m           [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[0m
+[0m [90m 102 |[39m     [36mconst[39m users [33m=[39m [36mawait[39m usersCollection[0m
+[0m [90m 103 |[39m       [33m.[39mfind({ tenantId[33m,[39m role[33m:[39m { $ne[33m:[39m [32m"teamleader"[39m } })[0m
+[0m [90m 104 |[39m       [33m.[39mtoArray()[33m;[39m[0m
+
+the name `usersCollection` is defined multiple times
+
+
+ ✓ Compiled /_error in 333ms
+ GET /api/tl/kpis?salesPersonIds=68de3505d10ff1ab0c69458b 500 in 663ms
+ ○ Compiling /team-leader/sales ...
+ ✓ Compiled /team-leader/sales in 1214ms
+ GET /team-leader/sales 500 in 1232ms
+ ✓ Compiled /favicon.ico in 151ms
+ GET /favicon.ico 500 in 159ms
+ GET /team-leader/sales 500 in 46ms
+ GET /favicon.ico 500 in 13ms
+ ✓ Compiled /team-leader in 340ms
+ GET /team-leader 500 in 359ms
+ GET /favicon.ico 500 in 9ms
+ GET /team-leader?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGE5OTY5NzA3OWI3NmI2NTMxYjlmNGMiLCJlbWFpbCI6Im1pbmhhakB3eWRleG1lZGlhLmNvbSIsInJvbGUiOiJ0ZWFtbGVhZGVyIiwidGVuYW50U3ViZG9tYWluIjoicHJvc2tpbGwiLCJpYXQiOjE3NjAzNDQ0OTAsImV4cCI6MTc2MDQzMDg5MH0.uYa2kzAu0Vd7OQ_4imPXpcOALdrS5mxnKWFTtNjn26k 500 in 26ms
+ GET /favicon.ico 500 in 13ms
+ GET /team-leader?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGE5OTY5NzA3OWI3NmI2NTMxYjlmNGMiLCJlbWFpbCI6Im1pbmhhakB3eWRleG1lZGlhLmNvbSIsInJvbGUiOiJ0ZWFtbGVhZGVyIiwidGVuYW50U3ViZG9tYWluIjoicHJvc2tpbGwiLCJpYXQiOjE3NjAzNDQ0OTAsImV4cCI6MTc2MDQzMDg5MH0.uYa2kzAu0Vd7OQ_4imPXpcOALdrS5mxnKWFTtNjn26k 500 in 37ms
+ GET /favicon.ico 500 in 10ms
+ GET /team-leader?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGE5OTY5NzA3OWI3NmI2NTMxYjlmNGMiLCJlbWFpbCI6Im1pbmhhakB3eWRleG1lZGlhLmNvbSIsInJvbGUiOiJ0ZWFtbGVhZGVyIiwidGVuYW50U3ViZG9tYWluIjoicHJvc2tpbGwiLCJpYXQiOjE3NjAzNDQ0OTAsImV4cCI6MTc2MDQzMDg5MH0.uYa2kzAu0Vd7OQ_4imPXpcOALdrS5mxnKWFTtNjn26k 500 in 44ms
+ GET /favicon.ico 500 in 24ms
+ GET /team-leader?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGE5OTY5NzA3OWI3NmI2NTMxYjlmNGMiLCJlbWFpbCI6Im1pbmhhakB3eWRleG1lZGlhLmNvbSIsInJvbGUiOiJ0ZWFtbGVhZGVyIiwidGVuYW50U3ViZG9tYWluIjoicHJvc2tpbGwiLCJpYXQiOjE3NjAzNDQ0OTAsImV4cCI6MTc2MDQzMDg5MH0.uYa2kzAu0Vd7OQ_4imPXpcOALdrS5mxnKWFTtNjn26k 500 in 23ms
+ GET /favicon.ico 500 in 11ms
+ GET /team-leader?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGE5OTY5NzA3OWI3NmI2NTMxYjlmNGMiLCJlbWFpbCI6Im1pbmhhakB3eWRleG1lZGlhLmNvbSIsInJvbGUiOiJ0ZWFtbGVhZGVyIiwidGVuYW50U3ViZG9tYWluIjoicHJvc2tpbGwiLCJpYXQiOjE3NjAzNDQ0OTAsImV4cCI6MTc2MDQzMDg5MH0.uYa2kzAu0Vd7OQ_4imPXpcOALdrS5mxnKWFTtNjn26k 500 in 26ms
+ GET /favicon.ico 500 in 11ms
+ GET /team-leader?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGE5OTY5NzA3OWI3NmI2NTMxYjlmNGMiLCJlbWFpbCI6Im1pbmhhakB3eWRleG1lZGlhLmNvbSIsInJvbGUiOiJ0ZWFtbGVhZGVyIiwidGVuYW50U3ViZG9tYWluIjoicHJvc2tpbGwiLCJpYXQiOjE3NjAzNDQ0OTAsImV4cCI6MTc2MDQzMDg5MH0.uYa2kzAu0Vd7OQ_4imPXpcOALdrS5mxnKWFTtNjn26k 500 in 22ms
+ GET /favicon.ico 500 in 11ms
+ GET /team-leader?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGE5OTY5NzA3OWI3NmI2NTMxYjlmNGMiLCJlbWFpbCI6Im1pbmhhakB3eWRleG1lZGlhLmNvbSIsInJvbGUiOiJ0ZWFtbGVhZGVyIiwidGVuYW50U3ViZG9tYWluIjoicHJvc2tpbGwiLCJpYXQiOjE3NjAzNDQ1OTEsImV4cCI6MTc2MDQzMDk5MX0.hcjE7ZUd5gD3KhnaH3sH7o9bHGbrPRbbmHV0n6facMM 500 in 34ms
+ GET /favicon.ico 500 in 12ms
+[?25h

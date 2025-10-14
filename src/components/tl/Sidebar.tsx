@@ -19,6 +19,7 @@ const items = [
   { href: "/team-leader/tasks", label: "Tasks", icon: Icons.AlarmClock, badge: null },
   { href: "/team-leader/automations", label: "Automations", icon: Icons.Workflow, badge: "automation" },
   { href: "/team-leader/analytics", label: "Analytics", icon: Icons.BarChart3, badge: null },
+  { href: "/team-leader/kpis", label: "KPIs", icon: Icons.Target, badge: null },
   { href: "/team-leader/reports", label: "Reports", icon: Icons.PieChart, badge: null },
   { href: "/team-leader/sales", label: "Sales Management", icon: Icons.TrendingUp, badge: null },
   { href: "/team-leader/team-management", label: "Team Management", icon: Icons.Users, badge: null },
