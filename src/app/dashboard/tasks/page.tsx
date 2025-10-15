@@ -64,10 +64,22 @@ function ComprehensiveLeadModal({
   const [loading, setLoading] = useState(false);
   const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
   
-  // Edit name state
+  // Edit fields state
   const [editingName, setEditingName] = useState(false);
   const [editedName, setEditedName] = useState<string>("");
   const [savingName, setSavingName] = useState(false);
+  
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [editedEmail, setEditedEmail] = useState<string>("");
+  const [savingEmail, setSavingEmail] = useState(false);
+  
+  const [editingAddress, setEditingAddress] = useState(false);
+  const [editedAddress, setEditedAddress] = useState<string>("");
+  const [savingAddress, setSavingAddress] = useState(false);
+  
+  const [editingAlternateNumber, setEditingAlternateNumber] = useState(false);
+  const [editedAlternateNumber, setEditedAlternateNumber] = useState<string>("");
+  const [savingAlternateNumber, setSavingAlternateNumber] = useState(false);
 
   useEffect(() => {
     if (lead && isOpen) {
@@ -145,6 +157,111 @@ function ComprehensiveLeadModal({
       toast.error("Failed to update name");
     } finally {
       setSavingName(false);
+    }
+  };
+
+  // Function to save edited email
+  const saveEditedEmail = async () => {
+    if (!lead) return;
+    
+    try {
+      setSavingEmail(true);
+      const toastId = toast.loading("Saving email...");
+      
+      const user = getUser();
+      const actorId = user?.code || "system";
+      
+      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          email: editedEmail.trim() || null,
+          actorId: actorId 
+        })
+      });
+      
+      if (res.ok) {
+        setLeadDetails((prev: any) => prev ? { ...prev, email: editedEmail.trim() || null } : null);
+        setEditingEmail(false);
+        toast.success("Email updated successfully", { id: toastId });
+      } else {
+        toast.error("Failed to update email", { id: toastId });
+      }
+    } catch (error) {
+      console.error("Failed to update email:", error);
+      toast.error("Failed to update email");
+    } finally {
+      setSavingEmail(false);
+    }
+  };
+
+  // Function to save edited address
+  const saveEditedAddress = async () => {
+    if (!lead) return;
+    
+    try {
+      setSavingAddress(true);
+      const toastId = toast.loading("Saving address...");
+      
+      const user = getUser();
+      const actorId = user?.code || "system";
+      
+      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          address: editedAddress.trim() || null,
+          actorId: actorId 
+        })
+      });
+      
+      if (res.ok) {
+        setLeadDetails((prev: any) => prev ? { ...prev, address: editedAddress.trim() || null } : null);
+        setEditingAddress(false);
+        toast.success("Address updated successfully", { id: toastId });
+      } else {
+        toast.error("Failed to update address", { id: toastId });
+      }
+    } catch (error) {
+      console.error("Failed to update address:", error);
+      toast.error("Failed to update address");
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+
+  // Function to save edited alternate number
+  const saveEditedAlternateNumber = async () => {
+    if (!lead) return;
+    
+    try {
+      setSavingAlternateNumber(true);
+      const toastId = toast.loading("Saving alternate number...");
+      
+      const user = getUser();
+      const actorId = user?.code || "system";
+      
+      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          alternateNumber: editedAlternateNumber.trim() || null,
+          actorId: actorId 
+        })
+      });
+      
+      if (res.ok) {
+        setLeadDetails((prev: any) => prev ? { ...prev, alternateNumber: editedAlternateNumber.trim() || null } : null);
+        setEditingAlternateNumber(false);
+        toast.success("Alternate number updated successfully", { id: toastId });
+      } else {
+        toast.error("Failed to update alternate number", { id: toastId });
+      }
+    } catch (error) {
+      console.error("Failed to update alternate number:", error);
+      toast.error("Failed to update alternate number");
+    } finally {
+      setSavingAlternateNumber(false);
     }
   };
 
@@ -352,47 +469,7 @@ function ComprehensiveLeadModal({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold">
-            {editingName ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-xl font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter name..."
-                  autoFocus
-                />
-                <button
-                  onClick={saveEditedName}
-                  disabled={savingName || !editedName.trim()}
-                  className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
-                >
-                  {savingName ? "Saving..." : "Save"}
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingName(false);
-                    setEditedName(leadDetails?.name || lead?.name || "");
-                  }}
-                  className="px-3 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <span>{leadDetails?.name || lead?.name || lead?.phone}</span>
-                <button
-                  onClick={() => {
-                    setEditingName(true);
-                    setEditedName(leadDetails?.name || lead?.name || "");
-                  }}
-                  className="ml-4 text-sm text-blue-600 hover:text-blue-800 underline"
-                >
-                  Edit
-                </button>
-              </div>
-            )}
+            {leadDetails?.name || lead?.name || lead?.phone}
           </DialogTitle>
           <div className="text-sm text-slate-600">
             {lead?.phone} • Source: {lead?.source || "—"} • Stage: {lead?.stage || "Not contacted"}
@@ -547,10 +624,22 @@ function ActivityLogModal({
   const [followupDate, setFollowupDate] = useState("");
   const [leadDetails, setLeadDetails] = useState<any>(null);
   
-  // Edit name state
+  // Edit fields state
   const [editingName, setEditingName] = useState(false);
   const [editedName, setEditedName] = useState<string>("");
   const [savingName, setSavingName] = useState(false);
+  
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [editedEmail, setEditedEmail] = useState<string>("");
+  const [savingEmail, setSavingEmail] = useState(false);
+  
+  const [editingAddress, setEditingAddress] = useState(false);
+  const [editedAddress, setEditedAddress] = useState<string>("");
+  const [savingAddress, setSavingAddress] = useState(false);
+  
+  const [editingAlternateNumber, setEditingAlternateNumber] = useState(false);
+  const [editedAlternateNumber, setEditedAlternateNumber] = useState<string>("");
+  const [savingAlternateNumber, setSavingAlternateNumber] = useState(false);
 
   // Function to save edited name
   const saveEditedName = async () => {
@@ -585,6 +674,111 @@ function ActivityLogModal({
       toast.error("Failed to update name");
     } finally {
       setSavingName(false);
+    }
+  };
+
+  // Function to save edited email
+  const saveEditedEmail = async () => {
+    if (!lead) return;
+    
+    try {
+      setSavingEmail(true);
+      const toastId = toast.loading("Saving email...");
+      
+      const user = getUser();
+      const actorId = user?.code || "system";
+      
+      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          email: editedEmail.trim() || null,
+          actorId: actorId 
+        })
+      });
+      
+      if (res.ok) {
+        setLeadDetails((prev: any) => prev ? { ...prev, email: editedEmail.trim() || null } : null);
+        setEditingEmail(false);
+        toast.success("Email updated successfully", { id: toastId });
+      } else {
+        toast.error("Failed to update email", { id: toastId });
+      }
+    } catch (error) {
+      console.error("Failed to update email:", error);
+      toast.error("Failed to update email");
+    } finally {
+      setSavingEmail(false);
+    }
+  };
+
+  // Function to save edited address
+  const saveEditedAddress = async () => {
+    if (!lead) return;
+    
+    try {
+      setSavingAddress(true);
+      const toastId = toast.loading("Saving address...");
+      
+      const user = getUser();
+      const actorId = user?.code || "system";
+      
+      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          address: editedAddress.trim() || null,
+          actorId: actorId 
+        })
+      });
+      
+      if (res.ok) {
+        setLeadDetails((prev: any) => prev ? { ...prev, address: editedAddress.trim() || null } : null);
+        setEditingAddress(false);
+        toast.success("Address updated successfully", { id: toastId });
+      } else {
+        toast.error("Failed to update address", { id: toastId });
+      }
+    } catch (error) {
+      console.error("Failed to update address:", error);
+      toast.error("Failed to update address");
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+
+  // Function to save edited alternate number
+  const saveEditedAlternateNumber = async () => {
+    if (!lead) return;
+    
+    try {
+      setSavingAlternateNumber(true);
+      const toastId = toast.loading("Saving alternate number...");
+      
+      const user = getUser();
+      const actorId = user?.code || "system";
+      
+      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          alternateNumber: editedAlternateNumber.trim() || null,
+          actorId: actorId 
+        })
+      });
+      
+      if (res.ok) {
+        setLeadDetails((prev: any) => prev ? { ...prev, alternateNumber: editedAlternateNumber.trim() || null } : null);
+        setEditingAlternateNumber(false);
+        toast.success("Alternate number updated successfully", { id: toastId });
+      } else {
+        toast.error("Failed to update alternate number", { id: toastId });
+      }
+    } catch (error) {
+      console.error("Failed to update alternate number:", error);
+      toast.error("Failed to update alternate number");
+    } finally {
+      setSavingAlternateNumber(false);
     }
   };
 
@@ -747,10 +941,51 @@ function ActivityLogModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Name</label>
-              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
-                <UserPlus size={16} className="text-gray-500" />
-                <span className="text-gray-900">{lead.name || "Not provided"}</span>
-              </div>
+              {editingName ? (
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                  <UserPlus size={16} className="text-gray-500" />
+                  <input
+                    type="text"
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter name..."
+                    autoFocus
+                  />
+                  <button
+                    onClick={saveEditedName}
+                    disabled={savingName || !editedName.trim()}
+                    className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {savingName ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingName(false);
+                      setEditedName(leadDetails?.name || lead?.name || "");
+                    }}
+                    className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <UserPlus size={16} className="text-gray-500" />
+                    <span className="text-gray-900">{leadDetails?.name || lead?.name || "Not provided"}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingName(true);
+                      setEditedName(leadDetails?.name || lead?.name || "");
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -767,16 +1002,158 @@ function ActivityLogModal({
                 </a>
               </div>
             </div>
+            
 
-            {leadDetails?.email && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Email</label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Email</label>
+              {editingEmail ? (
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
-                <Mail size={16} className="text-gray-500" />
-                <span className="text-gray-900">{leadDetails.email}</span>
-              </div>
-              </div>
-            )}
+                  <Mail size={16} className="text-gray-500" />
+                  <input
+                    type="email"
+                    value={editedEmail}
+                    onChange={(e) => setEditedEmail(e.target.value)}
+                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter email..."
+                    autoFocus
+                  />
+                  <button
+                    onClick={saveEditedEmail}
+                    disabled={savingEmail}
+                    className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {savingEmail ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingEmail(false);
+                      setEditedEmail(leadDetails?.email || "");
+                    }}
+                    className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <Mail size={16} className="text-gray-500" />
+                    <span className="text-gray-900">{leadDetails?.email || "No email"}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingEmail(true);
+                      setEditedEmail(leadDetails?.email || "");
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Alternate Number</label>
+              {editingAlternateNumber ? (
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                  <Phone size={16} className="text-gray-500" />
+                  <input
+                    type="tel"
+                    value={editedAlternateNumber}
+                    onChange={(e) => setEditedAlternateNumber(e.target.value)}
+                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter alternate number..."
+                    autoFocus
+                  />
+                  <button
+                    onClick={saveEditedAlternateNumber}
+                    disabled={savingAlternateNumber}
+                    className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {savingAlternateNumber ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingAlternateNumber(false);
+                      setEditedAlternateNumber(leadDetails?.alternateNumber || "");
+                    }}
+                    className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <Phone size={16} className="text-gray-500" />
+                    <span className="text-gray-900">{leadDetails?.alternateNumber || "No alternate number"}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingAlternateNumber(true);
+                      setEditedAlternateNumber(leadDetails?.alternateNumber || "");
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Address</label>
+              {editingAddress ? (
+                <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <MapPin size={16} className="text-gray-500" />
+                    <textarea
+                      value={editedAddress}
+                      onChange={(e) => setEditedAddress(e.target.value)}
+                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                      placeholder="Enter address..."
+                      rows={3}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={saveEditedAddress}
+                      disabled={savingAddress}
+                      className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {savingAddress ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingAddress(false);
+                        setEditedAddress(leadDetails?.address || "");
+                      }}
+                      className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-2 p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-start gap-2">
+                    <MapPin size={16} className="text-gray-500 mt-1" />
+                    <span className="text-gray-900 whitespace-pre-line">{leadDetails?.address || "No address"}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingAddress(true);
+                      setEditedAddress(leadDetails?.address || "");
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline flex-shrink-0"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+            </div>
 
             {lead.source && (
               <div className="space-y-2">

@@ -238,7 +238,7 @@ export async function POST(req: NextRequest) {
     } catch {
       return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
     }
-    const { phone, name, email, source, stage, score, listId, notes } = body || {};
+    const { phone, name, email, address, alternateNumber, source, stage, score, listId, notes } = body || {};
     if (!phone || typeof phone !== "string" || phone.trim() === "") {
       return new Response(JSON.stringify({ success: false, error: "phone is required" }), { status: 400 });
     }
@@ -246,6 +246,8 @@ export async function POST(req: NextRequest) {
       phone: phone.trim(),
       name: name ?? null,
       email: email ?? null,
+      address: address ?? null,
+      alternateNumber: alternateNumber ?? null,
       source: source ?? null,
               stage: stage ?? "Not contacted",
       score: typeof score === "number" ? score : undefined,

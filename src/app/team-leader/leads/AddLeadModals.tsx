@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { authenticatedFetch } from "@/lib/tokenValidation";
 
 export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open: boolean; onClose: () => void; onCreated: () => void; onListCreated?: (list: { id: number; name: string }) => void }) {
-  const [form, setForm] = useState<{ phone: string; name?: string; email?: string; source?: string; stage?: string; score?: number; notes?: string }>({ phone: "" });
+  const [form, setForm] = useState<{ phone: string; name?: string; email?: string; address?: string; alternateNumber?: string; source?: string; stage?: string; score?: number; notes?: string }>({ phone: "" });
   const [submitting, setSubmitting] = useState(false);
   const [lists, setLists] = useState<Array<{ id: number; name: string }>>([]);
   const [selectedListId, setSelectedListId] = useState<string>("");
@@ -79,6 +79,14 @@ export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open
           <Input placeholder="Phone (required)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <Input placeholder="Name" value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input placeholder="Email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Input placeholder="Alternate Number (optional)" value={form.alternateNumber || ""} onChange={(e) => setForm({ ...form, alternateNumber: e.target.value })} />
+          <Textarea 
+            placeholder="Address (optional)" 
+            value={form.address || ""} 
+            onChange={(e) => setForm({ ...form, address: e.target.value })} 
+            rows={2}
+            className="resize-none"
+          />
           <Input placeholder="Source" value={form.source || ""} onChange={(e) => setForm({ ...form, source: e.target.value })} />
           <Textarea 
             placeholder="Notes (optional)" 
@@ -181,6 +189,8 @@ const FORM_FIELDS = [
   { key: 'phone', label: 'Phone Number', required: true, description: 'Primary identifier for the lead' },
   { key: 'name', label: 'Full Name', required: false, description: 'Lead\'s full name' },
   { key: 'email', label: 'Email Address', required: false, description: 'Lead\'s email address' },
+  { key: 'address', label: 'Address', required: false, description: 'Lead\'s address' },
+  { key: 'alternateNumber', label: 'Alternate Number', required: false, description: 'Alternative phone number' },
   { key: 'source', label: 'Lead Source', required: false, description: 'Where the lead came from' },
   { key: 'stage', label: 'Lead Stage', required: false, description: 'Current stage in sales process' },
   { key: 'score', label: 'Lead Score', required: false, description: 'Numerical score for lead quality' },
@@ -353,13 +363,20 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
       
       // Handle common variations
       if (csvColLower.includes('phone') || csvColLower.includes('mobile') || csvColLower.includes('cell')) {
-        mapping['phone'] = csvCol;
+        if (!mapping['phone']) {
+          mapping['phone'] = csvCol;
+        } else if (csvColLower.includes('alternate') || csvColLower.includes('alt') || csvColLower.includes('secondary')) {
+          mapping['alternateNumber'] = csvCol;
+        }
       }
       if (csvColLower.includes('first') || csvColLower.includes('last') || csvColLower.includes('full')) {
         mapping['name'] = csvCol;
       }
       if (csvColLower.includes('mail')) {
         mapping['email'] = csvCol;
+      }
+      if (csvColLower.includes('address') || csvColLower.includes('location') || csvColLower.includes('street')) {
+        mapping['address'] = csvCol;
       }
       if (csvColLower.includes('source') || csvColLower.includes('origin') || csvColLower.includes('campaign')) {
         mapping['source'] = csvCol;

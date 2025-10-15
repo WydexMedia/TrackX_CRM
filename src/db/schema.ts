@@ -8,6 +8,8 @@ export const leads = pgTable(
     phone: varchar("phone", { length: 32 }).notNull(),
     name: varchar("name", { length: 160 }),
     email: varchar("email", { length: 256 }),
+    address: text("address"),
+    alternateNumber: varchar("alternate_number", { length: 32 }),
     source: varchar("source", { length: 64 }),
     utm: jsonb("utm"),
     stage: varchar("stage", { length: 48 }).notNull().default("Not contacted"), // Default stage for new leads
