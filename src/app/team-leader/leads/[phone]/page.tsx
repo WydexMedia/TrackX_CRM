@@ -58,6 +58,11 @@ export default function LeadDetailPage() {
   const [loggingCall, setLoggingCall] = useState(false);
   const [stages, setStages] = useState<Array<{ id: number; name: string; color: string }>>([]);
 
+  // Edit name state
+  const [editingName, setEditingName] = useState(false);
+  const [editedName, setEditedName] = useState<string>("");
+  const [savingName, setSavingName] = useState(false);
+
   // Delete confirm modal state
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
@@ -180,6 +185,42 @@ export default function LeadDetailPage() {
     console.log('Events state changed - new count:', events.length);
     console.log('Events types in state:', events.map(e => e.type));
   }, [events]);
+
+  // Function to save edited name
+  const saveEditedName = async () => {
+    if (!lead || !editedName.trim()) return;
+    
+    try {
+      setSavingName(true);
+      const toastId = toast.loading("Saving name...");
+      
+      const currentUser = getCurrentUser();
+      const actorId = currentUser?.code || "system";
+      
+      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          name: editedName.trim(),
+          actorId: actorId 
+        })
+      });
+      
+      if (res.ok) {
+        // Update local state
+        setLead(prev => prev ? { ...prev, name: editedName.trim() } : null);
+        setEditingName(false);
+        toast.success("Name updated successfully", { id: toastId });
+      } else {
+        toast.error("Failed to update name", { id: toastId });
+      }
+    } catch (error) {
+      console.error("Failed to update name:", error);
+      toast.error("Failed to update name");
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   // Delete current lead using modal confirmation
   const performDeleteLead = async () => {
@@ -612,9 +653,63 @@ export default function LeadDetailPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-3">
               <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Name</dt>
+                <dd className="mt-1">
+                  {editingName ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editedName}
+                        onChange={(e) => setEditedName(e.target.value)}
+                        className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter name..."
+                        autoFocus
+                      />
+                      <button
+                        onClick={saveEditedName}
+                        disabled={savingName || !editedName.trim()}
+                        className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {savingName ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingName(false);
+                          setEditedName(lead.name || "");
+                        }}
+                        className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-slate-900">
+                        {lead.name || "Unknown"}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setEditingName(true);
+                          setEditedName(lead.name || "");
+                        }}
+                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  )}
+                </dd>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
                 <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Phone</dt>
                 <dd className="mt-1 text-sm font-semibold text-slate-900">{lead.phone}</dd>
               </div>
+              {lead.email && (
+                <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                  <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Email</dt>
+                  <dd className="mt-1 text-sm font-semibold text-slate-900">{lead.email}</dd>
+                </div>
+              )}
               <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
                 <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Owner</dt>
                 <dd className="mt-1 text-sm font-semibold text-slate-900">{salesByCode[lead.ownerId || ""]?.name || lead.ownerId || "—"}</dd>

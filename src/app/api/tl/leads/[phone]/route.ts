@@ -78,7 +78,7 @@ export async function PUT(_req: Request, { params }: any) {
     const resolvedParams = await params;
     const phone = decodeURIComponent(resolvedParams.phone);
     const body = await _req.json();
-    const { stage, score, ownerId, source, actorId, stageNotes, needFollowup, followupDate, followupNotes } = body || {};
+    const { stage, score, ownerId, source, name, actorId, stageNotes, needFollowup, followupDate, followupNotes } = body || {};
     
     console.log('Team Leader API - PUT request for phone:', phone);
     console.log('Request body:', { stage, score, ownerId, source, actorId, stageNotes, needFollowup, followupDate, followupNotes });
@@ -98,6 +98,7 @@ export async function PUT(_req: Request, { params }: any) {
     if (score !== undefined) updateData.score = score;
     if (ownerId !== undefined) updateData.ownerId = ownerId;
     if (source !== undefined) updateData.source = source;
+    if (name !== undefined) updateData.name = name;
     if (needFollowup !== undefined) updateData.needFollowup = needFollowup;
     if (followupDate !== undefined) {
       // Ensure followupDate is properly formatted as a Date object

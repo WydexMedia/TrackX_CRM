@@ -63,6 +63,11 @@ function ComprehensiveLeadModal({
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
+  
+  // Edit name state
+  const [editingName, setEditingName] = useState(false);
+  const [editedName, setEditedName] = useState<string>("");
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     if (lead && isOpen) {
@@ -104,6 +109,42 @@ function ComprehensiveLeadModal({
       console.error("Failed to fetch lead details:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Function to save edited name
+  const saveEditedName = async () => {
+    if (!lead || !editedName.trim()) return;
+    
+    try {
+      setSavingName(true);
+      const toastId = toast.loading("Saving name...");
+      
+      const user = getUser();
+      const actorId = user?.code || "system";
+      
+      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          name: editedName.trim(),
+          actorId: actorId 
+        })
+      });
+      
+      if (res.ok) {
+        // Update local state
+        setLeadDetails((prev: any) => prev ? { ...prev, name: editedName.trim() } : null);
+        setEditingName(false);
+        toast.success("Name updated successfully", { id: toastId });
+      } else {
+        toast.error("Failed to update name", { id: toastId });
+      }
+    } catch (error) {
+      console.error("Failed to update name:", error);
+      toast.error("Failed to update name");
+    } finally {
+      setSavingName(false);
     }
   };
 
@@ -310,7 +351,49 @@ function ComprehensiveLeadModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold">{lead.name || lead.phone}</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold">
+            {editingName ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-xl font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter name..."
+                  autoFocus
+                />
+                <button
+                  onClick={saveEditedName}
+                  disabled={savingName || !editedName.trim()}
+                  className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  {savingName ? "Saving..." : "Save"}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingName(false);
+                    setEditedName(leadDetails?.name || lead?.name || "");
+                  }}
+                  className="px-3 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span>{leadDetails?.name || lead?.name || lead?.phone}</span>
+                <button
+                  onClick={() => {
+                    setEditingName(true);
+                    setEditedName(leadDetails?.name || lead?.name || "");
+                  }}
+                  className="ml-4 text-sm text-blue-600 hover:text-blue-800 underline"
+                >
+                  Edit
+                </button>
+              </div>
+            )}
+          </DialogTitle>
           <div className="text-sm text-slate-600">
             {lead?.phone} • Source: {lead?.source || "—"} • Stage: {lead?.stage || "Not contacted"}
           </div>
@@ -463,6 +546,47 @@ function ActivityLogModal({
   const [needFollowup, setNeedFollowup] = useState("no");
   const [followupDate, setFollowupDate] = useState("");
   const [leadDetails, setLeadDetails] = useState<any>(null);
+  
+  // Edit name state
+  const [editingName, setEditingName] = useState(false);
+  const [editedName, setEditedName] = useState<string>("");
+  const [savingName, setSavingName] = useState(false);
+
+  // Function to save edited name
+  const saveEditedName = async () => {
+    if (!lead || !editedName.trim()) return;
+    
+    try {
+      setSavingName(true);
+      const toastId = toast.loading("Saving name...");
+      
+      const user = getUser();
+      const actorId = user?.code || "system";
+      
+      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          name: editedName.trim(),
+          actorId: actorId 
+        })
+      });
+      
+      if (res.ok) {
+        // Update local state
+        setLeadDetails((prev: any) => prev ? { ...prev, name: editedName.trim() } : null);
+        setEditingName(false);
+        toast.success("Name updated successfully", { id: toastId });
+      } else {
+        toast.error("Failed to update name", { id: toastId });
+      }
+    } catch (error) {
+      console.error("Failed to update name:", error);
+      toast.error("Failed to update name");
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   // Available stages - customized for business needs
   const availableStages = [
@@ -552,7 +676,50 @@ function ActivityLogModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Log Activity - {lead.name || lead.phone}</DialogTitle>
+          <DialogTitle>
+            Log Activity - 
+            {editingName ? (
+              <div className="inline-flex items-center gap-2 ml-2">
+                <input
+                  type="text"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  className="px-2 py-1 border border-slate-300 rounded text-lg font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter name..."
+                  autoFocus
+                />
+                <button
+                  onClick={saveEditedName}
+                  disabled={savingName || !editedName.trim()}
+                  className="px-2 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50"
+                >
+                  {savingName ? "Saving..." : "Save"}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingName(false);
+                    setEditedName(leadDetails?.name || lead?.name || "");
+                  }}
+                  className="px-2 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 ml-2">
+                <span>{leadDetails?.name || lead?.name || lead?.phone}</span>
+                <button
+                  onClick={() => {
+                    setEditingName(true);
+                    setEditedName(leadDetails?.name || lead?.name || "");
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-800 underline"
+                >
+                  Edit
+                </button>
+              </div>
+            )}
+          </DialogTitle>
         </DialogHeader>
         
         {/* WhatsApp Button */}
