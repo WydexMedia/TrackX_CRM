@@ -871,48 +871,7 @@ function ActivityLogModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            Log Activity - 
-            {editingName ? (
-              <div className="inline-flex items-center gap-2 ml-2">
-                <input
-                  type="text"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  className="px-2 py-1 border border-slate-300 rounded text-lg font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter name..."
-                  autoFocus
-                />
-                <button
-                  onClick={saveEditedName}
-                  disabled={savingName || !editedName.trim()}
-                  className="px-2 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50"
-                >
-                  {savingName ? "Saving..." : "Save"}
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingName(false);
-                    setEditedName(leadDetails?.name || lead?.name || "");
-                  }}
-                  className="px-2 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <div className="inline-flex items-center gap-2 ml-2">
-                <span>{leadDetails?.name || lead?.name || lead?.phone}</span>
-                <button
-                  onClick={() => {
-                    setEditingName(true);
-                    setEditedName(leadDetails?.name || lead?.name || "");
-                  }}
-                  className="text-sm text-blue-600 hover:text-blue-800 underline"
-                >
-                  Edit
-                </button>
-              </div>
-            )}
+            Log Activity - {leadDetails?.name || lead?.name || lead?.phone}
           </DialogTitle>
         </DialogHeader>
         
