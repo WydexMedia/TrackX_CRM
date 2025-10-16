@@ -84,6 +84,10 @@ export async function GET(request) {
                          user.name.toLowerCase().includes(sale.ogaName.toLowerCase());
       return exactMatch || caseInsensitiveMatch || partialMatch;
     });
+    
+    console.log(`Analytics for user ${user.name}:`);
+    console.log(`- Total sales found: ${userSales.length}`);
+    console.log(`- Sample sale:`, userSales[0]);
     const todaySales = filterSalesByDate(userSales, today);
     const thisMonthSales = filterSalesByMonth(userSales, today);
     const lastMonthSales = filterSalesByMonth(userSales, lastMonth);
@@ -91,6 +95,17 @@ export async function GET(request) {
     const todayCollection = todaySales.reduce((sum, sale) => sum + sale.amount, 0);
     const thisMonthCollection = thisMonthSales.reduce((sum, sale) => sum + sale.amount, 0);
     const lastMonthCollection = lastMonthSales.reduce((sum, sale) => sum + sale.amount, 0);
+
+    // Count only new admissions for sales count (matching leaderboard logic)
+    const newAdmissionSales = userSales.filter(sale => 
+      (((sale.newAdmission ?? '') + '').trim().toLowerCase() === 'yes') || sale.newAdmission === 'Yes'
+    );
+    const todayNewSales = todaySales.filter(sale => 
+      (((sale.newAdmission ?? '') + '').trim().toLowerCase() === 'yes') || sale.newAdmission === 'Yes'
+    );
+    const thisMonthNewSales = thisMonthSales.filter(sale => 
+      (((sale.newAdmission ?? '') + '').trim().toLowerCase() === 'yes') || sale.newAdmission === 'Yes'
+    );
 
     // Calculate days remaining in the current month (same logic as sales dashboard)
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -124,9 +139,9 @@ export async function GET(request) {
       todayCollection: todayCollection,
       lastMonthCollection: lastMonthCollection,
       daysPending: daysRemaining, // Keeping field name for compatibility, but now represents days remaining
-      totalSales: userSales.length,
-      todaySales: todaySales.length,
-      thisMonthSales: thisMonthSales.length,
+      totalSales: newAdmissionSales.length,
+      todaySales: todayNewSales.length,
+      thisMonthSales: thisMonthNewSales.length,
       totalLeads: totalLeads,
     };
   });

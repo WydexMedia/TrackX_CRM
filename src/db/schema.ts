@@ -19,6 +19,8 @@ export const leads = pgTable(
     needFollowup: boolean("need_followup").default(false),
     followupDate: timestamp("followup_date", { withTimezone: true }),
     followupNotes: text("followup_notes"),
+    courseId: integer("course_id"), // Reference to courses table
+    paidAmount: integer("paid_amount"), // Amount paid in cents
     tenantId: integer("tenant_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
@@ -159,6 +161,24 @@ export const leadStages = pgTable(
   },
   (t) => ({
     stageTenantNameIdx: uniqueIndex("stage_tenant_name_idx").on(t.tenantId, t.name),
+  })
+);
+
+// Courses - customizable per tenant
+export const courses = pgTable(
+  "courses",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 160 }).notNull(),
+    price: integer("price").notNull(), // Price in cents to avoid floating point issues
+    description: text("description"),
+    isActive: boolean("is_active").default(true),
+    tenantId: integer("tenant_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    courseTenantNameIdx: uniqueIndex("course_tenant_name_idx").on(t.tenantId, t.name),
   })
 );
 

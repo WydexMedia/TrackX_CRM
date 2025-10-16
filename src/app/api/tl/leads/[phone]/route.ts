@@ -1,6 +1,6 @@
 // No need for NextRequest in a Route Handler; use the standard Request type
 import { db } from "@/db/client";
-import { leads, leadEvents, tasks } from "@/db/schema";
+import { leads, leadEvents, tasks, courses } from "@/db/schema";
 import { and, eq, desc, inArray } from "drizzle-orm";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
 
@@ -61,7 +61,24 @@ export async function GET(_req: Request, { params }: any) {
       .from(tasks)
       .where(and(inArray(tasks.leadPhone, variants), eq(tasks.tenantId, tenantId)))
       .orderBy(desc(tasks.createdAt));
-    return new Response(JSON.stringify({ success: true, lead, events, tasks: openTasks }), { status: 200 });
+
+    // Fetch course information if courseId is set
+    let courseInfo = null;
+    if (lead.courseId) {
+      try {
+        courseInfo = await db
+          .select()
+          .from(courses)
+          .where(and(eq(courses.id, lead.courseId), eq(courses.tenantId, tenantId)))
+          .limit(1);
+        courseInfo = courseInfo[0] || null;
+      } catch (error) {
+        console.log('Error fetching course info:', error);
+        courseInfo = null;
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true, lead, events, tasks: openTasks, course: courseInfo }), { status: 200 });
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "failed" }), { status: 500 });
   }
@@ -78,10 +95,10 @@ export async function PUT(_req: Request, { params }: any) {
     const resolvedParams = await params;
     const phone = decodeURIComponent(resolvedParams.phone);
     const body = await _req.json();
-    const { stage, score, ownerId, source, name, email, address, alternateNumber, actorId, stageNotes, needFollowup, followupDate, followupNotes } = body || {};
+    const { stage, score, ownerId, source, name, email, address, alternateNumber, actorId, stageNotes, needFollowup, followupDate, followupNotes, courseId, paidAmount } = body || {};
     
     console.log('Team Leader API - PUT request for phone:', phone);
-    console.log('Request body:', { stage, score, ownerId, source, actorId, stageNotes, needFollowup, followupDate, followupNotes });
+    console.log('Request body:', { stage, score, ownerId, source, actorId, stageNotes, needFollowup, followupDate, followupNotes, courseId, paidAmount });
     
     // Get current lead to capture previous values
     const currentLead = await db.select().from(leads).where(and(eq(leads.phone, phone), eq(leads.tenantId, tenantId))).limit(1);
@@ -114,6 +131,8 @@ export async function PUT(_req: Request, { params }: any) {
       }
     }
     if (followupNotes !== undefined) updateData.followupNotes = followupNotes;
+    if (courseId !== undefined) updateData.courseId = courseId;
+    if (paidAmount !== undefined) updateData.paidAmount = paidAmount ? Math.round(paidAmount * 100) : null; // Convert to cents
     updateData.updatedAt = new Date();
     updateData.lastActivityAt = new Date();
 

@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { MongoClient, ObjectId } from 'mongodb';
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
 import { authenticateToken, createUnauthorizedResponse } from '@/lib/authMiddleware';
+import { db } from '@/db/client';
+import { leads, courses } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
+import { requireTenantIdFromRequest } from '@/lib/tenant';
 
 const uri = process.env.MONGODB_URI;
 let client;
@@ -13,33 +17,118 @@ if (!clientPromise) {
 }
 
 export async function POST(request) {
-  // Authenticate the request - creating sales requires login
-  const authResult = await authenticateToken(request);
-  if (!authResult.success) {
-    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+  try {
+    // Authenticate the request - creating sales requires login
+    const authResult = await authenticateToken(request);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+    }
+
+    const body = await request.json();
+    const { leadPhone, courseId, paidAmount, stageNotes, actorId } = body;
+
+    // Validate required fields
+    if (!leadPhone || !courseId || !paidAmount) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Lead phone, course ID, and paid amount are required' 
+      }, { status: 400 });
+    }
+
+    // Get tenant ID
+    let tenantId;
+    try {
+      tenantId = await requireTenantIdFromRequest(request);
+    } catch {
+      return NextResponse.json({ success: false, error: "Tenant not resolved" }, { status: 400 });
+    }
+
+    // Get lead and course information
+    const lead = await db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.phone, leadPhone), eq(leads.tenantId, tenantId)))
+      .limit(1);
+
+    if (!lead[0]) {
+      return NextResponse.json({ success: false, error: "Lead not found" }, { status: 404 });
+    }
+
+    const course = await db
+      .select()
+      .from(courses)
+      .where(and(eq(courses.id, courseId), eq(courses.tenantId, tenantId)))
+      .limit(1);
+
+    if (!course[0]) {
+      return NextResponse.json({ success: false, error: "Course not found" }, { status: 404 });
+    }
+
+    // Update lead with course and paid amount
+    await db
+      .update(leads)
+      .set({
+        stage: "Customer",
+        courseId: courseId,
+        paidAmount: Math.round(paidAmount * 100), // Convert to cents
+        updatedAt: new Date(),
+        lastActivityAt: new Date()
+      })
+      .where(and(eq(leads.phone, leadPhone), eq(leads.tenantId, tenantId)));
+
+    // Create sale record in MongoDB (for compatibility with existing sales system)
+    const { tenantSubdomain } = await getTenantContextFromRequest(request);
+    const mongoClient = await clientPromise;
+    const mongoDb = mongoClient.db();
+    const sales = mongoDb.collection('sales');
+
+    // Get user name from the authenticated user
+    let userName = authResult.user.email; // Fallback to email
+    try {
+      // Try to get the user's actual name from the users collection
+      const users = mongoDb.collection('users');
+      const user = await users.findOne({ 
+        email: authResult.user.email,
+        ...(tenantSubdomain ? { tenantSubdomain } : {})
+      });
+      if (user && user.name) {
+        userName = user.name;
+      }
+    } catch (error) {
+      console.log('Could not fetch user name, using email:', error);
+    }
+
+    const saleData = {
+      customerName: lead[0].name || leadPhone,
+      customerPhone: leadPhone,
+      amount: Number(paidAmount),
+      courseName: course[0].name,
+      courseId: courseId,
+      newAdmission: 'Yes', // Default to yes for new customers
+      ogaName: userName, // Use authenticated user's name
+      leadId: lead[0].id,
+      stageNotes: stageNotes || null,
+      createdAt: new Date(),
+      ...(tenantSubdomain ? { tenantSubdomain } : {}),
+    };
+
+    console.log('Creating sale with data:', saleData);
+    const result = await sales.insertOne(saleData);
+    console.log('Sale created with ID:', result.insertedId);
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Sale created and lead updated successfully',
+      sale: saleData
+    });
+
+  } catch (error) {
+    console.error('Sale creation error:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: 'Failed to create sale. Please try again.' 
+    }, { status: 500 });
   }
-
-  const raw = await request.json();
-  const { tenantSubdomain } = await getTenantContextFromRequest(request);
-  console.log('Raw sales data received:', raw);
-  const client = await clientPromise;
-  const db = client.db();
-  const sales = db.collection('sales');
-
-  // Normalize fields
-  const data = {
-    customerName: (raw.customerName || '').toString().trim(),
-    amount: Number(raw.amount || 0),
-    newAdmission: (((raw.newAdmission ?? '') + '').trim().toLowerCase() === 'yes') ? 'yes' : 'no',
-    ogaName: (raw.ogaName || '').toString().trim(),
-    createdAt: new Date(),
-    ...(tenantSubdomain ? { tenantSubdomain } : {}),
-  };
-  console.log('Normalized sales data:', data);
-
-  await sales.insertOne(data);
-  console.log('Sale saved to database');
-  return NextResponse.json({ success: true });
 }
 
 export async function GET(request) {
@@ -105,6 +194,10 @@ export async function GET(request) {
     .skip(skip)
     .limit(limit)
     .toArray();
+  
+  console.log('Sales query:', query);
+  console.log('Found sales:', userSales.length);
+  console.log('Sample sale:', userSales[0]);
   
   return NextResponse.json({
     sales: userSales,

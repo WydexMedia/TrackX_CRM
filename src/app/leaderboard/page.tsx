@@ -62,7 +62,7 @@ function getLeaderboard(sales: Sale[]): OGAStat[] {
       };
     }
     leaderboard[sale.ogaName].total += Number(sale.amount);
-    if (((sale.newAdmission ?? '') + '').trim().toLowerCase() === 'yes') {
+    if (((sale.newAdmission ?? '') + '').trim().toLowerCase() === 'yes' || sale.newAdmission === 'Yes') {
       console.log('Counting new admission for:', sale.ogaName, 'newAdmission value:', sale.newAdmission);
       leaderboard[sale.ogaName].count += 1;
     }

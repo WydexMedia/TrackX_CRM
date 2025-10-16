@@ -31,6 +31,8 @@ interface Lead {
   stage: string;
   ownerId: string | null;
   score: number | null;
+  courseId: number | null;
+  paidAmount: number | null;
   createdAt: string | null;
 }
 
@@ -59,6 +61,10 @@ export default function LeadDetailPage() {
   const [callNotes, setCallNotes] = useState<string>("");
   const [loggingCall, setLoggingCall] = useState(false);
   const [stages, setStages] = useState<Array<{ id: number; name: string; color: string }>>([]);
+  const [courses, setCourses] = useState<Array<{ id: number; name: string; price: number; description: string | null }>>([]);
+  const [selectedCourse, setSelectedCourse] = useState<string>("");
+  const [paidAmount, setPaidAmount] = useState<string>("");
+  const [leadCourse, setLeadCourse] = useState<{ id: number; name: string; price: number; description: string | null } | null>(null);
 
   // Edit fields state
   const [editingName, setEditingName] = useState(false);
@@ -168,7 +174,13 @@ export default function LeadDetailPage() {
     setLoading(true);
     authenticatedFetch(`/api/tl/leads/${encodeURIComponent(phone)}`)
       .then((r) => r.json())
-      .then((d) => { setLead(d.lead || null); setEvents(d.events || []); setTasks(d.tasks || []); })
+      .then((d) => { 
+        setLead(d.lead || null); 
+        setEvents(d.events || []); 
+        setTasks(d.tasks || []); 
+        // Set course information if available
+        setLeadCourse(d.course || null);
+      })
       .finally(() => setLoading(false));
     
     // Fetch user names for actor resolution
@@ -177,7 +189,17 @@ export default function LeadDetailPage() {
     // Load stages
     authenticatedFetch("/api/tl/stages")
       .then((r) => r.json())
-      .then((d) => setStages(d?.stages || []))
+      .then((d) => {
+        const stages = d?.stages || [];
+        console.log('Loaded stages:', stages.map((s: any) => s.name));
+        setStages(stages);
+      })
+      .catch(() => {});
+
+    // Load courses
+    authenticatedFetch("/api/tl/courses")
+      .then((r) => r.json())
+      .then((d) => setCourses(d?.courses || []))
       .catch(() => {});
   }, [phone]);
 
@@ -872,6 +894,27 @@ export default function LeadDetailPage() {
                 </dd>
               </div>
               
+              {/* Course Information - only show if lead has a course */}
+              {leadCourse && (
+                <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                  <dt className="text-xs font-medium text-emerald-700 uppercase tracking-wide">Course Information</dt>
+                  <dd className="mt-1 space-y-1">
+                    <div className="text-sm font-semibold text-emerald-900">{leadCourse.name}</div>
+                    <div className="text-xs text-emerald-700">
+                      Price: ${(leadCourse.price / 100).toFixed(2)}
+                      {lead.paidAmount && (
+                        <span className="ml-2">
+                          • Paid: ${(lead.paidAmount / 100).toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    {leadCourse.description && (
+                      <div className="text-xs text-emerald-600 mt-1">{leadCourse.description}</div>
+                    )}
+                  </dd>
+                </div>
+              )}
+              
               <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
                 <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Alternate Number</dt>
                 <dd className="mt-1">
@@ -1045,6 +1088,50 @@ export default function LeadDetailPage() {
                   {stageNotesError && (
                     <div className="text-red-600 text-xs mt-1">{stageNotesError}</div>
                   )}
+                  
+                  {/* Course selection - only show when stage is "Customer" */}
+                  {(() => {
+                    console.log('Selected stage:', selectedStage);
+                    console.log('Stage includes customer:', selectedStage && selectedStage.toLowerCase().includes("customer"));
+                    return selectedStage && selectedStage.toLowerCase().includes("customer");
+                  })() && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Course *</label>
+                        <select
+                          value={selectedCourse || ""}
+                          onChange={(e) => setSelectedCourse(e.target.value)}
+                          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          required
+                        >
+                          <option value="">Select Course</option>
+                          {courses.map((course) => (
+                            <option key={course.id} value={course.id}>
+                              {course.name} - ${(course.price / 100).toFixed(2)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      {/* Paid amount field - only show when course is selected */}
+                      {selectedCourse && (
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1">Paid Amount ($) *</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Enter paid amount"
+                            value={paidAmount}
+                            onChange={(e) => setPaidAmount(e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            required
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                  
                   <button
                     className="w-full cursor-pointer bg-purple-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
                     onClick={async () => {
@@ -1058,47 +1145,77 @@ export default function LeadDetailPage() {
                         return;
                       }
 
+                      // Special handling for Customer stage - requires course and paid amount
+                      if (selectedStage && selectedStage.toLowerCase().includes("customer")) {
+                        if (!selectedCourse) {
+                          toast.error("Please select a course for the customer.");
+                          return;
+                        }
+                        if (!paidAmount || parseFloat(paidAmount) <= 0) {
+                          toast.error("Please enter a valid paid amount.");
+                          return;
+                        }
+                      }
+
                       try {
                         setUpdatingStage(true);
-                        const toastId = toast.loading("Updating stage...");
+                        const toastId = toast.loading(selectedStage && selectedStage.toLowerCase().includes("customer") ? "Creating sale..." : "Updating stage...");
                         const currentUser = getCurrentUser();
                         const actorId = currentUser?.code || "system";
 
-                        const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
-                          method: "PUT",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
+                        let res;
+                        
+                        if (selectedStage && selectedStage.toLowerCase().includes("customer")) {
+                          // Use sales API for customer stage
+                          res = await authenticatedFetch("/api/sales", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              leadPhone: lead.phone,
+                              courseId: parseInt(selectedCourse),
+                              paidAmount: parseFloat(paidAmount),
+                              stageNotes: stageChangeNotes.trim(),
+                              actorId: actorId
+                            })
+                          });
+                        } else {
+                          // Use regular lead update API for other stages
+                          const requestBody: any = {
                             stage: selectedStage,
                             stageNotes: stageChangeNotes.trim(),
                             actorId: actorId
-                          })
-                        });
+                          };
+
+                          res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(requestBody)
+                          });
+                        }
 
                         if (res.ok) {
-                          toast.success("Stage updated successfully", { id: toastId });
+                          const successMessage = selectedStage && selectedStage.toLowerCase().includes("customer") 
+                            ? "Sale created successfully!" 
+                            : "Stage updated successfully";
+                          toast.success(successMessage, { id: toastId });
                           setStageNotesError("");
                           
                           // Refresh lead data
-                          console.log('Refreshing data after stage update...');
                           const d = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
-                          console.log('Quick stage change - refreshed data:', d);
-                          console.log('Events count after refresh:', d.events?.length || 0);
-                          console.log('Latest events:', d.events?.slice(0, 3));
-                          
-                          // Check if the new STAGE_CHANGE event is in the refreshed data
-                          const stageChangeEvents = d.events?.filter((e: any) => e.type === 'STAGE_CHANGE') || [];
-                          console.log('STAGE_CHANGE events found:', stageChangeEvents);
                           
                           setLead(d.lead || null);
                           setEvents(d.events || []);
                           setTasks(d.tasks || []);
+                          setLeadCourse(d.course || null);
                           setSelectedStage("");
                           setStageChangeNotes("");
-                          
-                          console.log('State updated - events count:', d.events?.length || 0);
-                          console.log('New events array set to state');
+                          setSelectedCourse("");
+                          setPaidAmount("");
                         } else {
-                          toast.error("Failed to update stage", { id: toastId });
+                          const errorMessage = selectedStage && selectedStage.toLowerCase().includes("customer") 
+                            ? "Failed to create sale" 
+                            : "Failed to update stage";
+                          toast.error(errorMessage, { id: toastId });
                         }
                       } catch (error) {
                         console.error("Failed to update stage:", error);
@@ -1112,7 +1229,9 @@ export default function LeadDetailPage() {
                     {updatingStage ? (
                       <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-hidden="true" />
                     ) : (
-                      <span>Update Stage</span>
+                      <span>
+                        {selectedStage && selectedStage.toLowerCase().includes("customer") ? "Create Sale" : "Update Stage"}
+                      </span>
                     )}
                   </button>
                 </dd>

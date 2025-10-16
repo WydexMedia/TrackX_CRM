@@ -623,6 +623,9 @@ function ActivityLogModal({
   const [needFollowup, setNeedFollowup] = useState("no");
   const [followupDate, setFollowupDate] = useState("");
   const [leadDetails, setLeadDetails] = useState<any>(null);
+  const [courses, setCourses] = useState<Array<{ id: number; name: string; price: number; description: string | null }>>([]);
+  const [selectedCourse, setSelectedCourse] = useState<string>("");
+  const [paidAmount, setPaidAmount] = useState<string>("");
   
   // Edit fields state
   const [editingName, setEditingName] = useState(false);
@@ -803,9 +806,19 @@ function ActivityLogModal({
       setNeedFollowup("no");
       setFollowupDate("");
       setStageNotes("");
+      setSelectedCourse("");
+      setPaidAmount("");
       fetchLeadDetails();
     }
   }, [lead, isOpen]);
+
+  // Load courses
+  useEffect(() => {
+    authenticatedFetch("/api/tl/courses")
+      .then((r) => r.json())
+      .then((d) => setCourses(d?.courses || []))
+      .catch(() => {});
+  }, []);
 
   const fetchLeadDetails = async () => {
     if (!lead?.phone) return;
@@ -824,41 +837,80 @@ function ActivityLogModal({
   const handleStatusUpdate = async () => {
     if (!lead?.phone || !stage) return;
     
+    // Special validation for Customer stage
+    if (stage && stage.toLowerCase().includes("customer")) {
+      if (!selectedCourse) {
+        toast.error("Please select a course for the customer.");
+        return;
+      }
+      if (!paidAmount || parseFloat(paidAmount) <= 0) {
+        toast.error("Please enter a valid paid amount.");
+        return;
+      }
+    }
+    
     setIsLoading(true);
     try {
-      const updateData: any = {
-        stage,
-        stageNotes: stageNotes.trim() || undefined,
-        actorId: getUser()?.email || getUser()?.code || "system"
-      };
-
-      // Add followup information if needed
-      if (needFollowup === "yes" && followupDate) {
-        updateData.needFollowup = true;
-        updateData.followupDate = followupDate;
-        updateData.followupNotes = stageNotes.trim() || undefined;
+      let response;
+      
+      if (stage && stage.toLowerCase().includes("customer")) {
+        // Use sales API for customer stage
+        response = await authenticatedFetch("/api/sales", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            leadPhone: lead.phone,
+            courseId: parseInt(selectedCourse),
+            paidAmount: parseFloat(paidAmount),
+            stageNotes: stageNotes.trim(),
+            actorId: getUser()?.email || getUser()?.code || "system"
+          })
+        });
       } else {
-        updateData.needFollowup = false;
-        updateData.followupDate = null;
-        updateData.followupNotes = null;
+        // Use regular lead update API for other stages
+        const updateData: any = {
+          stage,
+          stageNotes: stageNotes.trim() || undefined,
+          actorId: getUser()?.email || getUser()?.code || "system"
+        };
+
+        // Add followup information if needed
+        if (needFollowup === "yes" && followupDate) {
+          updateData.needFollowup = true;
+          updateData.followupDate = followupDate;
+          updateData.followupNotes = stageNotes.trim() || undefined;
+        } else {
+          updateData.needFollowup = false;
+          updateData.followupDate = null;
+          updateData.followupNotes = null;
+        }
+
+        response = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updateData)
+        });
       }
 
-      const response = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updateData)
-      });
-
       if (response.ok) {
-        toast.success("Lead status updated successfully!");
+        const successMessage = stage && stage.toLowerCase().includes("customer") 
+          ? "Sale created successfully!" 
+          : "Lead status updated successfully!";
+        toast.success(successMessage);
         onStatusUpdate(); // Refresh the parent component
         onClose();
       } else {
         const error = await response.json();
-        toast.error(error.error || "Failed to update lead status");
+        const errorMessage = stage && stage.toLowerCase().includes("customer") 
+          ? "Failed to create sale" 
+          : "Failed to update lead status";
+        toast.error(error.error || errorMessage);
       }
     } catch (error) {
-      toast.error("Failed to update lead status");
+      const errorMessage = stage && stage.toLowerCase().includes("customer") 
+        ? "Failed to create sale" 
+        : "Failed to update lead status";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -1178,6 +1230,49 @@ function ActivityLogModal({
                 </div>
               )}
 
+              {/* Course selection - only show when stage is "Customer" */}
+              {stage && stage.toLowerCase().includes("customer") && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Course *
+                    </label>
+                    <select
+                      value={selectedCourse || ""}
+                      onChange={(e) => setSelectedCourse(e.target.value)}
+                      className="w-full p-3 text-black border border-gray-300/50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:border-gray-400/70"
+                      required
+                    >
+                      <option value="">Select Course</option>
+                      {courses.map((course) => (
+                        <option key={course.id} value={course.id}>
+                          {course.name} - ${(course.price / 100).toFixed(2)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Paid amount field - only show when course is selected */}
+                  {selectedCourse && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Paid Amount ($) *
+                      </label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Enter paid amount"
+                        value={paidAmount}
+                        onChange={(e) => setPaidAmount(e.target.value)}
+                        className="w-full p-3 text-black border border-gray-300/50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:border-gray-400/70"
+                        required
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Notes
@@ -1195,18 +1290,18 @@ function ActivityLogModal({
 
             <Button
               onClick={handleStatusUpdate}
-              disabled={!stage || isLoading || (needFollowup === "yes" && !followupDate)}
+              disabled={Boolean(!stage || isLoading || (needFollowup === "yes" && !followupDate) || (stage && stage.toLowerCase().includes("customer") && (!selectedCourse || !paidAmount || parseFloat(paidAmount) <= 0)))}
               className="w-full flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
                   <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  Updating...
+                  {stage && stage.toLowerCase().includes("customer") ? "Creating Sale..." : "Updating..."}
                 </>
               ) : (
                 <>
                   <Save size={16} />
-                  Update Status
+                  {stage && stage.toLowerCase().includes("customer") ? "Create Sale" : "Update Status"}
                 </>
               )}
             </Button>

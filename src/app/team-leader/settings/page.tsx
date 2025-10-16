@@ -34,6 +34,15 @@ interface Stage {
   tenantId: number;
 }
 
+interface Course {
+  id: number;
+  name: string;
+  price: number;
+  description: string | null;
+  isActive: boolean;
+  tenantId: number;
+}
+
 const COLOR_OPTIONS = [
   { value: "slate", label: "Slate", bg: "bg-slate-100", text: "text-slate-800", border: "border-slate-200", dot: "bg-slate-500" },
   { value: "gray", label: "Gray", bg: "bg-gray-100", text: "text-gray-800", border: "border-gray-200", dot: "bg-gray-500" },
@@ -52,15 +61,24 @@ const COLOR_OPTIONS = [
 
 export default function SettingsPage() {
   const [stages, setStages] = useState<Stage[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
   const [formData, setFormData] = useState({ name: "", color: "slate" });
   const [saving, setSaving] = useState(false);
+  
+  // Course management state
+  const [showAddCourseModal, setShowAddCourseModal] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [showDeleteCourseConfirm, setShowDeleteCourseConfirm] = useState<number | null>(null);
+  const [courseFormData, setCourseFormData] = useState({ name: "", price: "", description: "" });
+  const [savingCourse, setSavingCourse] = useState(false);
 
   useEffect(() => {
     loadStages();
+    loadCourses();
   }, []);
 
   const loadStages = async () => {
@@ -206,6 +224,121 @@ export default function SettingsPage() {
     return colorOption || COLOR_OPTIONS[0];
   };
 
+  // Course management functions
+  const loadCourses = async () => {
+    try {
+      const res = await authenticatedFetch("/api/tl/courses");
+      if (res.ok) {
+        const data = await res.json();
+        setCourses(data.courses || []);
+      } else {
+        toast.error("Failed to load courses");
+      }
+    } catch (error) {
+      toast.error("Failed to load courses");
+    }
+  };
+
+  const handleAddCourse = async () => {
+    if (!courseFormData.name.trim()) {
+      toast.error("Course name is required");
+      return;
+    }
+
+    if (!courseFormData.price || parseFloat(courseFormData.price) <= 0) {
+      toast.error("Valid price is required");
+      return;
+    }
+
+    try {
+      setSavingCourse(true);
+      const res = await authenticatedFetch("/api/tl/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: courseFormData.name,
+          price: parseFloat(courseFormData.price),
+          description: courseFormData.description
+        })
+      });
+
+      if (res.ok) {
+        toast.success("Course added successfully");
+        setShowAddCourseModal(false);
+        setCourseFormData({ name: "", price: "", description: "" });
+        loadCourses();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to add course");
+      }
+    } catch (error) {
+      toast.error("Failed to add course");
+    } finally {
+      setSavingCourse(false);
+    }
+  };
+
+  const handleUpdateCourse = async () => {
+    if (!editingCourse || !courseFormData.name.trim()) {
+      toast.error("Course name is required");
+      return;
+    }
+
+    if (!courseFormData.price || parseFloat(courseFormData.price) <= 0) {
+      toast.error("Valid price is required");
+      return;
+    }
+
+    try {
+      setSavingCourse(true);
+      const res = await authenticatedFetch("/api/tl/courses", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingCourse.id,
+          name: courseFormData.name,
+          price: parseFloat(courseFormData.price),
+          description: courseFormData.description
+        })
+      });
+
+      if (res.ok) {
+        toast.success("Course updated successfully");
+        setEditingCourse(null);
+        setCourseFormData({ name: "", price: "", description: "" });
+        loadCourses();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to update course");
+      }
+    } catch (error) {
+      toast.error("Failed to update course");
+    } finally {
+      setSavingCourse(false);
+    }
+  };
+
+  const handleDeleteCourse = async (id: number) => {
+    try {
+      const res = await authenticatedFetch("/api/tl/courses", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id })
+      });
+
+      if (res.ok) {
+        toast.success("Course deleted successfully");
+        setShowDeleteCourseConfirm(null);
+        loadCourses();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete course");
+      }
+    } catch (error) {
+      toast.error("Failed to delete course");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 p-6">
       <div className="max-w-5xl mx-auto">
@@ -242,8 +375,10 @@ export default function SettingsPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* Main Stage List - 3 columns */}
-          <div className="lg:col-span-3">
+          {/* Main Content - 3 columns */}
+          <div className="lg:col-span-3 space-y-4">
+            {/* Stages Section */}
+            <div>
             <Card className="border-slate-200/60 shadow-sm">
               <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-5 py-3">
                 <div className="flex items-center justify-between">
@@ -362,6 +497,130 @@ export default function SettingsPage() {
                 )}
               </CardContent>
             </Card>
+            </div>
+
+            {/* Courses Section */}
+            <div>
+              <Card className="border-slate-200/60 shadow-sm">
+                <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 px-5 py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-semibold text-slate-900">Course Catalog</h2>
+                        <p className="text-xs text-slate-500">Manage courses and pricing</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">{courses.length}</Badge>
+                    </div>
+                    <Button
+                      onClick={() => setShowAddCourseModal(true)}
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1.5" />
+                      Add Course
+                    </Button>
+                  </div>
+                </div>
+
+                <CardContent className="p-4">
+                  {courses.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-slate-500">No courses found</p>
+                      <Button onClick={() => setShowAddCourseModal(true)} size="sm" className="mt-3">
+                        Add Course
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <AnimatePresence mode="popLayout">
+                        {courses.map((course) => (
+                          <motion.div
+                            key={course.id}
+                            layout
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="group"
+                          >
+                            <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-200/60 hover:border-slate-300 bg-white hover:shadow-sm transition-all">
+                              {/* Course icon */}
+                              <div className="flex-shrink-0 w-7 h-7 bg-emerald-100 rounded-md flex items-center justify-center">
+                                <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                </svg>
+                              </div>
+
+                              {/* Course info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-slate-900 truncate">
+                                    {course.name}
+                                  </span>
+                                  <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                                    ${(course.price / 100).toFixed(2)}
+                                  </Badge>
+                                </div>
+                                {course.description && (
+                                  <p className="text-xs text-slate-500 truncate mt-0.5">
+                                    {course.description}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Action buttons */}
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => {
+                                    setEditingCourse(course);
+                                    setCourseFormData({ 
+                                      name: course.name, 
+                                      price: (course.price / 100).toString(), 
+                                      description: course.description || "" 
+                                    });
+                                  }}
+                                  className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setShowDeleteCourseConfirm(course.id)}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  )}
+
+                  {/* Course Info */}
+                  {courses.length > 0 && (
+                    <div className="mt-4 p-3 bg-emerald-50/80 border border-emerald-200/60 rounded-lg">
+                      <div className="flex gap-2">
+                        <Info className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                        <div className="text-xs text-slate-700">
+                          <p className="font-medium mb-1">Course Management</p>
+                          <p className="text-slate-600">Courses appear in dropdowns when leads reach "Customer" stage • Prices are stored in cents for accuracy</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* Compact Sidebar */}
@@ -582,6 +841,156 @@ export default function SettingsPage() {
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="ghost" onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
             <Button onClick={() => showDeleteConfirm && handleDeleteStage(showDeleteConfirm)} variant="destructive">
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Course Add Modal */}
+      <Dialog open={showAddCourseModal} onOpenChange={(open) => { 
+        if (!open) { 
+          setShowAddCourseModal(false); 
+          setCourseFormData({ name: "", price: "", description: "" }); 
+        } 
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
+                <Plus className="w-4 h-4 text-white" />
+              </div>
+              Add Course
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Course Name</label>
+              <Input
+                placeholder="e.g., Digital Marketing Mastery"
+                value={courseFormData.name}
+                onChange={(e) => setCourseFormData({ ...courseFormData, name: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Price ($)</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="99.99"
+                value={courseFormData.price}
+                onChange={(e) => setCourseFormData({ ...courseFormData, price: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Description (Optional)</label>
+              <textarea
+                placeholder="Course description..."
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                rows={3}
+                value={courseFormData.description}
+                onChange={(e) => setCourseFormData({ ...courseFormData, description: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="ghost" onClick={() => {setShowAddCourseModal(false); setCourseFormData({ name: "", price: "", description: "" });}}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddCourse} disabled={savingCourse || !courseFormData.name.trim() || !courseFormData.price} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              {savingCourse ? "Adding..." : "Add Course"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Course Edit Modal */}
+      <Dialog open={!!editingCourse} onOpenChange={(open) => { 
+        if (!open) { 
+          setEditingCourse(null); 
+          setCourseFormData({ name: "", price: "", description: "" }); 
+        } 
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
+                <Edit className="w-4 h-4 text-white" />
+              </div>
+              Edit Course
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Course Name</label>
+              <Input
+                placeholder="Course name"
+                value={courseFormData.name}
+                onChange={(e) => setCourseFormData({ ...courseFormData, name: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Price ($)</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="99.99"
+                value={courseFormData.price}
+                onChange={(e) => setCourseFormData({ ...courseFormData, price: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-1.5 block">Description (Optional)</label>
+              <textarea
+                placeholder="Course description..."
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                rows={3}
+                value={courseFormData.description}
+                onChange={(e) => setCourseFormData({ ...courseFormData, description: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="ghost" onClick={() => {setEditingCourse(null); setCourseFormData({ name: "", price: "", description: "" });}}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateCourse} disabled={savingCourse || !courseFormData.name.trim() || !courseFormData.price} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              {savingCourse ? "Updating..." : "Update"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Course Delete Modal */}
+      <Dialog open={!!showDeleteCourseConfirm} onOpenChange={(open) => { if (!open) setShowDeleteCourseConfirm(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Delete Course?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700">
+              Are you sure? This action cannot be undone.
+            </p>
+            <div className="p-3 bg-red-50/80 border border-red-200/60 rounded-lg">
+              <p className="text-xs text-red-900">
+                Existing leads with this course will keep it, but it won't appear in dropdowns.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="ghost" onClick={() => setShowDeleteCourseConfirm(null)}>Cancel</Button>
+            <Button onClick={() => showDeleteCourseConfirm && handleDeleteCourse(showDeleteCourseConfirm)} variant="destructive">
               Delete
             </Button>
           </div>
