@@ -36,7 +36,6 @@ export async function requireTenantIdFromRequest(req: Request): Promise<number> 
   const subdomain = req.headers.get("x-tenant-subdomain");
   
   // Handle development case where subdomain might be null (localhost)
-  let effectiveSubdomain = subdomain;
   if (!subdomain) {
     // In development, try to use a default tenant or create one
     // For now, let's try to find any tenant or use a default
@@ -47,7 +46,7 @@ export async function requireTenantIdFromRequest(req: Request): Promise<number> 
     throw new Error("No tenant found and no subdomain provided");
   }
   
-  const t = await getTenantBySubdomain(effectiveSubdomain);
+  const t = await getTenantBySubdomain(subdomain);
   if (!t || !t.id) throw new Error("Tenant not found");
   return t.id as number;
 }
