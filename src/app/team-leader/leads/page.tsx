@@ -90,6 +90,12 @@ export default function LeadsPage() {
   const [autoAssigning, setAutoAssigning] = useState(false);
   const [stages, setStages] = useState<Array<{ id: number; name: string; color: string }>>([]);
   
+  // Auto-assign modal state
+  const [showAutoAssignModal, setShowAutoAssignModal] = useState(false);
+  const [availableSalesPersons, setAvailableSalesPersons] = useState<Array<{ code: string; name: string }>>([]);
+  const [selectedSalesPersons, setSelectedSalesPersons] = useState<Array<{ code: string; name: string }>>([]);
+  const [salesPersonSearch, setSalesPersonSearch] = useState("");
+  
   // Sidebar collapse state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
@@ -1005,32 +1011,29 @@ export default function LeadsPage() {
                   {/* Auto-Assign Button - RESTORED */}
                   <button
                     className="text-xs bg-emerald-600 text-white px-3 py-1 rounded hover:bg-emerald-700 disabled:opacity-50 inline-flex items-center gap-1"
-                    disabled={phones.length === 0 || autoAssigning}
+                    disabled={phones.length === 0}
                     onClick={async () => {
+                      // Load available sales persons and open modal
                       try {
-                        setAutoAssigning(true);
-                        const actorId = getActorId();
-                        const res = await fetch("/api/tl/queue", { 
-                          method: "POST", 
-                          headers: { "Content-Type": "application/json" }, 
-                          body: JSON.stringify({ action: "autoAssign", phones, actorId }) 
-                        });
+                        const res = await authenticatedFetch("/api/tl/users");
                         if (res.ok) {
                           const data = await res.json();
-                          toast.success(`Auto-assigned ${phones.length} lead(s) via ${data.rule}`);
-                        } else {
-                          toast.error("Auto-assign failed");
+                          if (data.success && data.users) {
+                            const salesPersons = Object.entries(data.users).map(([code, name]) => ({
+                              code,
+                              name: name as string
+                            }));
+                            setAvailableSalesPersons(salesPersons);
+                            setSelectedSalesPersons(salesPersons); // Default to all selected
+                            setShowAutoAssignModal(true);
+                          }
                         }
-                        setSelected({});
-                        refreshData();
-                      } finally {
-                        setAutoAssigning(false);
+                      } catch (error) {
+                        console.error("Failed to load sales persons:", error);
+                        toast.error("Failed to load sales persons");
                       }
                     }}
                   >
-                    {autoAssigning && (
-                      <span className="inline-block h-3 w-3 rounded-full border-2 border-white/80 border-t-transparent animate-spin" />
-                    )}
                     Auto
                   </button>
                   <select
@@ -1433,6 +1436,192 @@ export default function LeadsPage() {
         onClose={() => setShowCreateList(false)}
         onCreated={(l) => setLists((prev) => [...prev, l])}
       />
+
+      {/* Auto-Assign Modal */}
+      <Dialog open={showAutoAssignModal} onOpenChange={setShowAutoAssignModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Auto-Assign Configuration
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="text-sm text-gray-600">
+              Select sales persons to include in auto-assignment for {Object.keys(selected).length} selected lead(s).
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Available Sales Persons</h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const filteredPersons = availableSalesPersons.filter(person =>
+                      person.name.toLowerCase().includes(salesPersonSearch.toLowerCase()) ||
+                      person.code.toLowerCase().includes(salesPersonSearch.toLowerCase())
+                    );
+                    
+                    // Check if all filtered persons are already selected
+                    const allFilteredSelected = filteredPersons.every(person =>
+                      selectedSalesPersons.some(selected => selected.code === person.code)
+                    );
+                    
+                    if (allFilteredSelected) {
+                      // If all are selected, unselect all filtered persons
+                      setSelectedSalesPersons(prev => 
+                        prev.filter(selected => 
+                          !filteredPersons.some(filtered => filtered.code === selected.code)
+                        )
+                      );
+                    } else {
+                      // If not all are selected, select all filtered persons
+                      const newSelections = filteredPersons.filter(person =>
+                        !selectedSalesPersons.some(selected => selected.code === person.code)
+                      );
+                      setSelectedSalesPersons(prev => [...prev, ...newSelections]);
+                    }
+                  }}
+                >
+                  {(() => {
+                    const filteredPersons = availableSalesPersons.filter(person =>
+                      person.name.toLowerCase().includes(salesPersonSearch.toLowerCase()) ||
+                      person.code.toLowerCase().includes(salesPersonSearch.toLowerCase())
+                    );
+                    const allFilteredSelected = filteredPersons.length > 0 && filteredPersons.every(person =>
+                      selectedSalesPersons.some(selected => selected.code === person.code)
+                    );
+                    return allFilteredSelected ? "Unselect All" : "Select All";
+                  })()}
+                </Button>
+              </div>
+              
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search sales persons by name or code..."
+                  value={salesPersonSearch}
+                  onChange={(e) => setSalesPersonSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto">
+                {availableSalesPersons
+                  .filter(person =>
+                    person.name.toLowerCase().includes(salesPersonSearch.toLowerCase()) ||
+                    person.code.toLowerCase().includes(salesPersonSearch.toLowerCase())
+                  )
+                  .map((person) => {
+                    const isSelected = selectedSalesPersons.some(p => p.code === person.code);
+                    return (
+                      <div
+                        key={person.code}
+                        className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
+                          isSelected 
+                            ? 'border-emerald-500 bg-emerald-50' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedSalesPersons(prev => prev.filter(p => p.code !== person.code));
+                          } else {
+                            setSelectedSalesPersons(prev => [...prev, person]);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                            isSelected 
+                              ? 'border-emerald-500 bg-emerald-500' 
+                              : 'border-gray-300'
+                          }`}>
+                            {isSelected && (
+                              <CheckCircle className="w-3 h-3 text-white" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium">{person.name}</div>
+                            <div className="text-sm text-gray-500">Code: {person.code}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+              
+              {availableSalesPersons.filter(person =>
+                person.name.toLowerCase().includes(salesPersonSearch.toLowerCase()) ||
+                person.code.toLowerCase().includes(salesPersonSearch.toLowerCase())
+              ).length === 0 && (
+                <div className="text-center py-4 text-gray-500">
+                  No sales persons found matching your search.
+                </div>
+              )}
+            </div>
+            
+            {selectedSalesPersons.length === 0 && (
+              <div className="text-center py-4 text-gray-500">
+                No sales persons selected. Please select at least one person for auto-assignment.
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-center justify-end gap-2 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAutoAssignModal(false);
+                setSelectedSalesPersons([]);
+                setSalesPersonSearch("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700"
+              disabled={selectedSalesPersons.length === 0 || autoAssigning}
+              onClick={async () => {
+                try {
+                  setAutoAssigning(true);
+                  const actorId = getActorId();
+                  const res = await authenticatedFetch("/api/tl/queue", { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ 
+                      action: "autoAssign", 
+                      phones: Object.keys(selected), 
+                      actorId,
+                      selectedSalesPersons: selectedSalesPersons.map(p => p.code)
+                    }) 
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    toast.success(`Auto-assigned ${Object.keys(selected).length} lead(s) via ${data.rule}`);
+                  } else {
+                    toast.error("Auto-assign failed");
+                  }
+                  setSelected({});
+                  setShowAutoAssignModal(false);
+                  setSelectedSalesPersons([]);
+                  setSalesPersonSearch("");
+                  refreshData();
+                } finally {
+                  setAutoAssigning(false);
+                }
+              }}
+            >
+              {autoAssigning && (
+                <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin mr-2" />
+              )}
+              Auto-Assign {Object.keys(selected).length} Lead(s)
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   </TooltipProvider>
   );

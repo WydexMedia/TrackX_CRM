@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     }
     if (action === "autoAssign") {
-      const { phones, actorId } = body as { phones: string[]; actorId?: string };
+      const { phones, actorId, selectedSalesPersons } = body as { phones: string[]; actorId?: string; selectedSalesPersons?: string[] };
       if (!Array.isArray(phones) || phones.length === 0) {
         return new Response(JSON.stringify({ success: false, error: "phones[] required" }), { status: 400 });
       }
@@ -145,7 +145,13 @@ export async function POST(req: NextRequest) {
       const agents = await users
         .find(Object.assign({ $or: [{ role: "sales" }, { role: { $exists: false } }] }, tenantSubdomain ? { tenantSubdomain } : {}), { projection: { code: 1, name: 1, role: 1 } })
         .toArray();
-      const sales = agents.filter((u: any) => typeof u.code === "string" && u.code.trim().length > 0);
+      let sales = agents.filter((u: any) => typeof u.code === "string" && u.code.trim().length > 0);
+      
+      // Filter by selectedSalesPersons if provided
+      if (selectedSalesPersons && selectedSalesPersons.length > 0) {
+        sales = sales.filter((u: any) => selectedSalesPersons.includes(u.code));
+      }
+      
       if (sales.length === 0) {
         await mongo.close();
         return new Response(JSON.stringify({ success: false, error: "no sales agents found" }), { status: 400 });
