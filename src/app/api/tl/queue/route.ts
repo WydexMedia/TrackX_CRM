@@ -1,9 +1,10 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { and, asc, desc, eq, isNull, sql, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { leads, tasks, settings, leadEvents } from "@/db/schema";
 import { MongoClient } from "mongodb";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
+import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,7 +34,8 @@ export async function GET(req: NextRequest) {
       .from(leads)
       .where(tenantId ? and(where as any, eq(leads.tenantId, tenantId)) : where as any);
 
-    return new Response(JSON.stringify({ success: true, rows, total: Number((totalRow[0] as any)?.c || 0) }), { status: 200 });
+    const response = NextResponse.json({ success: true, rows, total: Number((totalRow[0] as any)?.c || 0) });
+    return addPerformanceHeaders(response, CACHE_DURATION.SHORT);
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to fetch queue" }), { status: 500 });
   }

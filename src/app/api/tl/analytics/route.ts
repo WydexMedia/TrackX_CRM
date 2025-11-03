@@ -1,9 +1,48 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { leads, leadEvents, callLogs } from "@/db/schema";
 import { eq, and, gte, lte, sql, desc, asc } from "drizzle-orm";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
+import { getCachedResponse, addPerformanceHeaders, withPerformanceMonitoring, CACHE_DURATION } from "@/lib/performance";
+
+// Optimized analytics data fetcher
+const fetchAnalyticsData = withPerformanceMonitoring(async (tenantId: number, startDate: Date) => {
+  // Use optimized SQL queries instead of ORM for better performance
+  const [leadsResult, callLogsResult, eventsResult] = await Promise.all([
+    db.execute(sql`
+      SELECT 
+        stage, source, owner_id, score, created_at, updated_at,
+        COUNT(*) OVER() as total_count
+      FROM leads 
+      WHERE tenant_id = ${tenantId} 
+        AND created_at >= ${startDate}
+      ORDER BY created_at DESC
+    `),
+    db.execute(sql`
+      SELECT 
+        lead_phone, salesperson_id, started_at, completed, qualified
+      FROM call_logs 
+      WHERE tenant_id = ${tenantId} 
+        AND created_at >= ${startDate}
+      ORDER BY started_at DESC
+    `),
+    db.execute(sql`
+      SELECT 
+        lead_phone, type, at, actor_id
+      FROM lead_events 
+      WHERE tenant_id = ${tenantId} 
+        AND at >= ${startDate}
+      ORDER BY at DESC
+    `)
+  ]);
+
+  return {
+    leads: leadsResult.rows as any[],
+    callLogs: callLogsResult.rows as any[],
+    events: eventsResult.rows as any[]
+  };
+}, 'fetchAnalyticsData');
 
 export async function GET(req: NextRequest) {
   try {
@@ -46,32 +85,13 @@ export async function GET(req: NextRequest) {
         startDate.setDate(now.getDate() - 30);
     }
 
-    // Fetch leads within date range and tenant
-    const leadsData = await db
-      .select()
-      .from(leads)
-      .where(and(
-        gte(leads.createdAt, startDate),
-        eq(leads.tenantId, tenantId)
-      ));
-
-    // Fetch call logs within date range and tenant
-    const callLogsData = await db
-      .select()
-      .from(callLogs)
-      .where(and(
-        gte(callLogs.createdAt, startDate),
-        eq(callLogs.tenantId, tenantId)
-      ));
-
-    // Fetch lead events within date range and tenant
-    const eventsData = await db
-      .select()
-      .from(leadEvents)
-      .where(and(
-        gte(leadEvents.at, startDate),
-        eq(leadEvents.tenantId, tenantId)
-      ));
+    // Use caching for analytics data
+    const cacheKey = `analytics:${tenantId}:${range}:${startDate.getTime()}`;
+    const { leads: leadsData, callLogs: callLogsData, events: eventsData } = await getCachedResponse(
+      cacheKey,
+      () => fetchAnalyticsData(tenantId, startDate),
+      CACHE_DURATION.MEDIUM
+    );
 
     // Calculate funnel data
     const totalLeads = leadsData.length;
@@ -200,7 +220,7 @@ export async function GET(req: NextRequest) {
       { score: "40-49", count: Math.floor(totalLeads * 0.02), conversionRate: 4.5 }
     ];
 
-    return new Response(JSON.stringify({
+    const response = NextResponse.json({
       success: true,
       funnel,
       sourceROI,
@@ -209,7 +229,9 @@ export async function GET(req: NextRequest) {
       agentPerformance,
       utmData,
       leadQuality
-    }), { status: 200, headers: { "Cache-Control": "no-store" } });
+    });
+
+    return addPerformanceHeaders(response, CACHE_DURATION.MEDIUM);
 
   } catch (e: any) {
     console.error("Analytics API error:", e);

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "mongo:indexes": "node scripts/setup-mongo-indexes.js",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node scripts/run-migrations.js",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "test": "jest"

@@ -1,7 +1,8 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { and, isNull, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { tasks, leads } from "@/db/schema";
+import { getCachedResponse, addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,36 +18,45 @@ export async function GET(req: NextRequest) {
     const endOfToday = new Date(startOfToday);
     endOfToday.setHours(23, 59, 59, 999);
 
-    let followUps: any[] = [];
-    try {
-      followUps = await db
-        .select({ task: tasks, lead: leads })
-        .from(tasks)
-        .leftJoin(leads, eq(leads.phone, tasks.leadPhone))
-        .where(
-          and(
-            sql`(lower(${tasks.ownerId}) = lower(${ownerId}) OR lower(${tasks.ownerId}) = lower(${ownerName}))`,
-            eq(tasks.type as any, "FOLLOWUP" as any),
-            isNull(tasks.completedAt),
-            sql`${tasks.dueAt} >= ${startOfToday} AND ${tasks.dueAt} <= ${endOfToday}`
-          ) as any
-        )
-        .orderBy(sql`coalesce(${tasks.dueAt}, ${tasks.createdAt}) ASC` as any)
-        .limit(200);
-    } catch {}
+    // Use parallel execution with caching for better performance
+    const cacheKey = `tasks-today:${ownerId}:${ownerName}:${startOfToday}`;
+    
+    const result = await getCachedResponse(
+      cacheKey,
+      async () => {
+        // Execute both queries in parallel
+        const [followUpsResult, newLeadsResult] = await Promise.all([
+          db.execute(sql`
+            SELECT t.*, l.name, l.email, l.source, l.stage
+            FROM tasks t
+            LEFT JOIN leads l ON l.phone = t.lead_phone
+            WHERE (lower(t.owner_id) = lower(${ownerId}) OR lower(t.owner_id) = lower(${ownerName}))
+              AND t.type = 'FOLLOWUP'
+              AND t.completed_at IS NULL
+              AND t.due_at >= ${startOfToday} AND t.due_at <= ${endOfToday}
+            ORDER BY coalesce(t.due_at, t.created_at) ASC
+            LIMIT 200
+          `),
+          
+          db.execute(sql`
+            SELECT *
+            FROM leads
+            WHERE lower(owner_id) = lower(${ownerId}) OR lower(owner_id) = lower(${ownerName})
+            ORDER BY created_at DESC
+            LIMIT 200
+          `)
+        ]);
+        
+        return {
+          followUps: followUpsResult.rows,
+          newLeads: newLeadsResult.rows
+        };
+      },
+      CACHE_DURATION.SHORT // Short cache for real-time task data
+    );
 
-    // New leads currently assigned to this owner (show all assigned leads)
-    let newLeads: any[] = [];
-    try {
-      newLeads = await db
-        .select()
-        .from(leads)
-        .where(sql`lower(${leads.ownerId}) = lower(${ownerId}) OR lower(${leads.ownerId}) = lower(${ownerName})` as any)
-        .orderBy(sql`${leads.createdAt} DESC` as any)
-        .limit(200);
-    } catch {}
-
-    return new Response(JSON.stringify({ success: true, followUps, newLeads }), { status: 200 });
+    const response = NextResponse.json({ success: true, ...result });
+    return addPerformanceHeaders(response, CACHE_DURATION.SHORT);
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "failed" }), { status: 500 });
   }

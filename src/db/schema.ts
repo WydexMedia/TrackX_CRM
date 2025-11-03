@@ -1,4 +1,4 @@
-import { pgTable, varchar, integer, timestamp, boolean, jsonb, serial, text, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, varchar, integer, timestamp, boolean, jsonb, serial, text, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { sql as dsql } from "drizzle-orm";
 
 export const leads = pgTable(
@@ -28,6 +28,14 @@ export const leads = pgTable(
   },
   (t) => ({
     leadsTenantPhoneIdx: uniqueIndex("leads_tenant_phone_idx").on(t.tenantId, t.phone),
+    // Performance indexes for common queries
+    leadsTenantIdx: index("leads_tenant_idx").on(t.tenantId),
+    leadsOwnerIdx: index("leads_owner_idx").on(t.ownerId),
+    leadsStageIdx: index("leads_stage_idx").on(t.stage),
+    leadsCreatedAtIdx: index("leads_created_at_idx").on(t.createdAt),
+    leadsUpdatedAtIdx: index("leads_updated_at_idx").on(t.updatedAt),
+    leadsLastActivityIdx: index("leads_last_activity_idx").on(t.lastActivityAt),
+    leadsFollowupIdx: index("leads_followup_idx").on(t.needFollowup, t.followupDate),
   })
 );
 
@@ -48,7 +56,16 @@ export const tasks = pgTable(
     tenantId: integer("tenant_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  }
+  },
+  (t) => ({
+    // Performance indexes for tasks
+    tasksTenantIdx: index("tasks_tenant_idx").on(t.tenantId),
+    tasksOwnerIdx: index("tasks_owner_idx").on(t.ownerId),
+    tasksStatusIdx: index("tasks_status_idx").on(t.status),
+    tasksDueAtIdx: index("tasks_due_at_idx").on(t.dueAt),
+    tasksLeadPhoneIdx: index("tasks_lead_phone_idx").on(t.leadPhone),
+    tasksCreatedAtIdx: index("tasks_created_at_idx").on(t.createdAt),
+  })
 );
 
 export const integrations = pgTable(
@@ -104,7 +121,16 @@ export const callLogs = pgTable(
     notes: text("notes"),
     tenantId: integer("tenant_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  }
+  },
+  (t) => ({
+    // Performance indexes for call logs
+    callLogsTenantIdx: index("call_logs_tenant_idx").on(t.tenantId),
+    callLogsLeadPhoneIdx: index("call_logs_lead_phone_idx").on(t.leadPhone),
+    callLogsSalespersonIdx: index("call_logs_salesperson_idx").on(t.salespersonId),
+    callLogsStartedAtIdx: index("call_logs_started_at_idx").on(t.startedAt),
+    callLogsCreatedAtIdx: index("call_logs_created_at_idx").on(t.createdAt),
+    callLogsCompletedIdx: index("call_logs_completed_idx").on(t.completed),
+  })
 );
 
 // Multi-tenant: tenants registry

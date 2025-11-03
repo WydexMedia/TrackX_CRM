@@ -1,7 +1,8 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { sql } from "drizzle-orm";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
+import { getCachedResponse, addPerformanceHeaders, withPerformanceMonitoring, CACHE_DURATION } from "@/lib/performance";
 
 function parseDateRange(url: string) {
   const { searchParams } = new URL(url);
@@ -61,6 +62,115 @@ function parseDateRange(url: string) {
   return { from: from ? new Date(from) : undefined, to: to ? new Date(to) : undefined };
 }
 
+// Optimized reports data fetcher with parallel queries
+const fetchReportsData = withPerformanceMonitoring(async (tenantId: number, from?: Date, to?: Date) => {
+  const whereTimeRangeCalls = from && to ? sql`AND started_at BETWEEN ${from} AND ${to}` : sql``;
+  const whereTimeRangeLeadsCreated = from && to ? sql`AND created_at BETWEEN ${from} AND ${to}` : sql``;
+  const whereTimeRangeLeadsUpdated = from && to ? sql`AND updated_at BETWEEN ${from} AND ${to}` : sql``;
+  const whereTimeRangeEvents = from && to ? sql`AND at BETWEEN ${from} AND ${to}` : sql``;
+
+  // Execute all queries in parallel for better performance
+  const [callsPerLeadResult, assignedResult, convertedResult, avgResResult, dailyResult, weeklyResult, monthlyResult] = await Promise.all([
+    // Calls per lead
+    db.execute(sql`
+      SELECT lead_phone as "leadPhone",
+             COUNT(*)::int as "started",
+             COUNT(ended_at)::int as "completed"
+      FROM call_logs
+      WHERE tenant_id = ${tenantId}
+      ${whereTimeRangeCalls}
+      GROUP BY lead_phone
+      ORDER BY COUNT(*) DESC
+      LIMIT 10;
+    `),
+    
+    // Assigned leads
+    db.execute(sql`
+      SELECT owner_id as "ownerId", COUNT(*)::int as "assigned"
+      FROM leads
+      WHERE tenant_id = ${tenantId}
+      AND owner_id IS NOT NULL
+      ${whereTimeRangeLeadsCreated}
+      GROUP BY owner_id;
+    `),
+    
+    // Converted leads
+    db.execute(sql`
+      SELECT owner_id as "ownerId", COUNT(*)::int as "converted"
+      FROM leads
+      WHERE tenant_id = ${tenantId}
+      AND owner_id IS NOT NULL
+      AND stage = 'Customer'
+      ${whereTimeRangeLeadsUpdated}
+      GROUP BY owner_id;
+    `),
+    
+    // Average response time
+    db.execute(sql`
+      WITH first_calls AS (
+        SELECT lead_phone, MIN(started_at) AS first_call
+        FROM call_logs
+        WHERE tenant_id = ${tenantId}
+        GROUP BY lead_phone
+      )
+      SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (fc.first_call - l.created_at)) * 1000), 0)::bigint AS "avgMs"
+      FROM leads l
+      JOIN first_calls fc ON fc.lead_phone = l.phone
+      WHERE l.tenant_id = ${tenantId}
+      ${whereTimeRangeLeadsCreated};
+    `),
+    
+    // Daily trends
+    db.execute(sql`
+      SELECT (date_trunc('day', at))::date AS period, COUNT(*)::int AS conversions
+      FROM lead_events
+      WHERE tenant_id = ${tenantId}
+        AND type = 'STAGE_CHANGE'
+        AND (data->>'to') = 'Customer'
+      ${whereTimeRangeEvents}
+      GROUP BY period
+      ORDER BY period DESC
+      LIMIT 30;
+    `),
+    
+    // Weekly trends
+    db.execute(sql`
+      SELECT (date_trunc('week', at))::date AS period, COUNT(*)::int AS conversions
+      FROM lead_events
+      WHERE tenant_id = ${tenantId}
+        AND type = 'STAGE_CHANGE'
+        AND (data->>'to') = 'Customer'
+      ${whereTimeRangeEvents}
+      GROUP BY period
+      ORDER BY period DESC
+      LIMIT 12;
+    `),
+    
+    // Monthly trends
+    db.execute(sql`
+      SELECT (date_trunc('month', at))::date AS period, COUNT(*)::int AS conversions
+      FROM lead_events
+      WHERE tenant_id = ${tenantId}
+        AND type = 'STAGE_CHANGE'
+        AND (data->>'to') = 'Customer'
+      ${whereTimeRangeEvents}
+      GROUP BY period
+      ORDER BY period DESC
+      LIMIT 12;
+    `)
+  ]);
+
+  return {
+    callsPerLead: callsPerLeadResult.rows as any[],
+    assigned: assignedResult.rows as any[],
+    converted: convertedResult.rows as any[],
+    avgResponseMs: Number((avgResResult.rows as any[])[0]?.avgMs || 0),
+    daily: dailyResult.rows as any[],
+    weekly: weeklyResult.rows as any[],
+    monthly: monthlyResult.rows as any[]
+  };
+}, 'fetchReportsData');
+
 export async function GET(req: NextRequest) {
   try {
     const tenantId = await requireTenantIdFromRequest(req as any).catch(() => undefined);
@@ -89,130 +199,42 @@ export async function GET(req: NextRequest) {
     }
 
     const { from, to } = parseDateRange(req.url);
-    console.log("Date range:", { from, to, dateRange: new URL(req.url).searchParams.get("dateRange") });
+    
+    // Use caching for reports data with parallel queries
+    const cacheKey = `reports:${tenantId}:${from?.getTime()}:${to?.getTime()}`;
+    const { callsPerLead, assigned, converted, avgResponseMs, daily, weekly, monthly } = await getCachedResponse(
+      cacheKey,
+      () => fetchReportsData(tenantId, from, to),
+      CACHE_DURATION.MEDIUM
+    );
 
-    const whereTimeRangeCalls = from && to ? sql`AND started_at BETWEEN ${from} AND ${to}` : sql``;
-    const whereTimeRangeLeadsCreated = from && to ? sql`AND created_at BETWEEN ${from} AND ${to}` : sql``;
-    const whereTimeRangeLeadsUpdated = from && to ? sql`AND updated_at BETWEEN ${from} AND ${to}` : sql``;
-    const whereTimeRangeEvents = from && to ? sql`AND at BETWEEN ${from} AND ${to}` : sql``;
-
-    // Calls per lead (started/completed)
-    console.log("Executing callsPerLead query with tenantId:", tenantId);
-    const callsPerLead = await db.execute(sql`
-      SELECT lead_phone as "leadPhone",
-             COUNT(*)::int as "started",
-             COUNT(ended_at)::int as "completed"
-      FROM call_logs
-      WHERE tenant_id = ${tenantId}
-      ${whereTimeRangeCalls}
-      GROUP BY lead_phone
-      ORDER BY COUNT(*) DESC
-      LIMIT 10;
-    `);
-
-    // Assigned vs Converted per salesperson
-    console.log("Executing assigned query with tenantId:", tenantId);
-    const assigned = await db.execute(sql`
-      SELECT owner_id as "ownerId", COUNT(*)::int as "assigned"
-      FROM leads
-      WHERE tenant_id = ${tenantId}
-      AND owner_id IS NOT NULL
-      ${whereTimeRangeLeadsCreated}
-      GROUP BY owner_id;
-    `);
-
-    console.log("Executing converted query with tenantId:", tenantId);
-    const converted = await db.execute(sql`
-      SELECT owner_id as "ownerId", COUNT(*)::int as "converted"
-      FROM leads
-      WHERE tenant_id = ${tenantId}
-      AND owner_id IS NOT NULL
-      AND stage = 'Customer'
-      ${whereTimeRangeLeadsUpdated}
-      GROUP BY owner_id;
-    `);
-
+    // Process assigned vs converted data
     const ownerMap: Record<string, { ownerId: string; assigned: number; converted: number }> = {};
-    for (const r of (assigned.rows as any[])) {
+    for (const r of assigned) {
       const k = String(r.ownerId);
       ownerMap[k] = { ownerId: k, assigned: Number(r.assigned) || 0, converted: 0 };
     }
-    for (const r of (converted.rows as any[])) {
+    for (const r of converted) {
       const k = String(r.ownerId);
       ownerMap[k] = ownerMap[k] || { ownerId: k, assigned: 0, converted: 0 };
       ownerMap[k].converted = Number(r.converted) || 0;
     }
     const assignedVsConverted = Object.values(ownerMap).sort((a,b)=>b.assigned - a.assigned).slice(0, 20);
 
-    // Average response time (first call - lead created)
-    console.log("Executing avgRes query with tenantId:", tenantId);
-    const avgRes = await db.execute(sql`
-      WITH first_calls AS (
-        SELECT lead_phone, MIN(started_at) AS first_call
-        FROM call_logs
-        WHERE tenant_id = ${tenantId}
-        GROUP BY lead_phone
-      )
-      SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (fc.first_call - l.created_at)) * 1000), 0)::bigint AS "avgMs"
-      FROM leads l
-      JOIN first_calls fc ON fc.lead_phone = l.phone
-      WHERE l.tenant_id = ${tenantId}
-      ${whereTimeRangeLeadsCreated};
-    `);
+    // Build response with performance headers
+    const response = NextResponse.json({
+      success: true,
+      callsPerLead,
+      assignedVsConverted,
+      avgResponseMs,
+      trends: {
+        daily,
+        weekly,
+        monthly,
+      },
+    });
 
-    const avgResponseMs = Number((avgRes.rows as any[])[0]?.avgMs || 0);
-
-    // Conversion trends (daily/weekly/monthly) using STAGE_CHANGE to Customer
-    console.log("Executing daily trends query with tenantId:", tenantId);
-    const daily = await db.execute(sql`
-      SELECT (date_trunc('day', at))::date AS period, COUNT(*)::int AS conversions
-      FROM lead_events
-      WHERE tenant_id = ${tenantId}
-      AND type = 'STAGE_CHANGE'
-      AND (data->>'to') = 'Customer'
-      ${whereTimeRangeEvents}
-      GROUP BY 1
-      ORDER BY 1;
-    `);
-    
-    console.log("Executing weekly trends query with tenantId:", tenantId);
-    const weekly = await db.execute(sql`
-      SELECT (date_trunc('week', at))::date AS period, COUNT(*)::int AS conversions
-      FROM lead_events
-      WHERE tenant_id = ${tenantId}
-      AND type = 'STAGE_CHANGE'
-      AND (data->>'to') = 'Customer'
-      ${whereTimeRangeEvents}
-      GROUP BY 1
-      ORDER BY 1;
-    `);
-    
-    console.log("Executing monthly trends query with tenantId:", tenantId);
-    const monthly = await db.execute(sql`
-      SELECT (date_trunc('month', at))::date AS period, COUNT(*)::int AS conversions
-      FROM lead_events
-      WHERE tenant_id = ${tenantId}
-      AND type = 'STAGE_CHANGE'
-      AND (data->>'to') = 'Customer'
-      ${whereTimeRangeEvents}
-      GROUP BY 1
-      ORDER BY 1;
-    `);
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        callsPerLead: callsPerLead.rows,
-        assignedVsConverted,
-        avgResponseMs,
-        trends: {
-          daily: daily.rows,
-          weekly: weekly.rows,
-          monthly: monthly.rows,
-        },
-      }),
-      { status: 200 }
-    );
+    return addPerformanceHeaders(response, CACHE_DURATION.MEDIUM);
   } catch (e: any) {
     console.error("Reports API error:", e);
     return new Response(

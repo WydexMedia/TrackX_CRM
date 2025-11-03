@@ -1,8 +1,9 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { tasks } from "@/db/schema";
 import { desc, eq, and } from "drizzle-orm";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
+import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
 export async function GET(req: NextRequest) {
   try {
@@ -39,7 +40,8 @@ export async function GET(req: NextRequest) {
         .limit(100);
     }
     
-    return new Response(JSON.stringify({ success: true, rows }), { status: 200 });
+    const response = NextResponse.json({ success: true, rows });
+    return addPerformanceHeaders(response, CACHE_DURATION.SHORT);
   } catch (e: any) {
     console.error("Tasks API error:", e);
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to fetch tasks" }), { status: 500 });

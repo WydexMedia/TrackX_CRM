@@ -43,26 +43,29 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: "Tenant not resolved" }, { status: 400 });
     }
 
-    // Get lead and course information
-    const lead = await db
-      .select()
-      .from(leads)
-      .where(and(eq(leads.phone, leadPhone), eq(leads.tenantId, tenantId)))
-      .limit(1);
+    // Get lead and course information in parallel for better performance
+    const [leadResult, courseResult] = await Promise.all([
+      db.select()
+        .from(leads)
+        .where(and(eq(leads.phone, leadPhone), eq(leads.tenantId, tenantId)))
+        .limit(1),
+      
+      db.select()
+        .from(courses)
+        .where(and(eq(courses.id, courseId), eq(courses.tenantId, tenantId)))
+        .limit(1)
+    ]);
 
-    if (!lead[0]) {
+    if (!leadResult[0]) {
       return NextResponse.json({ success: false, error: "Lead not found" }, { status: 404 });
     }
 
-    const course = await db
-      .select()
-      .from(courses)
-      .where(and(eq(courses.id, courseId), eq(courses.tenantId, tenantId)))
-      .limit(1);
-
-    if (!course[0]) {
+    if (!courseResult[0]) {
       return NextResponse.json({ success: false, error: "Course not found" }, { status: 404 });
     }
+    
+    const lead = leadResult;
+    const course = courseResult;
 
     // Update lead with course and paid amount
     await db

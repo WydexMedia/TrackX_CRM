@@ -1,8 +1,10 @@
 // No need for NextRequest in a Route Handler; use the standard Request type
 import { db } from "@/db/client";
 import { leads, leadEvents, tasks, courses } from "@/db/schema";
-import { and, eq, desc, inArray } from "drizzle-orm";
+import { and, eq, desc, inArray, or, sql } from "drizzle-orm";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
+import { NextResponse } from "next/server";
+import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
 export async function GET(_req: Request, { params }: any) {
   try {
@@ -14,23 +16,40 @@ export async function GET(_req: Request, { params }: any) {
     }
     const resolvedParams = await params;
     const phone = decodeURIComponent(resolvedParams.phone);
-    let lead = (await db.select().from(leads).where(and(eq(leads.phone, phone), eq(leads.tenantId, tenantId))))[0];
-    if (!lead) {
-      const noSpace = phone.replace(/\s+/g, "");
-      if (noSpace && noSpace !== phone) {
-        lead = (await db.select().from(leads).where(and(eq(leads.phone, noSpace), eq(leads.tenantId, tenantId))))[0];
-      }
+    
+    // Generate all possible phone variants for efficient single-query lookup
+    const phoneVariants = new Set<string>([phone]);
+    const noSpace = phone.replace(/\s+/g, "");
+    if (noSpace && noSpace !== phone) phoneVariants.add(noSpace);
+    if (phone.startsWith("+")) {
+      phoneVariants.add(phone.slice(1));
+    } else {
+      phoneVariants.add(`+${phone}`);
     }
-    if (!lead) {
-      if (phone.startsWith("+")) {
-        const withoutPlus = phone.slice(1);
-        lead = (await db.select().from(leads).where(and(eq(leads.phone, withoutPlus), eq(leads.tenantId, tenantId))))[0];
-      } else {
-        const withPlus = `+${phone}`;
-        lead = (await db.select().from(leads).where(and(eq(leads.phone, withPlus), eq(leads.tenantId, tenantId))))[0];
-      }
+    if (noSpace.startsWith("+")) {
+      phoneVariants.add(noSpace.slice(1));
+    } else if (noSpace) {
+      phoneVariants.add(`+${noSpace}`);
     }
-    if (!lead) return new Response(JSON.stringify({ success: false, error: "not found" }), { status: 404 });
+    
+    // Optimized: Single query with OR conditions for all variants
+    const variantsArray = Array.from(phoneVariants);
+    const lead = (await db
+      .select()
+      .from(leads)
+      .where(
+        and(
+          eq(leads.tenantId, tenantId),
+          or(...variantsArray.map(v => eq(leads.phone, v)))
+        )
+      )
+      .limit(1)
+    )[0];
+    
+    if (!lead) {
+      const response = NextResponse.json({ success: false, error: "not found" }, { status: 404 });
+      return addPerformanceHeaders(response, CACHE_DURATION.SHORT);
+    }
     // Build phone variants to handle + prefix and spaces
     const variantsSet = new Set<string>();
     const base = String(lead.phone || "");
@@ -78,7 +97,8 @@ export async function GET(_req: Request, { params }: any) {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, lead, events, tasks: openTasks, course: courseInfo }), { status: 200 });
+    const response = NextResponse.json({ success: true, lead, events, tasks: openTasks, course: courseInfo });
+    return addPerformanceHeaders(response, CACHE_DURATION.SHORT);
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "failed" }), { status: 500 });
   }

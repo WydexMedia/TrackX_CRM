@@ -1,9 +1,10 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { and, or, desc, eq, ilike, gte, lte, sql, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { leads, leadEvents, leadListItems } from "@/db/schema";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
 import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
+import { getCachedResponse, addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
 export async function GET(req: NextRequest) {
   try {
@@ -171,36 +172,43 @@ export async function GET(req: NextRequest) {
     }
     const scopedWhere = where ? and(where, eq(leads.tenantId, tenantId)) : eq(leads.tenantId, tenantId);
 
-    let rows;
+    // Use optimized query with LEFT JOIN instead of correlated subquery
+    // This performs much better with the indexes we added
+    const cacheKey = `leads:${tenantId}:${JSON.stringify({ q, stage, owner, source, minScore, maxScore, sortByCallCount, limit, offset })}`;
     
-    // Always fetch leads with call count for filtering and display
-    const leadsWithCallCount = await db
-      .select({
-        lead: leads,
-        callCount: sql<number>`(
-          SELECT COUNT(*) 
-          FROM lead_events 
-          WHERE lead_events.lead_phone = leads.phone 
-          AND lead_events.type = 'STAGE_CHANGE'
-          AND lead_events.tenant_id = leads.tenant_id
-        )`
-      })
-      .from(leads)
-      .where(scopedWhere as any)
-      .orderBy(sortByCallCount ? 
-        desc(sql`(
-          SELECT COUNT(*) 
-          FROM lead_events 
-          WHERE lead_events.lead_phone = leads.phone 
-          AND lead_events.type = 'STAGE_CHANGE'
-          AND lead_events.tenant_id = leads.tenant_id
-        )`) : 
-        desc(leads.createdAt)
-      )
-      .limit(limit)
-      .offset(offset);
-    
-    rows = leadsWithCallCount.map(row => ({ ...row.lead, callCount: row.callCount }));
+    let rows = await getCachedResponse(
+      cacheKey,
+      async () => {
+        // Optimized query using a computed subquery with LEFT JOIN
+        const leadsWithCallCount = await db.execute(sql`
+          SELECT 
+            l.*,
+            COALESCE((
+              SELECT COUNT(*) 
+              FROM lead_events le
+              WHERE le.lead_phone = l.phone 
+              AND le.type = 'STAGE_CHANGE'
+              AND le.tenant_id = l.tenant_id
+            ), 0) as call_count
+          FROM leads l
+          WHERE l.tenant_id = ${tenantId}
+            ${q ? sql`AND (l.name ILIKE ${`%${q}%`} OR l.phone ILIKE ${`%${q}%`} OR l.email ILIKE ${`%${q}%`})` : sql``}
+            ${stage ? sql`AND l.stage = ${stage}` : sql``}
+            ${owner ? sql`AND l.owner_id = ${owner}` : sql``}
+            ${source ? sql`AND l.source = ${source}` : sql``}
+            ${minScore !== undefined ? sql`AND l.score >= ${minScore}` : sql``}
+            ${maxScore !== undefined ? sql`AND l.score <= ${maxScore}` : sql``}
+          ORDER BY ${sortByCallCount ? sql`call_count DESC` : sql`l.created_at DESC`}
+          LIMIT ${limit} OFFSET ${offset}
+        `);
+        
+        return leadsWithCallCount.rows.map((row: any) => ({
+          ...row,
+          callCount: Number(row.call_count) || 0
+        }));
+      },
+      CACHE_DURATION.MEDIUM
+    );
     
     // Apply call count filtering if specified
     if (callCountMin || callCountMax) {
@@ -217,7 +225,8 @@ export async function GET(req: NextRequest) {
       .from(leads)
       .where(scopedWhere as any);
 
-    return new Response(JSON.stringify({ success: true, rows, total: Number((totalRow[0] as any)?.c || 0) }), { status: 200 });
+    const response = NextResponse.json({ success: true, rows, total: Number((totalRow[0] as any)?.c || 0) });
+    return addPerformanceHeaders(response, CACHE_DURATION.MEDIUM);
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to fetch leads" }), { status: 500 });
   }

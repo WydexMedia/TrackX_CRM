@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SalePopper from './SalePopper';
 
@@ -122,6 +122,42 @@ function getYesterday(date: Date) {
   return yest;
 }
 
+// Memoized components for better performance
+const LeaderboardCard = React.memo(({ oga, rank, gradient, isPulsing }: {
+  oga: OGAStat;
+  rank: number;
+  gradient: string;
+  isPulsing: boolean;
+}) => (
+  <motion.div
+    key={oga.name}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    transition={{ duration: 0.3, delay: rank * 0.1 }}
+    className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${gradient} p-6 shadow-2xl transform transition-all duration-300 hover:scale-105 ${
+      isPulsing ? 'animate-pulse' : ''
+    }`}
+  >
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center space-x-3">
+        <span className="text-2xl">{RANK_ICONS[rank as keyof typeof RANK_ICONS] || RANK_ICONS.default}</span>
+        <h3 className={`text-xl font-bold ${RANK_COLORS[rank as keyof typeof RANK_COLORS] || RANK_COLORS.default}`}>
+          {oga.name}
+        </h3>
+      </div>
+      <div className="text-right">
+        <div className={`text-3xl font-bold ${RANK_COLORS[rank as keyof typeof RANK_COLORS] || RANK_COLORS.default}`}>
+          ₹{oga.total.toLocaleString()}
+        </div>
+        <div className="text-sm opacity-80">
+          {oga.count} sales • Avg: ₹{oga.avgSale.toLocaleString()}
+        </div>
+      </div>
+    </div>
+  </motion.div>
+));
+
 export default function CompetitiveLeaderboard() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
@@ -190,26 +226,55 @@ export default function CompetitiveLeaderboard() {
     return () => clearInterval(timeInterval);
   }, []);
 
-  const today = new Date();
-  const todaySales = filterSalesByDate(sales, today);
-  let displaySales = todaySales;
-  let showingYesterday = false;
-  if (todaySales.length === 0) {
+
+  // Memoized calculations for better performance
+  const { todaySales, yesterdaySales, displaySales, showingYesterday, leaderboard, groupedLeaderboard, totalSales, totalSalesToday, topPerformer, secondPlace, leadGap } = useMemo(() => {
+    const today = new Date();
     const yesterday = getYesterday(today);
-    const yesterdaySales = filterSalesByDate(sales, yesterday);
-    displaySales = yesterdaySales;
-    showingYesterday = true;
-  }
-  const leaderboard = getLeaderboard(displaySales);
-  const groupedLeaderboard = groupLeaderboardByTotal(showingYesterday ? leaderboard.slice(0, 3) : leaderboard);
-  const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0);
-  const totalSalesToday = todaySales.reduce((sum, sale) => sum + sale.amount, 0);
-  const topPerformer = leaderboard[0];
-  const secondPlace = leaderboard[1];
-  const leadGap = topPerformer && secondPlace ? topPerformer.total - secondPlace.total : 0;
+    
+    const todaySales = sales.filter(sale => {
+      const saleDate = new Date(sale.createdAt || '');
+      return saleDate.toDateString() === today.toDateString();
+    });
+    
+    const yesterdaySales = sales.filter(sale => {
+      const saleDate = new Date(sale.createdAt || '');
+      return saleDate.toDateString() === yesterday.toDateString();
+    });
+    
+    let displaySales = todaySales;
+    let showingYesterday = false;
+    
+    if (todaySales.length === 0 && yesterdaySales.length > 0) {
+      displaySales = yesterdaySales;
+      showingYesterday = true;
+    }
+    
+    const leaderboard = getLeaderboard(displaySales);
+    const groupedLeaderboard = groupLeaderboardByTotal(showingYesterday ? leaderboard.slice(0, 3) : leaderboard);
+    const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0);
+    const totalSalesToday = todaySales.reduce((sum, sale) => sum + sale.amount, 0);
+    const topPerformer = leaderboard[0];
+    const secondPlace = leaderboard[1];
+    const leadGap = topPerformer && secondPlace ? topPerformer.total - secondPlace.total : 0;
+    
+    return {
+      todaySales,
+      yesterdaySales,
+      displaySales,
+      showingYesterday,
+      leaderboard,
+      groupedLeaderboard,
+      totalSales,
+      totalSalesToday,
+      topPerformer,
+      secondPlace,
+      leadGap
+    };
+  }, [sales]);
 
   // Use a stable callback for popper dismissal
-  const handlePopperDone = React.useCallback(() => setPopper(null), []);
+  const handlePopperDone = useCallback(() => setPopper(null), []);
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 relative overflow-hidden">

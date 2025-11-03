@@ -3,6 +3,8 @@ import { leads, tasks } from "@/db/schema";
 import { gte, sql, eq, and } from "drizzle-orm";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
+import { NextResponse } from "next/server";
+import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
 export async function GET(req: Request) {
   try {
@@ -62,17 +64,16 @@ export async function GET(req: Request) {
     const qualifiedLeads = Number((qualifiedLeadsRow[0] as any)?.c || 0);
     const qualifiedRate = totalLeads > 0 ? Math.round((qualifiedLeads / totalLeads) * 100) : 0;
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        widgets: { 
-          slaAtRisk: Number((overdueTasksRow[0] as any)?.c || 0), 
-          leadsToday: Number((leadsTodayRow[0] as any)?.c || 0), 
-          qualifiedRate: qualifiedRate 
-        } 
-      }),
-      { status: 200 }
-    );
+    const response = NextResponse.json({ 
+      success: true, 
+      widgets: { 
+        slaAtRisk: Number((overdueTasksRow[0] as any)?.c || 0), 
+        leadsToday: Number((leadsTodayRow[0] as any)?.c || 0), 
+        qualifiedRate: qualifiedRate 
+      } 
+    });
+
+    return addPerformanceHeaders(response, CACHE_DURATION.SHORT);
   } catch (e: any) {
     console.error("Overview API error:", e);
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to fetch overview" }), { status: 500 });

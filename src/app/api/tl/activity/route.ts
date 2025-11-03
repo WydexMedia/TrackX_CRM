@@ -1,9 +1,10 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { leads, leadEvents } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { MongoClient } from "mongodb";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
+import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
 function summarizeEvent(e: any, leadName: string | null | undefined, nameByCode: Map<string, string> | null) {
   const t = e.type as string;
@@ -149,7 +150,8 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return new Response(JSON.stringify({ success: true, items }), { status: 200 });
+    const response = NextResponse.json({ success: true, items });
+    return addPerformanceHeaders(response, CACHE_DURATION.SHORT);
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to fetch activity" }), { status: 500 });
   }

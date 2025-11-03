@@ -1,9 +1,10 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { sql as dsql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { leadLists, leadListItems } from "@/db/schema";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
+import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
 async function ensureTables() {
   await db.execute(dsql`CREATE TABLE IF NOT EXISTS lead_lists (
@@ -34,7 +35,8 @@ export async function GET(req: NextRequest) {
         .select({ leadPhone: leadListItems.leadPhone })
         .from(leadListItems)
         .where(tenantId ? and(eq(leadListItems.listId, Number(listId)), eq(leadListItems.tenantId, tenantId)) : eq(leadListItems.listId, Number(listId)));
-      return new Response(JSON.stringify({ success: true, items }), { status: 200 });
+      const response = NextResponse.json({ success: true, items });
+      return addPerformanceHeaders(response, CACHE_DURATION.SHORT);
     }
     
     // Return all lists
@@ -44,7 +46,8 @@ export async function GET(req: NextRequest) {
       .from(leadLists)
       .where(tenantId ? eq(leadLists.tenantId, tenantId) : (sql`1=1` as any))
       .orderBy(leadLists.createdAt);
-    return new Response(JSON.stringify({ success: true, rows }), { status: 200 });
+    const response = NextResponse.json({ success: true, rows });
+    return addPerformanceHeaders(response, CACHE_DURATION.SHORT);
   } catch (e: any) {
     // Try auto-create then retry once
     if (String(e?.message || "").toLowerCase().includes("relation") && String(e?.message).includes("lead_lists")) {

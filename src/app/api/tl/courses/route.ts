@@ -1,9 +1,10 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { and, eq, asc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { courses } from "@/db/schema";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
 import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
+import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
 // GET - Fetch all courses for tenant
 export async function GET(req: NextRequest) {
@@ -27,7 +28,8 @@ export async function GET(req: NextRequest) {
       .where(and(eq(courses.tenantId, tenantId), eq(courses.isActive, true)))
       .orderBy(asc(courses.name));
 
-    return new Response(JSON.stringify({ success: true, courses: coursesList }), { status: 200 });
+    const response = NextResponse.json({ success: true, courses: coursesList });
+    return addPerformanceHeaders(response, CACHE_DURATION.LONG);
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to fetch courses" }), { status: 500 });
   }

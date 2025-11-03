@@ -1,7 +1,8 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getMongoDb } from "@/lib/mongoClient";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
+import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
 export async function GET(req: NextRequest) {
   try {
@@ -32,7 +33,8 @@ export async function GET(req: NextRequest) {
       }
     }
     
-    return new Response(JSON.stringify({ success: true, users: userMap }), { status: 200 });
+    const response = NextResponse.json({ success: true, users: userMap });
+    return addPerformanceHeaders(response, CACHE_DURATION.MEDIUM);
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to fetch users" }), { status: 500 });
   }
