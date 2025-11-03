@@ -1317,13 +1317,11 @@ export default function TasksPage() {
   const [dueCalls, setDueCalls] = useState<Array<{ task: TaskRow; lead: Lead }>>([]);
   const [followUps, setFollowUps] = useState<Array<{ task: TaskRow; lead: Lead }>>([]);
   const [newLeads, setNewLeads] = useState<Lead[]>([]);
-  const [specialTasks, setSpecialTasks] = useState<TaskRow[]>([]);
   const [loading, setLoading] = useState(false);
   
   // Refs for scrolling to different sections
   const leadsSectionRef = useRef<HTMLDivElement>(null);
   const followUpsSectionRef = useRef<HTMLDivElement>(null);
-  const specialTasksSectionRef = useRef<HTMLDivElement>(null);
   
   // Modal state
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -1333,7 +1331,6 @@ export default function TasksPage() {
   const [modalLeads, setModalLeads] = useState<Lead[]>([]);
   const [modalTitle, setModalTitle] = useState("");
   const [followUpsModalOpen, setFollowUpsModalOpen] = useState(false);
-  const [specialTasksModalOpen, setSpecialTasksModalOpen] = useState(false);
 
   // Function to open leads modal with filtered leads
   const openLeadsModal = (stage: string, title: string) => {
@@ -1503,27 +1500,6 @@ export default function TasksPage() {
     }
   };
 
-  // Function to scroll to tasks section
-  const scrollToSpecialTasksSection = () => {
-    specialTasksSectionRef.current?.scrollIntoView({ 
-      behavior: 'smooth',
-      block: 'start'
-    });
-    
-    // Add a subtle highlight effect
-    if (specialTasksSectionRef.current) {
-      specialTasksSectionRef.current.style.transition = 'all 0.3s ease';
-      specialTasksSectionRef.current.style.transform = 'scale(1.02)';
-      specialTasksSectionRef.current.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
-      
-      setTimeout(() => {
-        if (specialTasksSectionRef.current) {
-          specialTasksSectionRef.current.style.transform = 'scale(1)';
-          specialTasksSectionRef.current.style.boxShadow = '';
-        }
-      }, 300);
-    }
-  };
 
   // Function to handle call initiation
   const handleCallInitiated = (lead: Lead) => {
@@ -1542,24 +1518,20 @@ export default function TasksPage() {
     // Build fetches for due-calls and today (email + code if available)
     const dueCallsFetches: Promise<any>[] = [];
     const todayFetches: Promise<any>[] = [];
-    const tlTasksFetches: Promise<any>[] = [];
 
     if (qsEmail) {
       dueCallsFetches.push(authenticatedFetch(`/api/tasks/due-calls?${qsEmail}`).then((r) => r.json()));
       todayFetches.push(authenticatedFetch(`/api/tasks/today?${qsEmail}`).then((r) => r.json()));
-      tlTasksFetches.push(authenticatedFetch(`/api/tl/tasks?ownerId=${encodeURIComponent(ownerIdEmail)}`).then((r) => r.json()));
     }
     if (qsCode) {
       dueCallsFetches.push(authenticatedFetch(`/api/tasks/due-calls?${qsCode}`).then((r) => r.json()));
       todayFetches.push(authenticatedFetch(`/api/tasks/today?${qsCode}`).then((r) => r.json()));
-      tlTasksFetches.push(authenticatedFetch(`/api/tl/tasks?ownerId=${encodeURIComponent(ownerIdCode)}`).then((r) => r.json()));
     }
 
     // Execute in parallel
-    const [dueResults, todayResults, tlTaskResults] = await Promise.all([
+    const [dueResults, todayResults] = await Promise.all([
       Promise.all(dueCallsFetches),
       Promise.all(todayFetches),
-      Promise.all(tlTasksFetches),
     ]);
 
     // Merge and dedupe by task.id for due calls and follow-ups
@@ -1600,17 +1572,6 @@ export default function TasksPage() {
       }
     }
     setFollowUps(mergedFollowUps);
-
-    // tl/tasks merged and filter tasks for current user (match either email or code)
-    let allTlRows: any[] = [];
-    for (const res of tlTaskResults) {
-      const rows = Array.isArray(res?.rows) ? res.rows : [];
-      allTlRows = allTlRows.concat(rows);
-    }
-    const special = allTlRows.filter((task: any) =>
-      (task.ownerId === ownerIdEmail || task.ownerId === ownerIdCode) && task.type === "OTHER" && task.status === "OPEN"
-    );
-    setSpecialTasks(special);
 
     // If no new leads yet, try tl/leads with both identifiers
     if ((!Array.isArray(mergedNewLeads) || mergedNewLeads.length === 0) && (ownerIdEmail || ownerIdCode)) {
@@ -1713,22 +1674,6 @@ export default function TasksPage() {
         </div>
 {/* Stats Cards */}
 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="cursor-pointer hover:shadow-xl transition-shadow" onClick={() => setSpecialTasksModalOpen(true)}>
-            <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Tasks</p>
-                  <p className="text-3xl font-bold text-blue-600">
-                  {specialTasks.length}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Star size={24} className="text-blue-600" />
-              </div>
-            </div>
-            </CardContent>
-          </Card>
-          
           <Card className="cursor-pointer hover:shadow-xl transition-shadow" onClick={() => openLeadsModal("Not contacted", "Not Contacted Leads")}>
             <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -1811,83 +1756,6 @@ export default function TasksPage() {
         </div>
 
         
-
-        {/* Tasks Section */}
-        <section className="mb-8" ref={specialTasksSectionRef}>
-          <SectionHeader icon={ListTodo} title="Tasks" count={specialTasks.length} color="blue" />
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-lg font-semibold text-gray-900">
-                <CheckCircle2 size={20} className="text-blue-600 mr-2" />
-                Tasks
-              </h4>
-            </div>
-            <div className="space-y-3">
-              {loading ? (
-                <div className="text-center py-4">
-                  <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-sm text-gray-500">Loading tasks...</p>
-                </div>
-              ) : specialTasks.length === 0 ? (
-                <div className="bg-gray-100 rounded-lg p-4 text-center text-gray-600">
-                  No tasks assigned yet.
-                </div>
-              ) : (
-                specialTasks.map((task) => (
-                  <div key={task.id} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h5 className="font-medium text-blue-900">{task.title}</h5>
-                          {task.priority && (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              task.priority === "HIGH" ? "bg-red-100 text-red-800" :
-                              task.priority === "MEDIUM" ? "bg-yellow-100 text-yellow-800" :
-                              "bg-green-100 text-green-800"
-                            }`}>
-                              {task.priority}
-                            </span>
-                          )}
-                        </div>
-                        {task.dueAt && (
-                          <p className="text-sm text-blue-700">
-                            Due: {new Date(task.dueAt).toLocaleDateString()}
-                          </p>
-                        )}
-                        {task.leadPhone && task.leadPhone !== "SPECIAL_TASK" && (
-                          <p className="text-sm text-blue-600">
-                            Related to: {task.leadPhone}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          onClick={() => {
-                            // Mark task as completed
-                            authenticatedFetch("/api/tl/tasks", {
-                              method: "PATCH",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ id: task.id, status: "DONE" })
-                            }).then(() => {
-                              toast.success("Task completed!");
-                              load(); // Refresh tasks
-                            }).catch(() => {
-                              toast.error("Failed to complete task");
-                            });
-                          }}
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          Complete
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </section>
 
         {/* Due Calls Section
         <section className="mb-8">
@@ -2381,67 +2249,6 @@ export default function TasksPage() {
                               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.465 3.488"/>
                             </svg>
                           </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Tasks Modal */}
-      <Dialog open={specialTasksModalOpen} onOpenChange={setSpecialTasksModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Tasks</DialogTitle>
-          </DialogHeader>
-
-            {/* Tasks List */}
-          <div className="space-y-3">
-              {specialTasks.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">No tasks found.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {specialTasks.map((task) => (
-                    <div key={task.id} className="group bg-white/95 backdrop-blur-sm rounded-2xl border border-blue-100 p-4 shadow-lg hover:shadow-xl hover:border-blue-300 transition-all duration-300">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-start space-x-4">
-                          <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-full w-12 h-12 flex items-center justify-center shadow-sm flex-shrink-0">
-                            <ListTodo size={16} className="text-blue-700" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-gray-900 text-lg mb-1">
-                              {task.title}
-                            </h4>
-                            <div className="flex flex-wrap gap-2 text-sm text-gray-600">
-                              {task.type && (
-                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full font-medium text-xs">
-                                  <Target size={12} />
-                                  {task.type}
-                                </span>
-                              )}
-                              {task.priority && (
-                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-medium text-xs ${
-                                  task.priority === 'high' ? 'bg-red-100 text-red-700' :
-                                  task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                  'bg-green-100 text-green-700'
-                                }`}>
-                                  <Star size={12} />
-                                  {task.priority}
-                                </span>
-                              )}
-                              {task.dueAt && (
-                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full font-medium text-xs">
-                                  <Clock size={12} />
-                                  Due: {new Date(task.dueAt).toLocaleDateString()}
-                                </span>
-                              )}
-                            </div>
-                          </div>
                         </div>
                       </div>
                     </div>

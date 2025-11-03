@@ -138,10 +138,6 @@ export default function LeadsPage() {
   
   // Bulk actions
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [createTaskOpen, setCreateTaskOpen] = useState(false);
-  const [taskTitle, setTaskTitle] = useState("Follow up");
-  const [taskAssignee, setTaskAssignee] = useState("");
-  const [creatingTask, setCreatingTask] = useState(false);
 
   // Bulk: add to list
   const [addToListId, setAddToListId] = useState<string>("");
@@ -328,45 +324,6 @@ export default function LeadsPage() {
     }
   };
 
-  const performCreateTasks = async () => {
-    if (!taskTitle.trim() || !taskAssignee) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-    
-    try {
-      setCreatingTask(true);
-      const dueAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-      
-      const res = await authenticatedFetch("/api/tl/queue", { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ 
-          action: "bulkTask", 
-          phones, 
-          title: taskTitle,
-          dueAt,
-          ownerId: taskAssignee 
-        }) 
-      });
-      
-      if (res.ok) {
-        const selectedAssignee = sales.find(s => s.code === taskAssignee);
-        toast.success(`Tasks created and assigned to ${selectedAssignee?.name || taskAssignee}`);
-        setSelected({});
-        setCreateTaskOpen(false);
-        setTaskTitle("Follow up");
-        setTaskAssignee("");
-        refreshData();
-      } else {
-        toast.error("Failed to create tasks");
-      }
-    } catch {
-      toast.error("Failed to create tasks");
-    } finally {
-      setCreatingTask(false);
-    }
-  };
 
   const refreshData = () => {
     authenticatedFetch(`/api/tl/leads?${params}`).then((r) => r.json()).then((d) => {
@@ -1056,12 +1013,6 @@ export default function LeadsPage() {
                     {updatingStage ? "Updating..." : "Update"}
                   </button>
                   <button
-                    className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                    onClick={() => setCreateTaskOpen(true)}
-                  >
-                    Task
-                  </button>
-                  <button
                     className="text-xs bg-rose-600 text-white px-3 py-1 rounded hover:bg-rose-700"
                     onClick={() => setConfirmDeleteOpen(true)}
                   >
@@ -1362,61 +1313,6 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Task modal */}
-      <Dialog open={createTaskOpen} onOpenChange={setCreateTaskOpen}>
-        <DialogContent className="w-full max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create Tasks</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-gray-600">Create tasks for {phones.length} selected lead(s).</p>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Task Title</label>
-              <Input
-                type="text"
-                value={taskTitle}
-                onChange={(e) => setTaskTitle(e.target.value)}
-                placeholder="Enter task title..."
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Assign to</label>
-              <select
-                value={taskAssignee}
-                onChange={(e) => setTaskAssignee(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-              >
-                <option value="">Select assignee...</option>
-                {sales.map((s) => (
-                  <option key={s.code} value={s.code}>{s.name} ({s.code})</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          <div className="mt-6 flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setCreateTaskOpen(false);
-                setTaskTitle("Follow up");
-                setTaskAssignee("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-cyan-600 hover:bg-cyan-700"
-              onClick={performCreateTasks}
-              disabled={creatingTask || !taskTitle.trim() || !taskAssignee}
-            >
-              {creatingTask ? "Creating..." : "Create Tasks"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <AddLeadModal
         open={showAdd}
