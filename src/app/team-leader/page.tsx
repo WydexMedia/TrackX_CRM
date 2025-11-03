@@ -612,7 +612,7 @@ export default function LeadManagementOverviewPage() {
                     <Button
                       onClick={() => setShowAllActivities((v) => !v)}
                       variant="ghost"
-                      className="w-full text-center text-primary hover:text-primary/80 text-xs py-2 mt-1"
+                      className="w-full text-center text-primary hover:text-white text-xs py-2 mt-1"
                     >
                       {showAllActivities ? "Show less" : "Show more"}
                     </Button>
