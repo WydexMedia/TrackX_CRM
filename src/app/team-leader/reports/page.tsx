@@ -705,7 +705,7 @@ function LeadsReports() {
                   onClick={()=>setOffset((p - 1) * limit)}
                   variant={p === pagination.currentPage ? "default" : "outline"}
                   size="sm"
-                  className={p === pagination.currentPage ? "bg-slate-900 hover:bg-slate-800" : ""}
+                  className={p === pagination.currentPage ? "bg-slate-900 hover:bg-slate-800 text-white" : ""}
                 >{p}</Button>
               ))}
               <Button disabled={pagination.currentPage === pagination.totalPages} onClick={()=>setOffset(offset + limit)} variant="outline" size="sm">Next</Button>
