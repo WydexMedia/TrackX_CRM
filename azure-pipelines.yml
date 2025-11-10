@@ -1,21 +1,28 @@
-# Node.js
-# Build a general Node.js project with npm.
-# Add steps that analyze code, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
-
 trigger:
 - main
 
 pool:
-  name: Default
+  name: Default  # your self-hosted agent
+
+variables:
+- group: trackx-secrets  # the variable group you created
 
 steps:
 - task: NodeTool@0
   inputs:
     versionSpec: '20.x'
-  displayName: 'Install Node.js'
+  displayName: 'Use Node 20'
 
-- script: |
-    npm install
-    npm run build
-  displayName: 'npm install and build'
+- script: npm ci
+  displayName: 'Install deps'
+
+- script: npm run build
+  displayName: 'Build Next.js'
+  env:
+    # Secrets available to Next.js at build time
+    MONGODB_URI: $(MONGODB_URI)
+    DATABASE_URL: $(DATABASE_URL)
+    # Only include AWS vars if the build truly needs them:
+    # AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+    # AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+    # AWS_REGION: $(AWS_REGION)
