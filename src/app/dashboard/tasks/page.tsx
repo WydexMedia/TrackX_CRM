@@ -915,7 +915,7 @@ function ActivityLogModal({
       setIsLoading(false);
     }
   };
-
+  
   if (!isOpen || !lead) return null;
 
   return (
