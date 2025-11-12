@@ -737,6 +737,7 @@ export default function TeamManagementPage() {
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                   placeholder="Enter email address"
                   className="border-slate-200"
+                  autoComplete="email"
                 />
               </div>
               <div>
@@ -747,6 +748,7 @@ export default function TeamManagementPage() {
                   value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                   placeholder="Enter password"
+                  autoComplete="new-password"
                   className="border-slate-200"
                 />
               </div>
@@ -755,9 +757,9 @@ export default function TeamManagementPage() {
                 <Input
                   type="number"
                   required
-                  value={newUser.target}
+                  // value={newUser.target}
                   onChange={(e) =>
-                    setNewUser({ ...newUser, target: parseInt(e.target.value) || 0 })
+                    setNewUser({ ...newUser, target: parseInt(e.target.value)  })
                   }
                   placeholder="Enter target amount"
                   className="border-slate-200"
@@ -842,8 +844,8 @@ export default function TeamManagementPage() {
                   <Input
                     type="number"
                     required
-                    value={editingUser.target || 0}
-                    onChange={(e) => setEditingUser({ ...editingUser, target: parseInt(e.target.value) || 0 })}
+                    value={editingUser.target }
+                    onChange={(e) => setEditingUser({ ...editingUser, target: parseInt(e.target.value)  })}
                     placeholder="Enter target amount"
                     className="border-slate-200"
                   />

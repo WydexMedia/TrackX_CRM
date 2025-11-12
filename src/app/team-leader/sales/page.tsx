@@ -15,18 +15,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { 
-  Users, 
-  Target, 
-  TrendingUp, 
-  Clock, 
-  Eye, 
-  EyeOff, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  LogOut, 
-  Settings, 
+import {
+  Users,
+  Target,
+  TrendingUp,
+  Clock,
+  Eye,
+  EyeOff,
+  Plus,
+  Edit,
+  Trash2,
+  LogOut,
+  Settings,
   User,
   Search,
   ChevronDown,
@@ -135,29 +135,29 @@ export default function TeamLeaderPage() {
       // First check if we have a token parameter (from redirect)
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token');
-      
+
       if (token) {
         try {
           // Validate the token and get user data
           const response = await fetch('/api/users/validate-session', {
             method: 'POST',
-            headers: { 
+            headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({ token })
           });
-          
+
           if (response.ok) {
             const userData = await response.json();
             localStorage.setItem("user", JSON.stringify(userData));
             localStorage.setItem("token", userData.token);
-            
+
             // Clean up the URL by removing the token parameter
             const newUrl = new URL(window.location.href);
             newUrl.searchParams.delete('token');
             window.history.replaceState({}, '', newUrl.toString());
-            
+
             if (userData.role === 'teamleader') {
               setTeamLeader(userData);
               fetchData();
@@ -185,7 +185,7 @@ export default function TeamLeaderPage() {
           console.error('Session validation failed:', error);
         }
       }
-      
+
       // Fallback to localStorage check
       const user = getTeamLeader();
       if (!user || user.role !== 'teamleader') {
@@ -197,11 +197,11 @@ export default function TeamLeaderPage() {
     };
 
     authenticateUser();
-    
+
     // Set up periodic token validation
     const redirectToLogin = () => router.push("/login");
     const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 60000); // Check every 60 seconds
-    
+
     return () => {
       clearInterval(validationInterval);
     };
@@ -244,7 +244,7 @@ export default function TeamLeaderPage() {
       const headers = {
         'Authorization': `Bearer ${token}`
       };
-      
+
       const [analyticsRes, usersRes, credentialsRes] = await Promise.all([
         authenticatedFetch("/api/analytics", { headers }),
         authenticatedFetch("/api/users", { headers }),
@@ -255,7 +255,7 @@ export default function TeamLeaderPage() {
         const analyticsData = await analyticsRes.json();
         const usersData = await usersRes.json();
         const credentialsData = await credentialsRes.json();
-        
+
         setAnalytics(analyticsData);
         setUsers(usersData.filter((user: User) => user.role !== 'teamleader'));
         setCredentials(credentialsData);
@@ -270,20 +270,20 @@ export default function TeamLeaderPage() {
   const handleLogout = async () => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      
+
       if (token) {
         console.log('🔐 Logging out with token');
         try {
           // Wait for the logout API to complete
           const response = await fetch('/api/users/logout', {
             method: 'POST',
-            headers: { 
+            headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({ token })
           });
-          
+
           const result = await response.json();
           if (response.ok && result.success) {
             console.log('✅ Token successfully blacklisted');
@@ -299,7 +299,7 @@ export default function TeamLeaderPage() {
     } catch (error) {
       console.error('❌ Error in logout handler:', error);
     }
-    
+
     // Clean up local storage and navigate after API call
     localStorage.removeItem("user");
     localStorage.removeItem("token");
@@ -313,7 +313,7 @@ export default function TeamLeaderPage() {
       const token = localStorage.getItem('token');
       const response = await authenticatedFetch("/api/users", {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
@@ -330,7 +330,7 @@ export default function TeamLeaderPage() {
       if (response.ok) {
         toast.success("Profile updated successfully");
         setIsEditingProfile(false);
-        
+
         // Update teamLeader state with new data
         if (teamLeader) {
           const updatedTeamLeader = {
@@ -342,7 +342,7 @@ export default function TeamLeaderPage() {
             about: profileData.about
           };
           setTeamLeader(updatedTeamLeader);
-          
+
           // Update localStorage as well
           localStorage.setItem("user", JSON.stringify(updatedTeamLeader));
         }
@@ -357,24 +357,24 @@ export default function TeamLeaderPage() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate passwords
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error("New passwords don't match");
       return;
     }
-    
+
     if (passwordData.newPassword.length < 6) {
       toast.error("New password must be at least 6 characters long");
       return;
     }
-    
+
     try {
       // Make API call to change password
       const token = localStorage.getItem('token');
       const response = await authenticatedFetch("/api/users/change-password", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
@@ -409,7 +409,7 @@ export default function TeamLeaderPage() {
       const token = localStorage.getItem('token');
       const res = await authenticatedFetch("/api/users", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
@@ -441,7 +441,7 @@ export default function TeamLeaderPage() {
       const token = localStorage.getItem('token');
       const res = await fetch("/api/users", {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
@@ -503,20 +503,20 @@ export default function TeamLeaderPage() {
     setSelectedSalesPerson(salesPerson);
     setShowKPIModal(true);
     setLoadingKPI(true);
-    
+
     try {
       const token = localStorage.getItem('token');
-      
+
       // Find the user ID from the users list
       const userMatch = users.find(u => u.name.toLowerCase() === salesPerson.name.toLowerCase());
       const userId = userMatch?._id || '';
-      
+
       // Fetch KPI data from backend API
       const params = new URLSearchParams();
       if (userId) {
         params.append('salesPersonIds', userId);
       }
-      
+
       const response = await authenticatedFetch(
         `/api/tl/kpis?${params.toString()}`,
         {
@@ -525,28 +525,28 @@ export default function TeamLeaderPage() {
           }
         }
       );
-      
+
       if (response.ok) {
         const data = await response.json();
-        
+
         console.log('📊 KPI Data Received:', {
           kpiDataCount: data.kpiData?.length,
           salesPersonName: salesPerson.name,
           kpiData: data.kpiData,
           teamSummary: data.teamSummary
         });
-        
+
         // Find the specific salesperson's data
-        const userKPIData = data.kpiData.find((kpi: any) => 
+        const userKPIData = data.kpiData.find((kpi: any) =>
           kpi.name.toLowerCase() === salesPerson.name.toLowerCase()
         );
-        
+
         console.log('🔍 Found User KPI:', {
           found: !!userKPIData,
           userName: userKPIData?.name,
           dailyKPIsCount: userKPIData?.dailyKPIs?.length
         });
-        
+
         if (userKPIData && userKPIData.dailyKPIs) {
           // Transform the data to match the existing format
           const comprehensiveData = userKPIData.dailyKPIs.map((day: any) => ({
@@ -558,7 +558,7 @@ export default function TeamLeaderPage() {
             salesConverted: day.salesConverted,
             conversionRate: day.conversionRate
           }));
-          
+
           console.log('✅ Setting KPI Data:', comprehensiveData.length, 'records');
           setKpiData(comprehensiveData);
         } else {
@@ -581,10 +581,10 @@ export default function TeamLeaderPage() {
     if (!dateRange.startDate || !dateRange.endDate) {
       return kpiData;
     }
-    
+
     const startDate = new Date(dateRange.startDate);
     const endDate = new Date(dateRange.endDate);
-    
+
     return kpiData.filter((report) => {
       const reportDate = new Date(report.date);
       return reportDate >= startDate && reportDate <= endDate;
@@ -598,7 +598,7 @@ export default function TeamLeaderPage() {
     if (filteredKpiData.length === 0) {
       return selectedSalesPerson?.todaySales || 0;
     }
-    
+
     // Count days with actual sales activity (dailyAmount > 0)
     return filteredKpiData.filter(report => (report.dailyAmount || 0) > 0).length;
   };
@@ -828,9 +828,9 @@ export default function TeamLeaderPage() {
             </div>
           </div>
         </div>
-        
 
-          {/* Analytics Summary Cards */}
+
+        {/* Analytics Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <Card className="border border-slate-200/60 hover:shadow-md transition-all duration-200">
             <CardContent className="p-5">
@@ -874,7 +874,9 @@ export default function TeamLeaderPage() {
                 </div>
                 <div className="ml-3">
                   <p className="text-xs font-medium text-slate-600">Achieved</p>
-                  <p className="text-xl font-bold text-slate-900">₹{totalAchieved.toLocaleString()}</p>
+                  <p className="text-xl font-bold text-slate-900">
+                    ₹{(totalTarget - totalPending).toLocaleString()} // corrected achieved and pending amount difference 
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -1055,7 +1057,7 @@ export default function TeamLeaderPage() {
                               </div>
                             </div>
                             <div className="ml-4">
-                              <div 
+                              <div
                                 className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
                                 onClick={() => handleSalesPersonClick(user)}
                               >
@@ -1151,17 +1153,17 @@ export default function TeamLeaderPage() {
               </Button>
             </div>
           </DialogHeader>
-          
+
           <div className="flex-1 overflow-y-auto">
             <Card className="mb-4">
               <CardContent className="p-4">
                 <p className="text-sm text-gray-600">
-                  <strong>Note:</strong> These are the login credentials for all team members. 
+                  <strong>Note:</strong> These are the login credentials for all team members.
                   Passwords are hidden by default for security. Click the eye icon to reveal passwords.
                 </p>
               </CardContent>
             </Card>
-            
+
             <div className="grid gap-4">
               {credentials.map((user) => (
                 <Card key={user._id}>
@@ -1183,7 +1185,7 @@ export default function TeamLeaderPage() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
                           <div className="text-sm font-medium text-gray-900">Login ID</div>
@@ -1191,7 +1193,7 @@ export default function TeamLeaderPage() {
                             {user.email}
                           </div>
                         </div>
-                        
+
                         <div className="text-right">
                           <div className="text-sm font-medium text-gray-900">Password</div>
                           <div className="flex items-center space-x-2">
@@ -1219,7 +1221,7 @@ export default function TeamLeaderPage() {
                 </Card>
               ))}
             </div>
-            
+
             {credentials.length === 0 && (
               <Card>
                 <CardContent className="text-center py-8">
@@ -1422,21 +1424,21 @@ export default function TeamLeaderPage() {
                         <Input
                           type="date"
                           value={dateRange.startDate}
-                          onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
+                          onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
                           className="flex-1 text-sm"
                         />
                         <span className="flex items-center text-gray-500">to</span>
                         <Input
                           type="date"
                           value={dateRange.endDate}
-                          onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
+                          onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
                           className="flex-1 text-sm"
                         />
                       </div>
                     </div>
                     <Button
                       variant="outline"
-                      onClick={() => setDateRange({startDate: '', endDate: ''})}
+                      onClick={() => setDateRange({ startDate: '', endDate: '' })}
                       className="text-sm"
                     >
                       Clear Filter
@@ -1461,7 +1463,7 @@ export default function TeamLeaderPage() {
                       <div>
                         <p className="text-blue-100 text-sm">Total Leads</p>
                         <p className="text-2xl font-bold">
-                          {filteredKpiData.reduce((sum, report) => 
+                          {filteredKpiData.reduce((sum, report) =>
                             sum + (parseInt(report.leadsAssigned) || 0), 0
                           )}
                         </p>
@@ -1477,7 +1479,7 @@ export default function TeamLeaderPage() {
                       <div>
                         <p className="text-green-100 text-sm">Sales Converted</p>
                         <p className="text-2xl font-bold">
-                          {filteredKpiData.reduce((sum, report) => 
+                          {filteredKpiData.reduce((sum, report) =>
                             sum + (parseInt(report.salesConverted) || 0), 0
                           )}
                         </p>
@@ -1508,10 +1510,10 @@ export default function TeamLeaderPage() {
                         <p className="text-orange-100 text-sm">Conversion %</p>
                         <p className="text-2xl font-bold">
                           {(() => {
-                            const totalLeads = filteredKpiData.reduce((sum, report) => 
+                            const totalLeads = filteredKpiData.reduce((sum, report) =>
                               sum + (parseInt(report.leadsAssigned) || 0), 0
                             );
-                            const totalSales = filteredKpiData.reduce((sum, report) => 
+                            const totalSales = filteredKpiData.reduce((sum, report) =>
                               sum + (parseInt(report.salesConverted) || 0), 0
                             );
                             return totalLeads > 0 ? ((totalSales / totalLeads) * 100).toFixed(1) : 0;
@@ -1580,7 +1582,7 @@ export default function TeamLeaderPage() {
                                   {dateRange.startDate && dateRange.endDate ? 'No data found for selected date range' : 'No KPI data available'}
                                 </p>
                                 <p className="text-sm">
-                                  {dateRange.startDate && dateRange.endDate 
+                                  {dateRange.startDate && dateRange.endDate
                                     ? 'Try adjusting your date range or clear the filter.'
                                     : 'No performance data found for this sales person.'
                                   }
@@ -1628,7 +1630,7 @@ export default function TeamLeaderPage() {
                   Billing
                 </Button>
               </nav>
-              
+
               <h3 className="text-lg font-semibold text-gray-900 mt-8 mb-4">My Profile</h3>
               <nav className="space-y-2">
                 <Button variant="ghost" className="w-full justify-start">
@@ -1668,241 +1670,241 @@ export default function TeamLeaderPage() {
                 </div>
               </div>
 
-                             <div className="p-8">
-                 {/* Institute Profile Content */}
-                 {activeProfileTab === "institute" && (
-                   <form onSubmit={handleProfileSave} className="space-y-8">
-                     {/* Profile Title and Edit Button */}
-                     <div className="flex items-center justify-between">
-                       <h1 className="text-2xl font-bold text-gray-900">{profileData.name || 'Profile'}</h1>
-                       <button
-                         type="button"
-                         onClick={() => setIsEditingProfile(!isEditingProfile)}
-                         className="text-gray-400 hover:text-gray-600 p-2"
-                       >
-                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                         </svg>
-                       </button>
-                     </div>
+              <div className="p-8">
+                {/* Institute Profile Content */}
+                {activeProfileTab === "institute" && (
+                  <form onSubmit={handleProfileSave} className="space-y-8">
+                    {/* Profile Title and Edit Button */}
+                    <div className="flex items-center justify-between">
+                      <h1 className="text-2xl font-bold text-gray-900">{profileData.name || 'Profile'}</h1>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingProfile(!isEditingProfile)}
+                        className="text-gray-400 hover:text-gray-600 p-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                    </div>
 
-                     {/* Contact Information */}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                       <div className="flex items-center space-x-3">
-                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                         </svg>
-                         {isEditingProfile ? (
-                           <Input
-                             type="email"
-                             value={profileData.email}
-                             onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                             className="flex-1"
-                             placeholder="Email"
-                           />
-                         ) : (
-                           <span className="flex-1 text-gray-600">{profileData.email || 'No email provided'}</span>
-                         )}
-                       </div>
-                       
-                       <div className="flex items-center space-x-3">
-                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                         </svg>
-                         {isEditingProfile ? (
-                           <Input
-                             type="tel"
-                             value={profileData.phone}
-                             onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                             className="flex-1"
-                             placeholder="Phone"
-                           />
-                         ) : (
-                           <span className="flex-1 text-gray-600">{profileData.phone || 'No phone provided'}</span>
-                         )}
-                       </div>
-                     </div>
+                    {/* Contact Information */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="flex items-center space-x-3">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        {isEditingProfile ? (
+                          <Input
+                            type="email"
+                            value={profileData.email}
+                            onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                            className="flex-1"
+                            placeholder="Email"
+                          />
+                        ) : (
+                          <span className="flex-1 text-gray-600">{profileData.email || 'No email provided'}</span>
+                        )}
+                      </div>
 
-                     {/* Subdomain and Address */}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                       <div>
-                         <label className="block text-sm font-medium text-gray-700 mb-2">Subdomain:</label>
-                         <div className="w-full text-blue-600 bg-transparent">
-                           {profileData.subdomain || 'No subdomain configured'}
-                         </div>
-                       </div>
-                       
-                       <div>
-                         <label className="block text-sm font-medium text-gray-700 mb-2">Address:</label>
-                         {isEditingProfile ? (
-                           <Textarea
-                             value={profileData.address}
-                             onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
-                             rows={2}
-                             className="w-full resize-none"
-                             placeholder="Enter address"
-                           />
-                         ) : (
-                           <div className="w-full text-gray-600">
-                             {profileData.address || 'No address provided'}
-                           </div>
-                         )}
-                       </div>
-                     </div>
+                      <div className="flex items-center space-x-3">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        {isEditingProfile ? (
+                          <Input
+                            type="tel"
+                            value={profileData.phone}
+                            onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                            className="flex-1"
+                            placeholder="Phone"
+                          />
+                        ) : (
+                          <span className="flex-1 text-gray-600">{profileData.phone || 'No phone provided'}</span>
+                        )}
+                      </div>
+                    </div>
 
-                     {/* About and Social Media */}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                       <div>
-                         <div className="flex items-center justify-between mb-4">
-                           <h3 className="text-lg font-semibold text-gray-900">About</h3>
-                           <button
-                             type="button"
-                             onClick={() => setIsEditingProfile(!isEditingProfile)}
-                             className="text-gray-400 hover:text-gray-600 p-1"
-                           >
-                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                             </svg>
-                           </button>
-                         </div>
-                         {isEditingProfile ? (
-                           <Textarea
-                             value={profileData.about}
-                             onChange={(e) => setProfileData({ ...profileData, about: e.target.value })}
-                             rows={4}
-                             className="w-full"
-                             placeholder="Tell us about yourself..."
-                           />
-                         ) : (
-                           <div className="w-full text-gray-600 border border-gray-200 rounded-md p-3 min-h-[100px]">
-                             {profileData.about || 'No information provided'}
-                           </div>
-                         )}
-                       </div>
+                    {/* Subdomain and Address */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Subdomain:</label>
+                        <div className="w-full text-blue-600 bg-transparent">
+                          {profileData.subdomain || 'No subdomain configured'}
+                        </div>
+                      </div>
 
-                       <div>
-                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Social Media</h3>
-                         <div className="space-y-4">
-                           <div className="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 rounded-lg">
-                             <div className="text-center">
-                               <button
-                                 type="button"
-                                 className="text-teal-600 hover:text-teal-700 font-medium"
-                               >
-                                 Add Social Media
-                               </button>
-                             </div>
-                           </div>
-                         </div>
-                       </div>
-                     </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Address:</label>
+                        {isEditingProfile ? (
+                          <Textarea
+                            value={profileData.address}
+                            onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
+                            rows={2}
+                            className="w-full resize-none"
+                            placeholder="Enter address"
+                          />
+                        ) : (
+                          <div className="w-full text-gray-600">
+                            {profileData.address || 'No address provided'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                     {/* Save Button - Only show when editing */}
-                     {isEditingProfile && (
-                       <div className="flex justify-end pt-6 border-t border-gray-200">
-                         <div className="flex space-x-3">
-                           <Button
-                             type="button"
-                             variant="outline"
-                             onClick={() => {
-                               setIsEditingProfile(false);
-                               // Reset form data to original values
-                               if (teamLeader) {
-                                 setProfileData({
-                                   name: teamLeader.name || "",
-                                   email: teamLeader.email || "",
-                                   phone: teamLeader.phone || "",
-                                   address: teamLeader.address || "",
-                                   about: teamLeader.about || "",
-                                   subdomain: subdomain ? `https://${subdomain}.wydex.co` : ""
-                                 });
-                               }
-                             }}
-                           >
-                             Cancel
-                           </Button>
-                           <Button
-                             type="submit"
-                             className="bg-teal-600 hover:bg-teal-700"
-                           >
-                             Save Changes
-                           </Button>
-                         </div>
-                       </div>
-                     )}
-                   </form>
-                 )}
+                    {/* About and Social Media */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold text-gray-900">About</h3>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingProfile(!isEditingProfile)}
+                            className="text-gray-400 hover:text-gray-600 p-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        </div>
+                        {isEditingProfile ? (
+                          <Textarea
+                            value={profileData.about}
+                            onChange={(e) => setProfileData({ ...profileData, about: e.target.value })}
+                            rows={4}
+                            className="w-full"
+                            placeholder="Tell us about yourself..."
+                          />
+                        ) : (
+                          <div className="w-full text-gray-600 border border-gray-200 rounded-md p-3 min-h-[100px]">
+                            {profileData.about || 'No information provided'}
+                          </div>
+                        )}
+                      </div>
 
-                 {/* Change Password Content */}
-                 {activeProfileTab === "changePassword" && (
-                   <div className="space-y-8">
-                     <div className="flex items-center justify-between">
-                       <h1 className="text-2xl font-bold text-gray-900">Change Password</h1>
-                     </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Social Media</h3>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-center h-32 border-2 border-dashed border-gray-300 rounded-lg">
+                            <div className="text-center">
+                              <button
+                                type="button"
+                                className="text-teal-600 hover:text-teal-700 font-medium"
+                              >
+                                Add Social Media
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-                     <form onSubmit={handlePasswordChange} className="max-w-md space-y-6">
-                       <div>
-                         <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-                         <Input
-                           type="password"
-                           required
-                           value={passwordData.currentPassword}
-                           onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                           placeholder="Enter current password"
-                         />
-                       </div>
-                       
-                       <div>
-                         <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-                         <Input
-                           type="password"
-                           required
-                           minLength={6}
-                           value={passwordData.newPassword}
-                           onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                           placeholder="Enter new password"
-                         />
-                         <p className="text-sm text-gray-500 mt-1">Password must be at least 6 characters long</p>
-                       </div>
-                       
-                       <div>
-                         <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-                         <Input
-                           type="password"
-                           required
-                           minLength={6}
-                           value={passwordData.confirmPassword}
-                           onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                           placeholder="Confirm new password"
-                         />
-                       </div>
+                    {/* Save Button - Only show when editing */}
+                    {isEditingProfile && (
+                      <div className="flex justify-end pt-6 border-t border-gray-200">
+                        <div className="flex space-x-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setIsEditingProfile(false);
+                              // Reset form data to original values
+                              if (teamLeader) {
+                                setProfileData({
+                                  name: teamLeader.name || "",
+                                  email: teamLeader.email || "",
+                                  phone: teamLeader.phone || "",
+                                  address: teamLeader.address || "",
+                                  about: teamLeader.about || "",
+                                  subdomain: subdomain ? `https://${subdomain}.wydex.co` : ""
+                                });
+                              }
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="submit"
+                            className="bg-teal-600 hover:bg-teal-700"
+                          >
+                            Save Changes
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </form>
+                )}
 
-                       <div className="flex space-x-3 pt-4">
-                         <Button
-                           type="button"
-                           variant="outline"
-                           onClick={() => {
-                             setActiveProfileTab("institute");
-                             setPasswordData({
-                               currentPassword: "",
-                               newPassword: "",
-                               confirmPassword: ""
-                             });
-                           }}
-                         >
-                           Cancel
-                         </Button>
-                         <Button
-                           type="submit"
-                           className="bg-teal-600 hover:bg-teal-700"
-                         >
-                           Change Password
-                         </Button>
-                       </div>
-                     </form>
-                   </div>
-                 )}
-               </div>
+                {/* Change Password Content */}
+                {activeProfileTab === "changePassword" && (
+                  <div className="space-y-8">
+                    <div className="flex items-center justify-between">
+                      <h1 className="text-2xl font-bold text-gray-900">Change Password</h1>
+                    </div>
+
+                    <form onSubmit={handlePasswordChange} className="max-w-md space-y-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                        <Input
+                          type="password"
+                          required
+                          value={passwordData.currentPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                          placeholder="Enter current password"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                        <Input
+                          type="password"
+                          required
+                          minLength={6}
+                          value={passwordData.newPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                          placeholder="Enter new password"
+                        />
+                        <p className="text-sm text-gray-500 mt-1">Password must be at least 6 characters long</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                        <Input
+                          type="password"
+                          required
+                          minLength={6}
+                          value={passwordData.confirmPassword}
+                          onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                          placeholder="Confirm new password"
+                        />
+                      </div>
+
+                      <div className="flex space-x-3 pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setActiveProfileTab("institute");
+                            setPasswordData({
+                              currentPassword: "",
+                              newPassword: "",
+                              confirmPassword: ""
+                            });
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="bg-teal-600 hover:bg-teal-700"
+                        >
+                          Change Password
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </DialogContent>

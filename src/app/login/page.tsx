@@ -301,7 +301,7 @@ export default function LoginPage() {
         {/* Login Form */}
         <Card className="w-full max-w-md bg-white shadow-xl border-0">
           <CardContent className="p-8">
-            <form onSubmit={handleLogin} className="space-y-6">
+            <form onSubmit={handleLogin} className="space-y-6" >
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <Input
@@ -311,6 +311,7 @@ export default function LoginPage() {
                   placeholder="Please enter email"
                   className="w-full h-12 px-4 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   required
+                  autoComplete="email"
                 />
               </div>
 
@@ -323,8 +324,9 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
                     className="w-full h-12 px-4 pr-12 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    autoComplete="new-password"
                     required
-                  />
+                  />         
                   <Button
                     type="button"
                     variant="ghost"
