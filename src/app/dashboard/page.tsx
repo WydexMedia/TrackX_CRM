@@ -564,14 +564,7 @@ export default function DashboardPage() {
 
 
 
-            <Link href="/form" className="shrink-0">
-              <Button className="gap-2 bg-primary hover:bg-primary/90">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 6v12M6 12h12" />
-                </svg>
-                Add New Sale
-              </Button>
-            </Link>
+           
           </div>
         </nav>
 
@@ -857,7 +850,7 @@ export default function DashboardPage() {
                     min={0}
                     required
                     value={editData.amount}
-                    onChange={(e) => setEditData({ ...editData, amount: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => setEditData({ ...editData, amount: parseInt(e.target.value) })}
                   />
                 </div>
                 <div>
