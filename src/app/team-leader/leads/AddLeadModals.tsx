@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { authenticatedFetch } from "@/lib/tokenValidation";
+import { normalizeCsvToUtf8 } from "@/utils/normalizeCsvToUtf8";
 
 export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open: boolean; onClose: () => void; onCreated: () => void; onListCreated?: (list: { id: number; name: string }) => void }) {
   const [form, setForm] = useState<{ phone: string; name?: string; email?: string; address?: string; alternateNumber?: string; source?: string; stage?: string; score?: number; notes?: string }>({ phone: "" });
@@ -268,6 +269,9 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
   };
   
   if (!open) return null;
+  
+
+
 
   // Normalize phone: extract first numeric sequence with >=10 digits, strip non-digits, cap to 15 digits
   const normalizePhone = (value: any): string | null => {
@@ -309,24 +313,39 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+  
     try {
       setError("");
       setValidationErrors([]);
-      
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data, { type: "array" });
+  
+      const fileName = file.name.toLowerCase();
+      let wb: XLSX.WorkBook;
+  
+      if (fileName.endsWith(".csv")) {
+        // 🔹 CSV path – normalize to UTF-8 text
+        const csvText = await normalizeCsvToUtf8(file);
+  
+        wb = XLSX.read(csvText, {
+          type: "string",
+          // If your CSV is actually tab-separated (TSV), uncomment this:
+          // FS: "\t",
+        });
+      } else {
+        // 🔹 Excel (.xlsx, .xlsb, etc.) path – use ArrayBuffer
+        const data = await file.arrayBuffer();
+        wb = XLSX.read(data, { type: "array" });
+      }
+  
       const ws = wb.Sheets[wb.SheetNames[0]];
       const json = XLSX.utils.sheet_to_json(ws, { defval: "" });
-      
+  
       if (!Array.isArray(json) || json.length === 0) {
         setError("Invalid file format or empty file");
         return;
       }
-
+  
       setFileData(json);
-      setStep('mapping');
-      
+      setStep("mapping");
     } catch (error) {
       console.error("File upload error:", error);
       setError("Failed to read file. Please ensure it's a valid CSV or Excel file.");

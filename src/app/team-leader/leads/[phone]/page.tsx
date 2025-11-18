@@ -576,6 +576,8 @@ export default function LeadDetailPage() {
     return items.reverse(); // Show latest first
   })();
 
+
+
   if (loading) return <div className="p-6">Loading…</div>;
   if (!lead) return <div className="p-6">Lead not found</div>;
 
