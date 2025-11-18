@@ -119,6 +119,8 @@ export default function TasksPage() {
 
   useEffect(() => { refresh(); }, []);
 
+
+
   const filteredRows = rows.filter(task => {
     const priority = getPriorityColor(task.dueAt, task.status);
     switch (filter) {

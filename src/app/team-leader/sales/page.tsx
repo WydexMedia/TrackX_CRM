@@ -875,7 +875,7 @@ export default function TeamLeaderPage() {
                 <div className="ml-3">
                   <p className="text-xs font-medium text-slate-600">Achieved</p>
                   <p className="text-xl font-bold text-slate-900">
-                    ₹{(totalTarget - totalPending).toLocaleString()} // corrected achieved and pending amount difference 
+                    ₹{(totalTarget - totalPending).toLocaleString()} 
                   </p>
                 </div>
               </div>
