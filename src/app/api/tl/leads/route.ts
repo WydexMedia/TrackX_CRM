@@ -174,7 +174,29 @@ export async function GET(req: NextRequest) {
 
     // Use optimized query with LEFT JOIN instead of correlated subquery
     // This performs much better with the indexes we added
-    const cacheKey = `leads:${tenantId}:${JSON.stringify({ q, stage, owner, source, minScore, maxScore, sortByCallCount, limit, offset })}`;
+    const cacheKey = `leads-v3:${tenantId}:${JSON.stringify({
+      q,
+      stage,
+      owner,
+      source,
+      minScore,
+      maxScore,
+      sortByCallCount,
+      limit,
+      offset,
+      needFollowupParam,
+      hasEmailParam,
+      emailDomain,
+      excludeEarlyStages,
+      listId,
+      lastActivity,
+      activityDateFrom,
+      activityDateTo,
+      from,
+      to,
+      dateRange,
+    })}`;
+    
     
     let rows = await getCachedResponse(
       cacheKey,
@@ -194,7 +216,18 @@ export async function GET(req: NextRequest) {
           WHERE l.tenant_id = ${tenantId}
             ${q ? sql`AND (l.name ILIKE ${`%${q}%`} OR l.phone ILIKE ${`%${q}%`} OR l.email ILIKE ${`%${q}%`})` : sql``}
             ${stage ? sql`AND l.stage = ${stage}` : sql``}
-            ${owner ? sql`AND l.owner_id = ${owner}` : sql``}
+            ${owner === "unassigned"
+              ? sql`AND l.owner_id IS NULL`
+              : owner
+              ? sql`AND l.owner_id = ${owner}`
+              : sql``}
+              ${
+                needFollowupParam === "true"
+                  ? sql`AND l.need_followup = true`
+                  : needFollowupParam === "false"
+                  ? sql`AND l.need_followup = false`
+                  : sql``
+              }
             ${source ? sql`AND l.source = ${source}` : sql``}
             ${minScore !== undefined ? sql`AND l.score >= ${minScore}` : sql``}
             ${maxScore !== undefined ? sql`AND l.score <= ${maxScore}` : sql``}
