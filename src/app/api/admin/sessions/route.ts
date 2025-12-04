@@ -1,27 +1,27 @@
-import { getMongoDb } from '@/lib/mongoClient';
 import { NextRequest } from 'next/server';
+import { db } from '@/db/client';
+import { users } from '@/db/schema';
 import { verifyToken, revokeAllUserTokens } from '@/lib/jwt';
 
 // GET - Fetch all active tokens (non-blacklisted)
 export async function GET() {
   try {
-    const db = await getMongoDb();
-    const users = db.collection('users');
-    
     // Get all users to show their token status
-    const allUsers = await users.find({}).toArray();
+    const allUsers = await db
+      .select()
+      .from(users);
     
     // For JWT system, we'll show all users since we can't track active tokens without storing them
     // In a production system, you might want to store active tokens in a separate collection
     const usersWithTokenInfo = allUsers.map((user: any) => ({
-      userId: user._id.toString(),
+      userId: user.id.toString(),
       userName: user.name || 'Unknown',
       userCode: user.code || 'Unknown',
       userEmail: user.email || 'Unknown',
       userRole: user.role || 'sales',
-      tenantSubdomain: user.tenantSubdomain || 'Main',
+      tenantId: user.tenantId || null,
       // Note: JWT tokens don't have creation timestamps unless we store them separately
-      lastLogin: user.lastLogin || 'Unknown',
+      lastLogin: user.lastLogin || null,
       status: 'Active' // We can't easily track this with stateless JWT
     }));
     
@@ -53,17 +53,17 @@ export async function DELETE(request: NextRequest) {
     
     if (killAll) {
       // Revoke all tokens for all users
-      const db = await getMongoDb();
-      const users = db.collection('users');
-      const allUsers = await users.find({}).toArray();
+      const allUsers = await db
+        .select()
+        .from(users);
       
       let totalRevoked = 0;
       for (const user of allUsers) {
         try {
-          await revokeAllUserTokens(user._id.toString());
+          await revokeAllUserTokens(user.id.toString());
           totalRevoked++;
         } catch (error) {
-          console.error(`Failed to revoke tokens for user ${user._id}:`, error);
+          console.error(`Failed to revoke tokens for user ${user.id}:`, error);
         }
       }
       
@@ -116,4 +116,4 @@ export async function DELETE(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
-} 
+}

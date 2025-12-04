@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, asc, desc, eq, isNull, sql, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql, inArray, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { leads, tasks, settings, leadEvents } from "@/db/schema";
-import { MongoClient } from "mongodb";
+import { leads, tasks, settings, leadEvents, users, sales } from "@/db/schema";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
@@ -26,7 +25,7 @@ export async function GET(req: NextRequest) {
       .from(leads)
       .where(tenantId ? and(where as any, eq(leads.tenantId, tenantId)) : where as any)
       .orderBy(order)
-      .limit(limit)
+      .limit(limit)     
       .offset(offset);
 
     const totalRow = await db
@@ -135,27 +134,34 @@ export async function POST(req: NextRequest) {
         if (obj?.id) rule = obj.id;
       }
 
-      // 2) Load sales agents from MongoDB
-      const uri = process.env.MONGODB_URI as string;
-      if (!uri) {
-        return new Response(JSON.stringify({ success: false, error: "MONGODB_URI not set" }), { status: 500 });
+      // 2) Load sales agents from PostgreSQL
+      if (!tenantId) {
+        return new Response(JSON.stringify({ success: false, error: "Tenant ID required" }), { status: 400 });
       }
-      const mongo = new MongoClient(uri);
-      await mongo.connect();
-      const mdb = mongo.db();
-      const users = mdb.collection("users");
-      const agents = await users
-        .find(Object.assign({ $or: [{ role: "sales" }, { role: { $exists: false } }] }, tenantSubdomain ? { tenantSubdomain } : {}), { projection: { code: 1, name: 1, role: 1 } })
-        .toArray();
-      let sales = agents.filter((u: any) => typeof u.code === "string" && u.code.trim().length > 0);
+
+      let salesAgents = await db
+        .select({
+          code: users.code,
+          name: users.name,
+          role: users.role,
+        })
+        .from(users)
+        .where(and(
+          eq(users.tenantId, tenantId),
+          or(
+            eq(users.role, "sales"),
+            isNull(users.role as any)
+          )
+        ));
+      
+      let filteredSalesAgents = salesAgents.filter((u: any) => typeof u.code === "string" && u.code && u.code.trim().length > 0);
       
       // Filter by selectedSalesPersons if provided
       if (selectedSalesPersons && selectedSalesPersons.length > 0) {
-        sales = sales.filter((u: any) => selectedSalesPersons.includes(u.code));
+        filteredSalesAgents = filteredSalesAgents.filter((u: any) => u.code && selectedSalesPersons.includes(u.code));
       }
       
-      if (sales.length === 0) {
-        await mongo.close();
+      if (filteredSalesAgents.length === 0) {
         return new Response(JSON.stringify({ success: false, error: "no sales agents found" }), { status: 400 });
       }
 
@@ -170,10 +176,12 @@ export async function POST(req: NextRequest) {
         }
         const order: string[] = [];
         for (let i = 0; i < count; i++) {
-          const s = sales[(start + i) % sales.length];
-          order.push(s.code);
+          const s = filteredSalesAgents[(start + i) % filteredSalesAgents.length];
+          if (s.code) {
+            order.push(s.code);
+          }
         }
-        const next = (start + count) % sales.length;
+        const next = (start + count) % filteredSalesAgents.length;
         await db
           .insert(settings)
           .values({ key: "lead_assign_rr_index", value: { i: next } } as any)
@@ -183,21 +191,29 @@ export async function POST(req: NextRequest) {
 
       const pickWeighted = async (count: number) => {
         try {
-          const salesColl = mdb.collection("sales");
-          const agg = await salesColl
-            .aggregate([
-              ...(tenantSubdomain ? [{ $match: { tenantSubdomain } }] : []),
-              { $group: { _id: "$code", c: { $sum: 1 } } },
-            ])
-            .toArray();
+          // Get sales counts grouped by user code (ogaName) from PostgreSQL
+          const salesCounts = await db
+            .select({
+              code: sales.ogaName,
+              count: sql<number>`count(*)`.as('count'),
+            })
+            .from(sales)
+            .where(eq(sales.tenantId, tenantId))
+            .groupBy(sales.ogaName);
+          
           const weightByCode = new Map<string, number>();
-          for (const a of agg) {
-            if (typeof a._id === "string") weightByCode.set(a._id, Number(a.c) || 1);
+          for (const row of salesCounts) {
+            if (row.code && typeof row.code === "string") {
+              weightByCode.set(row.code, Number(row.count) || 1);
+            }
           }
+          
           const expanded: string[] = [];
-          for (const s of sales) {
-            const w = Math.max(1, Math.min(10, weightByCode.get(s.code) || 1));
-            for (let i = 0; i < w; i++) expanded.push(s.code);
+          for (const s of filteredSalesAgents) {
+            if (s.code) {
+              const w = Math.max(1, Math.min(10, weightByCode.get(s.code) || 1));
+              for (let i = 0; i < w; i++) expanded.push(s.code);
+            }
           }
           if (expanded.length === 0) return pickRoundRobin(count);
           const order: string[] = [];
@@ -254,7 +270,6 @@ export async function POST(req: NextRequest) {
           tenantId: tenantId || null 
         }));
         if (eventsToInsert.length) await db.insert(leadEvents).values(eventsToInsert as any);
-        await mongo.close();
         return new Response(JSON.stringify({ success: true, rule: rule }), { status: 200 });
       }
 
@@ -283,7 +298,6 @@ export async function POST(req: NextRequest) {
         tenantId: tenantId || null 
       }));
       if (eventsToInsert.length) await db.insert(leadEvents).values(eventsToInsert as any);
-      await mongo.close();
       return new Response(JSON.stringify({ success: true, rule: rule }), { status: 200 });
     }
     return new Response(JSON.stringify({ success: false, error: "unknown action" }), { status: 400 });

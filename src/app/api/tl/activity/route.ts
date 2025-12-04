@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { leads, leadEvents } from "@/db/schema";
+import { leads, leadEvents, users } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
-import { MongoClient } from "mongodb";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
@@ -93,23 +92,24 @@ export async function GET(req: NextRequest) {
     // Optional: load users to resolve codes -> names
     let nameByCode: Map<string, string> | null = null;
     try {
-      const uri = process.env.MONGODB_URI as string;
-      if (uri) {
-        const mongo = new MongoClient(uri);
-        await mongo.connect();
-        const mdb = mongo.db();
-        const users = mdb.collection("users");
-        const docs = await users.find(tenantSubdomain ? { tenantSubdomain } : {}, { projection: { code: 1, name: 1 } }).toArray();
+      if (tenantId) {
+        const userDocs = await db
+          .select({
+            code: users.code,
+            name: users.name,
+          })
+          .from(users)
+          .where(eq(users.tenantId, tenantId));
+        
         nameByCode = new Map<string, string>();
-        for (const u of docs) {
-          if (typeof (u as any).code === "string" && typeof (u as any).name === "string") {
-            nameByCode.set(String((u as any).code), String((u as any).name));
+        for (const u of userDocs) {
+          if (typeof u.code === "string" && u.code && typeof u.name === "string" && u.name) {
+            nameByCode.set(u.code, u.name);
           }
         }
-        await mongo.close();
       }
     } catch {
-      // If Mongo is not configured or fails, proceed without names
+      // If lookup fails, proceed without names
       nameByCode = null;
     }
 

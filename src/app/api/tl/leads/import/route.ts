@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
 import { db } from "@/db/client";
-import { leads, leadEvents, leadListItems } from "@/db/schema";
+import { leads, leadEvents, leadListItems, users } from "@/db/schema";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
-import { getTenantContextFromRequest } from "@/lib/mongoTenant";
-import { getMongoDb } from "@/lib/mongoClient";
+import { eq } from "drizzle-orm";
 
 // Normalize phone by extracting the first 10+ digit run, and cap to 15 digits
 function normalizePhone(value: any): string | null {
@@ -35,30 +34,28 @@ export async function POST(req: NextRequest) {
     } catch {
       return new Response(JSON.stringify({ success: false, error: "Tenant not resolved" }), { status: 400 });
     }
-    // Resolve tenantSubdomain for owner lookup in Mongo users
-    let tenantSubdomain: string | undefined = undefined;
-    try {
-      const ctx = await getTenantContextFromRequest(req as any);
-      tenantSubdomain = ctx?.tenantSubdomain;
-    } catch {}
     if (rows.length === 0) {
       return new Response(JSON.stringify({ success: false, error: "rows array required" }), { status: 400 });
     }
-    // Build owner lookup (code/email -> email) from Mongo users, scoped by tenant
+    // Build owner lookup (code/email -> email) from PostgreSQL users, scoped by tenant
     let ownerLookup: Map<string, string> | null = null;
     try {
-      const mdb = await getMongoDb();
-      const users = mdb.collection("users");
-      const filter = tenantSubdomain ? { tenantSubdomain } : {};
-      const docs = await users.find(filter, { projection: { code: 1, email: 1 } }).toArray();
+      const userDocs = await db
+        .select({
+          code: users.code,
+          email: users.email,
+        })
+        .from(users)
+        .where(eq(users.tenantId, tenantId));
+      
       ownerLookup = new Map<string, string>();
-      for (const u of docs) {
-        const code = (u as any)?.code;
-        const email = (u as any)?.email;
+      for (const u of userDocs) {
+        const code = u.code;
+        const email = u.email;
         if (typeof email === "string" && email.trim().length > 0) {
           ownerLookup.set(email, email);
         }
-        if (typeof code === "string" && code.trim().length > 0 && typeof email === "string" && email.trim().length > 0) {
+        if (typeof code === "string" && code && code.trim().length > 0 && typeof email === "string" && email.trim().length > 0) {
           ownerLookup.set(code, email);
         }
       }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMongoDb } from "@/lib/mongoClient";
+import { db } from "@/db/client";
+import { users, sales, dailyReports, dailyReportEntries } from "@/db/schema";
+import { eq, and, gte, lte, ne, inArray, sql } from "drizzle-orm";
 import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 
@@ -8,157 +10,139 @@ export async function GET(req: NextRequest) {
     // Authenticate the request
     const authResult = await authenticateToken(req as any);
     
-    console.log('🔐 KPI API Auth Result:', {
-      success: authResult.success,
-      user: authResult.user,
-      error: authResult.error,
-      errorCode: authResult.errorCode,
-      statusCode: authResult.statusCode
-    });
-    
     if (!authResult.success) {
-      console.error('❌ KPI API Auth Failed:', authResult.error, authResult.errorCode);
       return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
     }
 
     const { user } = authResult;
     
-    console.log('👤 KPI API User from JWT:', user);
-    
     // Get tenant context
     const { tenantId } = await getTenantContextFromRequest(req as any);
-    
-    console.log('🏢 Tenant Context:', { tenantId, userTenantSubdomain: user?.tenantSubdomain });
-    console.log('🔄 KPI API - Updated version with tenant matching fix');
     
     if (!tenantId) {
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
     }
 
-    const db = await getMongoDb();
+    // Verify user role from PostgreSQL database
+    const userId = parseInt(user?.userId, 10);
+    if (isNaN(userId)) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
+    const dbUserResult = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        role: users.role,
+      })
+      .from(users)
+      .where(and(
+        eq(users.id, userId),
+        eq(users.tenantId, tenantId)
+      ))
+      .limit(1);
     
-    // Verify user role from database (in case JWT is stale)
-    const { ObjectId } = require('mongodb');
-    const dbUser = await db.collection("users").findOne({ 
-      _id: new ObjectId(user?.userId),
-      tenantId 
-    });
-    
-    console.log('👤 KPI API User from DB:', {
-      id: dbUser?._id,
-      email: dbUser?.email,
-      role: dbUser?.role
-    });
+    const dbUser = dbUserResult[0];
     
     // Check if user is a team leader (check both JWT and DB)
     const effectiveRole = dbUser?.role || user?.role;
     
     if (effectiveRole !== "teamleader") {
-      console.error('❌ KPI API Role Check Failed:', {
-        jwtRole: user?.role,
-        dbRole: dbUser?.role,
-        effectiveRole,
-        required: 'teamleader'
-      });
       return NextResponse.json({ 
-        error: `Forbidden - Access denied. Your role is '${effectiveRole}' but 'teamleader' is required. Please log out and log back in with a team leader account.` 
+        error: `Forbidden - Access denied. Your role is '${effectiveRole}' but 'teamleader' is required.` 
       }, { status: 403 });
     }
-    
-    console.log('✅ KPI API Auth Success - User is team leader');
 
     const { searchParams } = new URL(req.url);
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const salesPersonIds = searchParams.get("salesPersonIds");
 
-    // Build match conditions for date filtering
-    const dateMatch: any = {};
+    // Build date filter conditions
+    let dateConditions: any[] = [];
     if (startDate) {
-      dateMatch.$gte = new Date(startDate);
+      dateConditions.push(gte(sales.createdAt, new Date(startDate)));
     }
     if (endDate) {
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-      dateMatch.$lte = end;
+      dateConditions.push(lte(sales.createdAt, end));
     }
 
-    // Fetch all sales data - handle both tenantId and tenantSubdomain
-    const salesMatch: any = { 
-      $or: [
-        { tenantId },
-        { tenantSubdomain: user?.tenantSubdomain }
-      ]
-    };
-    if (Object.keys(dateMatch).length > 0) {
-      salesMatch.createdAt = dateMatch;
+    // Fetch all sales data for this tenant
+    const salesWhere = dateConditions.length > 0
+      ? and(eq(sales.tenantId, tenantId), ...dateConditions)
+      : eq(sales.tenantId, tenantId);
+
+    const salesData = await db
+      .select()
+      .from(sales)
+      .where(salesWhere);
+
+    // Fetch all daily reports for this tenant
+    let reportsDateConditions: any[] = [];
+    if (startDate) {
+      reportsDateConditions.push(gte(dailyReports.date, new Date(startDate)));
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      reportsDateConditions.push(lte(dailyReports.date, end));
     }
 
-    const salesData = await db.collection("sales").find(salesMatch).toArray();
-    console.log('📊 Sales Data Found:', {
-      count: salesData.length,
-      match: salesMatch,
-      sample: salesData.slice(0, 2)
-    });
+    const reportsWhere = reportsDateConditions.length > 0
+      ? and(eq(dailyReports.tenantId, tenantId), ...reportsDateConditions)
+      : eq(dailyReports.tenantId, tenantId);
 
-    // Fetch all daily reports - handle both tenantId and tenantSubdomain
-    const reportsMatch: any = { 
-      $or: [
-        { tenantId },
-        { tenantSubdomain: user?.tenantSubdomain }
-      ]
-    };
-    if (Object.keys(dateMatch).length > 0) {
-      reportsMatch.date = dateMatch;
+    const allDailyReports = await db
+      .select()
+      .from(dailyReports)
+      .where(reportsWhere);
+
+    // Get report IDs and fetch entries
+    const reportIds = allDailyReports.map(r => r.id);
+    let allReportEntries = [];
+    if (reportIds.length > 0) {
+      allReportEntries = await db
+        .select()
+        .from(dailyReportEntries)
+        .where(sql`${dailyReportEntries.reportId} = ANY(${reportIds})`);
     }
 
-    const dailyReports = await db.collection("dailyReports").find(reportsMatch).toArray();
-    console.log('📊 Daily Reports Found:', {
-      count: dailyReports.length,
-      match: reportsMatch,
-      sample: dailyReports.slice(0, 2)
-    });
-
-    // Get all users (salespersons) - handle both tenantId and tenantSubdomain
-    const users = await db.collection("users")
-      .find({ 
-        $or: [
-          { tenantId },
-          { tenantSubdomain: user?.tenantSubdomain }
-        ],
-        role: { $ne: "teamleader" } 
+    // Get all users (salespersons) excluding team leaders
+    const allUsers = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        code: users.code,
+        email: users.email,
+        role: users.role,
       })
-      .toArray();
-    console.log('👥 Users Found:', {
-      count: users.length,
-      tenantId,
-      users: users.map((u: any) => ({ id: u._id, name: u.name, role: u.role }))
-    });
+      .from(users)
+      .where(and(
+        eq(users.tenantId, tenantId),
+        ne(users.role, "teamleader")
+      ));
 
     // Filter by specific salesPersonIds if provided
-    let targetUsers = users;
+    let targetUsers = allUsers;
     if (salesPersonIds) {
-      const idsArray = salesPersonIds.split(',');
-      targetUsers = users.filter((user: any) => idsArray.includes(user._id.toString()));
+      const idsArray = salesPersonIds.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+      targetUsers = allUsers.filter((u) => idsArray.includes(u.id));
     }
 
     // Calculate KPIs for each salesperson
-    const kpiData = targetUsers.map((user: any) => {
-      const userName = user.name.toLowerCase();
-      console.log(`🔍 Processing user: ${user.name} (${userName})`);
+    const kpiData = targetUsers.map((user) => {
+      const userName = (user.name || '').toLowerCase();
       
-      // Get sales for this user
+      // Get sales for this user (match by ogaName)
       const userSales = salesData.filter(
         (sale: any) => sale.ogaName?.toLowerCase() === userName
       );
-      console.log(`💰 Sales for ${user.name}:`, {
-        count: userSales.length,
-        sales: userSales.map((s: any) => ({ ogaName: s.ogaName, amount: s.amount, date: s.createdAt }))
-      });
 
       // Create a map of daily sales
-      const dailySalesMap = new Map();
-      const dailySalesCountMap = new Map();
+      const dailySalesMap = new Map<string, number>();
+      const dailySalesCountMap = new Map<string, number>();
       
       userSales.forEach((sale: any) => {
         if (sale.createdAt) {
@@ -174,10 +158,10 @@ export async function GET(req: NextRequest) {
       const allDates = new Set<string>();
       
       // Add dates from daily reports
-      dailyReports.forEach((report: any) => {
-        if (report.salespersons?.some((sp: any) => 
-          sp.name.toLowerCase() === userName
-        )) {
+      allDailyReports.forEach((report) => {
+        const entries = allReportEntries.filter(e => e.reportId === report.id);
+        const hasEntry = entries.some(e => e.salespersonName?.toLowerCase() === userName);
+        if (hasEntry) {
           allDates.add(new Date(report.date).toISOString().split('T')[0]);
         }
       });
@@ -196,18 +180,20 @@ export async function GET(req: NextRequest) {
         const salesCount = dailySalesCountMap.get(dateStr) || 0;
         
         // Find corresponding daily report data
-        const dailyReport = dailyReports.find((report: any) => {
+        const reportForDate = allDailyReports.find((report) => {
           const reportDate = new Date(report.date).toISOString().split('T')[0];
-          return reportDate === dateStr && report.salespersons?.some((sp: any) => 
-            sp.name.toLowerCase() === userName
-          );
+          return reportDate === dateStr;
         });
         
-        const salesPersonData = dailyReport?.salespersons?.find((sp: any) => 
-          sp.name.toLowerCase() === userName
+        const reportEntries = reportForDate 
+          ? allReportEntries.filter(e => e.reportId === reportForDate.id)
+          : [];
+        
+        const salesPersonEntry = reportEntries.find((e) => 
+          e.salespersonName?.toLowerCase() === userName
         );
         
-        const leadsAssigned = salesPersonData?.prospects || 0;
+        const leadsAssigned = salesPersonEntry?.prospects || 0;
         const conversionRate = leadsAssigned > 0 ? ((salesCount / leadsAssigned) * 100).toFixed(1) : '0';
         const adSpend = leadsAssigned * 50;
         const adSpendPercentage = dailyAmount > 0 ? ((adSpend / dailyAmount) * 100).toFixed(1) : '0';
@@ -233,7 +219,7 @@ export async function GET(req: NextRequest) {
       const overallAdSpendPercentage = totalAmount > 0 ? ((totalAdSpend / totalAmount) * 100).toFixed(1) : '0';
 
       return {
-        userId: user._id.toString(),
+        userId: user.id.toString(),
         name: user.name,
         code: user.code,
         email: user.email,
@@ -267,13 +253,6 @@ export async function GET(req: NextRequest) {
       ? parseFloat(((teamSummary.totalAdSpend / teamSummary.totalAmount) * 100).toFixed(1))
       : 0;
 
-    console.log('📊 KPI API Response:', {
-      kpiDataCount: kpiData.length,
-      teamSummary,
-      salesPersonIds,
-      firstKPI: kpiData[0]
-    });
-
     return NextResponse.json({
       success: true,
       kpiData,
@@ -287,4 +266,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

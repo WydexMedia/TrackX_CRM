@@ -1,17 +1,7 @@
 import { NextResponse } from "next/server";
-import { MongoClient, ObjectId } from "mongodb";
-
-const uri = process.env.MONGODB_URI;
-if (!uri) {
-  throw new Error("MONGODB_URI is not configured");
-}
-
-let clientPromise: Promise<MongoClient> | undefined;
-
-if (!clientPromise) {
-  const client = new MongoClient(uri);
-  clientPromise = client.connect();
-}
+import { db } from "@/db/client";
+import { users } from "@/db/schema";
+import { eq, and, ne } from "drizzle-orm";
 
 // Update a team leader
 export async function PUT(
@@ -21,27 +11,36 @@ export async function PUT(
   try {
     const { id, leaderId } = await params;
     const body = await req.json();
-    const { code, name, email, phone, password, role, tenantSubdomain } = body;
+    const { code, name, email, phone, password, role } = body;
+    const tenantId = parseInt(id);
+    const userId = parseInt(leaderId);
 
-    if (!code || !name || !email || !tenantSubdomain) {
+    if (!code || !name || !email) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    const client = await clientPromise!;
-    const db = client.db();
-    const users = db.collection("users");
+    if (isNaN(userId)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid leader ID" },
+        { status: 400 }
+      );
+    }
 
     // Check if user with same code already exists in this tenant (excluding current user)
-    const existingUser = await users.findOne({
-      code,
-      tenantSubdomain,
-      _id: { $ne: new ObjectId(leaderId) },
-    });
+    const existingUsers = await db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.code, code),
+        eq(users.tenantId, tenantId),
+        ne(users.id, userId)
+      ))
+      .limit(1);
 
-    if (existingUser) {
+    if (existingUsers.length > 0) {
       return NextResponse.json(
         { success: false, error: "User with this code already exists in this tenant" },
         { status: 409 }
@@ -53,9 +52,7 @@ export async function PUT(
       code,
       name,
       email,
-      phone: phone || null,
       role: role || "teamleader",
-      tenantSubdomain,
       updatedAt: new Date(),
     };
 
@@ -65,12 +62,16 @@ export async function PUT(
     }
 
     // Update the team leader
-    const result = await users.updateOne(
-      { _id: new ObjectId(leaderId) },
-      { $set: updateData }
-    );
+    const updateResult = await db
+      .update(users)
+      .set(updateData)
+      .where(and(
+        eq(users.id, userId),
+        eq(users.tenantId, tenantId)
+      ))
+      .returning({ id: users.id });
 
-    if (result.matchedCount === 0) {
+    if (updateResult.length === 0) {
       return NextResponse.json(
         { success: false, error: "Team leader not found" },
         { status: 404 }
@@ -99,16 +100,27 @@ export async function DELETE(
 ) {
   try {
     const { id, leaderId } = await params;
-    const client = await clientPromise!;
-    const mongoDb = client.db();
-    const users = mongoDb.collection("users");
+    const tenantId = parseInt(id);
+    const userId = parseInt(leaderId);
+
+    if (isNaN(userId)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid leader ID" },
+        { status: 400 }
+      );
+    }
 
     // Delete the team leader
-    const result = await users.deleteOne({
-      _id: new ObjectId(leaderId),
-    });
+    const deleteResult = await db
+      .delete(users)
+      .where(and(
+        eq(users.id, userId),
+        eq(users.tenantId, tenantId),
+        eq(users.role, "teamleader")
+      ))
+      .returning({ id: users.id });
 
-    if (result.deletedCount === 0) {
+    if (deleteResult.length === 0) {
       return NextResponse.json(
         { success: false, error: "Team leader not found" },
         { status: 404 }

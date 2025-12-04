@@ -1,19 +1,18 @@
 import { NextResponse } from 'next/server';
-import { MongoClient } from 'mongodb';
-
-const uri = process.env.MONGODB_URI;
+import { db } from '@/db/client';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function POST() {
-  const client = new MongoClient(uri);
-  
   try {
-    await client.connect();
-    const db = client.db();
-    const users = db.collection('users');
+    // Check if team leader already exists by code
+    const existingTeamLeader = await db
+      .select()
+      .from(users)
+      .where(eq(users.code, "MuhsinaWydex"))
+      .limit(1);
     
-    // Check if team leader already exists
-    const existingTeamLeader = await users.findOne({ code: "MuhsinaWydex" });
-    if (existingTeamLeader) {
+    if (existingTeamLeader.length > 0) {
       return NextResponse.json({ 
         success: false, 
         message: "Team leader already exists" 
@@ -21,22 +20,29 @@ export async function POST() {
     }
     
     // Create team leader user
-    const teamLeader = {
-      name: "Muhsina Wydex",
-      code: "MuhsinaWydex",
-      email: "muhsina@wydex.com",
-      password: "Muhsinaproskill@2025",
-      role: "teamleader",
-      target: 0,
-      createdAt: new Date()
-    };
-    
-    await users.insertOne(teamLeader);
+    const [teamLeader] = await db
+      .insert(users)
+      .values({
+        name: "Muhsina Wydex",
+        code: "MuhsinaWydex",
+        email: "muhsina@wydex.com",
+        password: "Muhsinaproskill@2025",
+        role: "teamleader",
+        target: 0,
+      })
+      .returning({ 
+        id: users.id,
+        name: users.name,
+        code: users.code,
+        email: users.email,
+        role: users.role
+      });
     
     return NextResponse.json({ 
       success: true, 
       message: "Team leader created successfully",
       user: {
+        id: teamLeader.id,
         name: teamLeader.name,
         code: teamLeader.code,
         email: teamLeader.email,
@@ -50,7 +56,5 @@ export async function POST() {
       success: false, 
       error: "Failed to create team leader" 
     }, { status: 500 });
-  } finally {
-    await client.close();
   }
-} 
+}
