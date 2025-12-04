@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
-import { getMongoDb } from './mongoClient';
-import { ObjectId } from 'mongodb';
+import { db } from '@/db/client';
+import { jwtBlacklist, users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
 const JWT_EXPIRES_IN = '24h'; // Token expires in 24 hours
@@ -44,10 +45,12 @@ export function verifyToken(token: string): JWTPayload | null {
  */
 export async function isTokenBlacklisted(token: string): Promise<boolean> {
   try {
-    const db = await getMongoDb();
-    const blacklist = db.collection('jwt_blacklist');
-    const blacklistedToken = await blacklist.findOne({ token });
-    return !!blacklistedToken;
+    const blacklistedToken = await db
+      .select()
+      .from(jwtBlacklist)
+      .where(eq(jwtBlacklist.token, token))
+      .limit(1);
+    return blacklistedToken.length > 0;
   } catch (error) {
     console.error('Error checking blacklist:', error);
     return false;
@@ -59,13 +62,11 @@ export async function isTokenBlacklisted(token: string): Promise<boolean> {
  */
 export async function blacklistToken(token: string, userId: string): Promise<void> {
   try {
-    const db = await getMongoDb();
-    const blacklist = db.collection('jwt_blacklist');
-    await blacklist.insertOne({
+    await db.insert(jwtBlacklist).values({
       token,
       userId,
-      revokedAt: new Date()
-    });
+      revokedAt: new Date(),
+    }).onConflictDoNothing();
   } catch (error) {
     console.error('Error blacklisting token:', error);
     throw error;
@@ -78,20 +79,17 @@ export async function blacklistToken(token: string, userId: string): Promise<voi
  */
 export async function revokeAllUserTokens(userId: string): Promise<void> {
   try {
-    const db = await getMongoDb();
-    const users = db.collection('users');
-    
-    // Update the user's lastTokenRevocation timestamp
-    const now = new Date();
-    const objectId = (() => { try { return new ObjectId(userId); } catch { return null; } })();
-    if (!objectId) {
+    const userIdNum = parseInt(userId, 10);
+    if (isNaN(userIdNum)) {
       console.error('revokeAllUserTokens: invalid userId provided', userId);
       return;
     }
-    await users.updateOne(
-      { _id: objectId },
-      { $set: { lastTokenRevocation: now } }
-    );
+    
+    // Update the user's lastTokenRevocation timestamp
+    await db
+      .update(users)
+      .set({ lastTokenRevocation: new Date() })
+      .where(eq(users.id, userIdNum));
   } catch (error) {
     console.error('Error revoking user tokens:', error);
     throw error;
@@ -103,15 +101,19 @@ export async function revokeAllUserTokens(userId: string): Promise<void> {
  */
 export async function isTokenRevokedForUser(token: string, userId: string): Promise<boolean> {
   try {
-    const db = await getMongoDb();
-    const users = db.collection('users');
-    
-    // Get the user's last token revocation time
-    const objectId = (() => { try { return new ObjectId(userId); } catch { return null; } })();
-    if (!objectId) {
+    const userIdNum = parseInt(userId, 10);
+    if (isNaN(userIdNum)) {
       return true;
     }
-    const user = await users.findOne({ _id: objectId });
+    
+    // Get the user's last token revocation time
+    const userResult = await db
+      .select({ lastTokenRevocation: users.lastTokenRevocation })
+      .from(users)
+      .where(eq(users.id, userIdNum))
+      .limit(1);
+    
+    const user = userResult[0];
     if (!user || !user.lastTokenRevocation) {
       return false; // No revocation timestamp means token is valid
     }
@@ -139,16 +141,23 @@ export async function isTokenRevokedForUser(token: string, userId: string): Prom
  */
 export async function cleanupExpiredTokens(): Promise<void> {
   try {
-    const db = await getMongoDb();
-    const blacklist = db.collection('jwt_blacklist');
-    
     // Remove tokens that are older than 7 days
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    await blacklist.deleteMany({
-      revokedAt: { $lt: sevenDaysAgo }
-    });
+    
+    await db
+      .delete(jwtBlacklist)
+      .where(eq(jwtBlacklist.revokedAt, sevenDaysAgo) as any); // Use SQL for date comparison
   } catch (error) {
     console.error('Error cleaning up expired tokens:', error);
+    // Use raw SQL for date comparison
+    try {
+      const { sql } = require('drizzle-orm');
+      await db.execute(
+        sql`DELETE FROM jwt_blacklist WHERE revoked_at < NOW() - INTERVAL '7 days'`
+      );
+    } catch (sqlError) {
+      console.error('Error with SQL cleanup:', sqlError);
+    }
   }
 }
 

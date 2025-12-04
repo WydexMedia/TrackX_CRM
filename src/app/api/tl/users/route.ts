@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMongoDb } from "@/lib/mongoClient";
+import { db } from "@/db/client";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
 import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
@@ -12,22 +14,36 @@ export async function GET(req: NextRequest) {
       return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
     }
 
-    const mdb = await getMongoDb();
-    const users = mdb.collection("users");
-    const { tenantSubdomain } = await getTenantContextFromRequest(req as any);
-    const filter = tenantSubdomain ? { tenantSubdomain } : {};
-    const docs = await users.find(filter, { projection: { code: 1, email: 1, name: 1 } }).toArray();
+    const { tenantId } = await getTenantContextFromRequest(req as any);
+    
+    let allUsers;
+    if (tenantId) {
+      allUsers = await db
+        .select({
+          code: users.code,
+          email: users.email,
+          name: users.name
+        })
+        .from(users)
+        .where(eq(users.tenantId, tenantId));
+    } else {
+      allUsers = await db.select({
+        code: users.code,
+        email: users.email,
+        name: users.name
+      }).from(users);
+    }
     
     const userMap: Record<string, string> = {};
-    for (const u of docs) {
-      const code = (u as any).code;
-      const email = (u as any).email;
-      const name = (u as any).name;
-      if (typeof name === "string") {
+    for (const u of allUsers) {
+      const code = u.code;
+      const email = u.email;
+      const name = u.name;
+      if (typeof name === "string" && name) {
         if (typeof email === "string" && email.trim().length > 0) {
           userMap[String(email)] = String(name);
         }
-        if (typeof code === "string" && code.trim().length > 0) {
+        if (typeof code === "string" && code && code.trim().length > 0) {
           userMap[String(code)] = String(name);
         }
       }
@@ -38,4 +54,4 @@ export async function GET(req: NextRequest) {
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message || "Failed to fetch users" }), { status: 500 });
   }
-} 
+}

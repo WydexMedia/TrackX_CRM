@@ -1,6 +1,7 @@
-import { getMongoDb } from '@/lib/mongoClient';
+import { db } from '@/db/client';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { blacklistToken, extractTokenFromHeader } from '@/lib/jwt';
-import { ObjectId } from 'mongodb';
 
 export async function POST(request) {
   try {
@@ -27,22 +28,17 @@ export async function POST(request) {
     await blacklistToken(token, payload.userId);
     
     // Set lastLogout timestamp to indicate clean logout
-    const db = await getMongoDb();
-    const usersCollection = db.collection('users');
-    const updateResult = await usersCollection.updateOne(
-      { _id: new ObjectId(payload.userId) },
-      { $set: { lastLogout: new Date() } }
-    );
-    
-    console.log('Logout update result:', {
-      userId: payload.userId,
-      matchedCount: updateResult.matchedCount,
-      modifiedCount: updateResult.modifiedCount
-    });
+    const userId = parseInt(payload.userId, 10);
+    if (!isNaN(userId)) {
+      await db
+        .update(users)
+        .set({ lastLogout: new Date() })
+        .where(eq(users.id, userId));
+    }
     
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (e) {
     console.error('Logout error:', e);
     return new Response(JSON.stringify({ success: false, error: 'Logout failed' }), { status: 500 });
   }
-} 
+}

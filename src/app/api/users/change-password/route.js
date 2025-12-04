@@ -1,22 +1,15 @@
 import { NextResponse } from 'next/server';
-import { MongoClient, ObjectId } from 'mongodb';
+import { db } from '@/db/client';
+import { users } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
-
-const uri = process.env.MONGODB_URI;
-let client;
-let clientPromise;
-
-if (!clientPromise) {
-  client = new MongoClient(uri);
-  clientPromise = client.connect();
-}
 
 export async function POST(request) {
   try {
-    const { _id, currentPassword, newPassword } = await request.json();
-    const { tenantSubdomain } = await getTenantContextFromRequest(request);
+    const { id, currentPassword, newPassword } = await request.json();
+    const { tenantId } = await getTenantContextFromRequest(request);
     
-    if (!_id || !currentPassword || !newPassword) {
+    if (!id || !currentPassword || !newPassword) {
       return NextResponse.json({ 
         success: false, 
         error: 'Missing required fields' 
@@ -30,16 +23,34 @@ export async function POST(request) {
       }, { status: 400 });
     }
     
-    const client = await clientPromise;
-    const db = client.db();
-    const users = db.collection('users');
+    const userId = parseInt(id, 10);
+    if (isNaN(userId)) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Invalid user ID' 
+      }, { status: 400 });
+    }
     
     // Find user and verify current password
-    const filter = tenantSubdomain 
-      ? { _id: new ObjectId(_id), tenantSubdomain } 
-      : { _id: new ObjectId(_id) };
+    let userResult;
+    if (tenantId) {
+      userResult = await db
+        .select()
+        .from(users)
+        .where(and(
+          eq(users.id, userId),
+          eq(users.tenantId, tenantId)
+        ))
+        .limit(1);
+    } else {
+      userResult = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+    }
     
-    const user = await users.findOne(filter);
+    const user = userResult[0];
     
     if (!user) {
       return NextResponse.json({ 
@@ -57,17 +68,16 @@ export async function POST(request) {
     }
     
     // Update password
-    const result = await users.updateOne(
-      filter,
-      { 
-        $set: { 
-          password: newPassword,
-          updatedAt: new Date()
-        }
-      }
-    );
+    const updateResult = await db
+      .update(users)
+      .set({ 
+        password: newPassword,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning({ id: users.id });
     
-    if (result.modifiedCount === 1) {
+    if (updateResult.length > 0) {
       return NextResponse.json({ success: true });
     } else {
       return NextResponse.json({ 
@@ -83,4 +93,4 @@ export async function POST(request) {
       error: 'Internal server error' 
     }, { status: 500 });
   }
-} 
+}

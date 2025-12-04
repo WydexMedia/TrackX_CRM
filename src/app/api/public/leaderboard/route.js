@@ -1,37 +1,24 @@
 import { NextResponse } from 'next/server';
-import { MongoClient } from 'mongodb';
+import { db } from '@/db/client';
+import { sales } from '@/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
-
-const uri = process.env.MONGODB_URI;
-let client;
-let clientPromise;
-
-if (!clientPromise) {
-  client = new MongoClient(uri);
-  clientPromise = client.connect();
-}
 
 export async function GET(request) {
   try {
     // Get tenant context (no authentication required)
-    const { tenantSubdomain } = await getTenantContextFromRequest(request);
-    const client = await clientPromise;
-    const db = client.db();
-    const sales = db.collection('sales');
+    const { tenantId } = await getTenantContextFromRequest(request);
     
-    // Build query to filter by tenant only
-    const query = {};
-    
-    // Add tenant filtering
-    if (tenantSubdomain) {
-      query.tenantSubdomain = tenantSubdomain;
+    if (!tenantId) {
+      return NextResponse.json([]);
     }
     
     // Get all sales for the tenant (no user filtering for public leaderboard)
-    const allSales = await sales
-      .find(query)
-      .sort({ createdAt: -1 })
-      .toArray();
+    const allSales = await db
+      .select()
+      .from(sales)
+      .where(eq(sales.tenantId, tenantId))
+      .orderBy(desc(sales.createdAt));
     
     return NextResponse.json(allSales);
   } catch (error) {

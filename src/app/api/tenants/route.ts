@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { tenants } from "@/db/schema";
+import { tenants, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
-import { getMongoDb } from "@/lib/mongoClient";
 
 export async function GET(req: Request) {
   try {
@@ -162,34 +161,31 @@ export async function POST(req: Request) {
 
       const tenantId = inserted[0].id;
 
-      // Create team leader user in MongoDB
+      // Create team leader user in PostgreSQL
       try {
-        const mongoDb = await getMongoDb();
-        const users = mongoDb.collection('users');
-        
-        const teamLeader = {
-          name: contactName,
-          code: email, // Use email as the employee code
-          email: email,
-          password: password, // Note: In production, this should be hashed
-          role: "teamleader",
-          target: 0,
-          tenantSubdomain: subdomain,
-          tenantId: tenantId,
-          createdAt: new Date()
-        };
-        
-        await users.insertOne(teamLeader);
+        const [teamLeader] = await db
+          .insert(users)
+          .values({
+            name: contactName,
+            code: email, // Use email as the employee code
+            email: email,
+            password: password, // Note: In production, this should be hashed
+            role: "teamleader",
+            target: 0,
+            tenantId: tenantId,
+          })
+          .returning({ id: users.id, email: users.email, name: users.name, role: users.role });
         
         console.log(`Team leader created for tenant ${subdomain}:`, {
+          id: teamLeader.id,
           name: teamLeader.name,
-          code: teamLeader.code, // This is now the email
+          code: email, // This is now the email
           email: teamLeader.email,
           role: teamLeader.role
         });
         
-      } catch (mongoError) {
-        console.error("Failed to create team leader user:", mongoError);
+      } catch (userError) {
+        console.error("Failed to create team leader user:", userError);
         // Don't fail the entire request if user creation fails
         // The tenant was created successfully
       }

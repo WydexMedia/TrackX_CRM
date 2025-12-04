@@ -1,16 +1,9 @@
 import { NextResponse } from 'next/server';
-import { MongoClient } from 'mongodb';
+import { db } from '@/db/client';
+import { users, sales, dailyReports, dailyReportEntries } from '@/db/schema';
+import { eq, and, ne, gte, lte, sql } from 'drizzle-orm';
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
 import { authenticateToken, createUnauthorizedResponse } from '@/lib/authMiddleware';
-
-const uri = process.env.MONGODB_URI;
-let client;
-let clientPromise;
-
-if (!clientPromise) {
-  client = new MongoClient(uri);
-  clientPromise = client.connect();
-}
 
 // Helper functions for date filtering
 function filterSalesByDate(sales, date) {
@@ -48,67 +41,83 @@ export async function GET(request) {
     return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
   }
 
-  const { tenantSubdomain } = await getTenantContextFromRequest(request);
-  const client = await clientPromise;
-  const db = client.db();
-  const users = db.collection('users');
-  const sales = db.collection('sales');
-  const dailyReports = db.collection('daily_reports');
+  const { tenantId } = await getTenantContextFromRequest(request);
+  
+  if (!tenantId) {
+    return NextResponse.json([]);
+  }
 
   // Get all users (excluding team leaders)
-  const userFilter = Object.assign({ role: { $ne: 'teamleader' } }, tenantSubdomain ? { tenantSubdomain } : {});
-  const allUsers = await users.find(userFilter).toArray();
-  const allSales = await sales.find(tenantSubdomain ? { tenantSubdomain } : {}).toArray();
+  const allUsers = await db
+    .select()
+    .from(users)
+    .where(and(
+      eq(users.tenantId, tenantId),
+      ne(users.role, 'teamleader')
+    ));
+
+  // Get all sales for the tenant
+  const allSalesData = await db
+    .select()
+    .from(sales)
+    .where(eq(sales.tenantId, tenantId));
 
   // Get all daily reports for the current month
   const now = new Date();
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  const reportFilter = {
-    date: {
-      $gte: firstDayOfMonth.toISOString(),
-      $lte: lastDayOfMonth.toISOString(),
-    },
-    ...(tenantSubdomain ? { tenantSubdomain } : {}),
-  };
-  const allReports = await dailyReports.find(reportFilter).toArray();
+  
+  const allReportsData = await db
+    .select()
+    .from(dailyReports)
+    .where(and(
+      eq(dailyReports.tenantId, tenantId),
+      gte(dailyReports.date, firstDayOfMonth),
+      lte(dailyReports.date, lastDayOfMonth)
+    ));
+
+  // Get daily report entries
+  const reportIds = allReportsData.map(r => r.id);
+  let allReportEntries = [];
+  if (reportIds.length > 0) {
+    allReportEntries = await db
+      .select()
+      .from(dailyReportEntries)
+      .where(sql`${dailyReportEntries.reportId} = ANY(${reportIds})`);
+  }
 
   const today = new Date();
   const lastMonth = getLastMonthDate();
 
   const analytics = allUsers.map(user => {
-    const userSales = allSales.filter(sale => {
+    const userSales = allSalesData.filter(sale => {
       const exactMatch = sale.ogaName === user.name;
-      const caseInsensitiveMatch = sale.ogaName.toLowerCase() === user.name.toLowerCase();
-      const partialMatch = sale.ogaName.toLowerCase().includes(user.name.toLowerCase()) || 
-                         user.name.toLowerCase().includes(sale.ogaName.toLowerCase());
+      const caseInsensitiveMatch = sale.ogaName?.toLowerCase() === user.name?.toLowerCase();
+      const partialMatch = sale.ogaName?.toLowerCase().includes(user.name?.toLowerCase() || '') || 
+                         user.name?.toLowerCase().includes(sale.ogaName?.toLowerCase() || '');
       return exactMatch || caseInsensitiveMatch || partialMatch;
     });
     
-    console.log(`Analytics for user ${user.name}:`);
-    console.log(`- Total sales found: ${userSales.length}`);
-    console.log(`- Sample sale:`, userSales[0]);
     const todaySales = filterSalesByDate(userSales, today);
     const thisMonthSales = filterSalesByMonth(userSales, today);
     const lastMonthSales = filterSalesByMonth(userSales, lastMonth);
 
-    const todayCollection = todaySales.reduce((sum, sale) => sum + sale.amount, 0);
-    const thisMonthCollection = thisMonthSales.reduce((sum, sale) => sum + sale.amount, 0);
-    const lastMonthCollection = lastMonthSales.reduce((sum, sale) => sum + sale.amount, 0);
+    const todayCollection = todaySales.reduce((sum, sale) => sum + (sale.amount || 0), 0);
+    const thisMonthCollection = thisMonthSales.reduce((sum, sale) => sum + (sale.amount || 0), 0);
+    const lastMonthCollection = lastMonthSales.reduce((sum, sale) => sum + (sale.amount || 0), 0);
 
-    // Count only new admissions for sales count (matching leaderboard logic)
+    // Count only new admissions for sales count
     const newAdmissionSales = userSales.filter(sale => 
-      (((sale.newAdmission ?? '') + '').trim().toLowerCase() === 'yes') || sale.newAdmission === 'Yes'
+      (String(sale.newAdmission || '').trim().toLowerCase() === 'yes') || sale.newAdmission === 'Yes'
     );
     const todayNewSales = todaySales.filter(sale => 
-      (((sale.newAdmission ?? '') + '').trim().toLowerCase() === 'yes') || sale.newAdmission === 'Yes'
+      (String(sale.newAdmission || '').trim().toLowerCase() === 'yes') || sale.newAdmission === 'Yes'
     );
     const thisMonthNewSales = thisMonthSales.filter(sale => 
-      (((sale.newAdmission ?? '') + '').trim().toLowerCase() === 'yes') || sale.newAdmission === 'Yes'
+      (String(sale.newAdmission || '').trim().toLowerCase() === 'yes') || sale.newAdmission === 'Yes'
     );
 
-    // Calculate days remaining in the current month (same logic as sales dashboard)
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    // Calculate days remaining in the current month
     const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     const daysRemaining = lastDayOfMonth.getDate() - today.getDate();
 
@@ -119,17 +128,16 @@ export async function GET(request) {
 
     // Calculate total leads assigned this month from daily reports
     let totalLeads = 0;
-    for (const report of allReports) {
-      if (Array.isArray(report.salespersons)) {
-        const sp = report.salespersons.find(sp => sp.name && sp.name.toLowerCase() === user.name.toLowerCase());
-        if (sp && sp.prospects) {
-          totalLeads += parseInt(sp.prospects) || 0;
-        }
+    for (const report of allReportsData) {
+      const entries = allReportEntries.filter(e => e.reportId === report.id);
+      const entry = entries.find(e => e.salespersonName?.toLowerCase() === user.name?.toLowerCase());
+      if (entry && entry.prospects) {
+        totalLeads += entry.prospects || 0;
       }
     }
 
     return {
-      _id: user._id,
+      id: user.id,
       name: user.name,
       code: user.code,
       email: user.email,
@@ -138,7 +146,7 @@ export async function GET(request) {
       pendingTarget: pendingTarget,
       todayCollection: todayCollection,
       lastMonthCollection: lastMonthCollection,
-      daysPending: daysRemaining, // Keeping field name for compatibility, but now represents days remaining
+      daysPending: daysRemaining,
       totalSales: newAdmissionSales.length,
       todaySales: todayNewSales.length,
       thisMonthSales: thisMonthNewSales.length,
@@ -147,4 +155,4 @@ export async function GET(request) {
   });
 
   return NextResponse.json(analytics);
-} 
+}

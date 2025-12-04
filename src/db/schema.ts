@@ -208,4 +208,127 @@ export const courses = pgTable(
   })
 );
 
+// Users - migrated from MongoDB
+export const users = pgTable(
+  "users",
+  {
+    id: serial("id").primaryKey(),
+    email: varchar("email", { length: 256 }).notNull().unique(),
+    password: varchar("password", { length: 255 }).notNull(),
+    code: varchar("code", { length: 255 }),
+    name: varchar("name", { length: 255 }),
+    role: varchar("role", { length: 32 }).notNull().default("sales"), // teamleader | jl | sales | CEO
+    target: integer("target").default(0),
+    tenantId: integer("tenant_id"),
+    lastLogin: timestamp("last_login", { withTimezone: true }),
+    lastLogout: timestamp("last_logout", { withTimezone: true }),
+    lastTokenRevocation: timestamp("last_token_revocation", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    usersEmailIdx: uniqueIndex("users_email_idx").on(t.email),
+    usersTenantCodeIdx: uniqueIndex("users_tenant_code_idx").on(t.tenantId, t.code),
+    usersTenantIdx: index("users_tenant_idx").on(t.tenantId),
+    usersRoleIdx: index("users_role_idx").on(t.role),
+  })
+);
+
+// Sales - migrated from MongoDB
+export const sales = pgTable(
+  "sales",
+  {
+    id: serial("id").primaryKey(),
+    customerName: varchar("customer_name", { length: 255 }),
+    customerPhone: varchar("customer_phone", { length: 32 }).notNull(),
+    amount: integer("amount").notNull(), // Amount in base currency units
+    courseName: varchar("course_name", { length: 255 }),
+    courseId: integer("course_id"), // Reference to courses table
+    newAdmission: varchar("new_admission", { length: 10 }).default("Yes"), // Yes | No
+    ogaName: varchar("oga_name", { length: 255 }), // Salesperson name
+    leadId: integer("lead_id"), // Reference to leads table
+    stageNotes: text("stage_notes"),
+    tenantId: integer("tenant_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    salesTenantIdx: index("sales_tenant_idx").on(t.tenantId),
+    salesCreatedAtIdx: index("sales_created_at_idx").on(t.createdAt),
+    salesOgaNameIdx: index("sales_oga_name_idx").on(t.ogaName),
+    salesCustomerPhoneIdx: index("sales_customer_phone_idx").on(t.customerPhone),
+  })
+);
+
+// Team Assignments - migrated from MongoDB
+export const teamAssignments = pgTable(
+  "team_assignments",
+  {
+    id: serial("id").primaryKey(),
+    salespersonId: integer("salesperson_id").notNull(), // Reference to users.id
+    jlId: integer("jl_id").notNull(), // Reference to users.id (Junior Leader)
+    status: varchar("status", { length: 20 }).notNull().default("active"), // active | inactive
+    assignedBy: integer("assigned_by"), // Reference to users.id
+    assignedAt: timestamp("assigned_at", { withTimezone: true }).defaultNow(),
+    deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
+    tenantId: integer("tenant_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    teamAssignmentsTenantStatusIdx: index("team_assignments_tenant_status_idx").on(t.tenantId, t.status),
+    teamAssignmentsSalespersonIdx: index("team_assignments_salesperson_idx").on(t.salespersonId, t.status),
+    teamAssignmentsJlIdx: index("team_assignments_jl_idx").on(t.jlId, t.status),
+  })
+);
+
+// Daily Reports - migrated from MongoDB
+export const dailyReports = pgTable(
+  "daily_reports",
+  {
+    id: serial("id").primaryKey(),
+    date: timestamp("date", { withTimezone: true }).notNull(), // Date of the report
+    tenantId: integer("tenant_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    dailyReportsTenantDateIdx: uniqueIndex("daily_reports_tenant_date_idx").on(t.tenantId, t.date),
+  })
+);
+
+// Daily Report Entries - normalized from MongoDB daily_reports.salespersons array
+export const dailyReportEntries = pgTable(
+  "daily_report_entries",
+  {
+    id: serial("id").primaryKey(),
+    reportId: integer("report_id").notNull(), // Reference to daily_reports.id
+    salespersonName: varchar("salesperson_name", { length: 255 }).notNull(),
+    prospects: integer("prospects").default(0), // Number of leads assigned
+    collection: integer("collection"), // Amount collected (optional)
+    sales: integer("sales"), // Number of sales (optional)
+    tenantId: integer("tenant_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    dailyReportEntriesReportIdx: index("daily_report_entries_report_idx").on(t.reportId),
+    dailyReportEntriesSalespersonIdx: index("daily_report_entries_salesperson_idx").on(t.salespersonName),
+  })
+);
+
+// JWT Blacklist - migrated from MongoDB
+export const jwtBlacklist = pgTable(
+  "jwt_blacklist",
+  {
+    id: serial("id").primaryKey(),
+    token: varchar("token", { length: 500 }).notNull().unique(),
+    userId: varchar("user_id", { length: 255 }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    jwtBlacklistTokenIdx: uniqueIndex("jwt_blacklist_token_idx").on(t.token),
+    jwtBlacklistRevokedAtIdx: index("jwt_blacklist_revoked_at_idx").on(t.revokedAt),
+  })
+);
+
 

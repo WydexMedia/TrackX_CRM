@@ -1,20 +1,16 @@
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
-import { getMongoDb } from '@/lib/mongoClient';
+import { db } from '@/db/client';
+import { users, tenants } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { generateToken, revokeAllUserTokens } from '@/lib/jwt';
 
 export async function POST(request) {
   console.log('LOGIN CONFIRM API HIT');
   const body = await request.json();
   const { email, password } = body;
-  const { tenantSubdomain } = await getTenantContextFromRequest(request);
+  const { tenantSubdomain, tenantId } = await getTenantContextFromRequest(request);
   console.log('Received:', { email, tenantSubdomain });
 
-  const db = await getMongoDb();
-
-  // Validate credentials
-  let user;
-  const usersCol = db.collection('users');
-  
   if (!password || typeof password !== 'string') {
     return new Response(
       JSON.stringify({ error: 'Password is required for login' }),
@@ -22,54 +18,91 @@ export async function POST(request) {
     );
   }
 
-  if (tenantSubdomain) {
-    user = await usersCol.findOne({ email, password, tenantSubdomain });
+  // Find user in PostgreSQL
+  let user;
+  if (tenantId) {
+    const userResult = await db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.email, email),
+        eq(users.password, password),
+        eq(users.tenantId, tenantId)
+      ))
+      .limit(1);
+    user = userResult[0];
   } else {
-    // Global unique email → no tenant filter needed
-    user = await usersCol.findOne({ email, password });
+    const userResult = await db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.email, email),
+        eq(users.password, password)
+      ))
+      .limit(1);
+    user = userResult[0];
   }
   
-  console.log('User found:', user);
+  console.log('User found:', user ? { id: user.id, email: user.email } : null);
   if (!user) {
     return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 });
   }
 
+  // Get user's tenant subdomain
+  let userTenantSubdomain = '';
+  if (user.tenantId) {
+    const tenantResult = await db
+      .select({ subdomain: tenants.subdomain })
+      .from(tenants)
+      .where(eq(tenants.id, user.tenantId))
+      .limit(1);
+    if (tenantResult[0]) {
+      userTenantSubdomain = tenantResult[0].subdomain;
+    }
+  }
+
   // Force revoke all existing tokens (user confirmed they want to proceed)
-  await revokeAllUserTokens(user._id.toString());
+  await revokeAllUserTokens(user.id.toString());
 
   // Update last login timestamp
-  await usersCol.updateOne(
-    { _id: user._id },
-    { $set: { lastLogin: new Date() } }
-  );
+  await db
+    .update(users)
+    .set({ lastLogin: new Date() })
+    .where(eq(users.id, user.id));
 
   // Generate new JWT token
   const token = generateToken({
-    userId: user._id.toString(),
+    userId: user.id.toString(),
     email: user.email,
     role: user.role || 'sales',
-    tenantSubdomain: tenantSubdomain || user.tenantSubdomain || ''
+    tenantSubdomain: tenantSubdomain || userTenantSubdomain
   });
 
   // If logging in from main domain and user has a tenant, we need to redirect them
-  const needsRedirect = !tenantSubdomain && user.tenantSubdomain;
+  const needsRedirect = !tenantSubdomain && userTenantSubdomain;
 
-  // Do not send password back
-  const { password: _, ...userData } = user;
-  if (!userData.role) {
-    userData.role = 'sales';
-  }
+  // Prepare user data without password
+  const userData = {
+    id: user.id,
+    email: user.email,
+    code: user.code,
+    name: user.name,
+    role: user.role || 'sales',
+    target: user.target,
+    tenantId: user.tenantId,
+    tenantSubdomain: userTenantSubdomain,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  };
 
   // If user needs redirect to their tenant subdomain, include that info
   if (needsRedirect) {
-    // Determine the base domain based on environment
     const baseDomain = process.env.NODE_ENV === 'development' 
       ? 'localhost:3000' 
       : 'wydex.co';
     const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
     
-    // Determine the dashboard path based on user role
-    let dashboardPath = '/dashboard'; // default for sales users
+    let dashboardPath = '/dashboard';
     if (userData.role === 'CEO') {
       dashboardPath = '/ceo';
     } else if (userData.role === 'teamleader') {
@@ -82,10 +115,9 @@ export async function POST(request) {
       ...userData, 
       token,
       needsRedirect: true,
-      redirectTo: `${protocol}://${user.tenantSubdomain}.${baseDomain}${dashboardPath}?token=${token}`
+      redirectTo: `${protocol}://${userTenantSubdomain}.${baseDomain}${dashboardPath}?token=${token}`
     }), { status: 200 });
   }
 
-  // Include token so client can manage authentication
   return new Response(JSON.stringify({ ...userData, token }), { status: 200 });
 }

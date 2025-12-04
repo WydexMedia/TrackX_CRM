@@ -1,6 +1,7 @@
-import { getMongoDb } from '@/lib/mongoClient';
+import { db } from '@/db/client';
+import { users, tenants } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { verifyToken, isTokenBlacklisted, extractTokenFromHeader, isTokenRevokedForUser } from '@/lib/jwt';
-import { ObjectId } from 'mongodb';
 
 export async function POST(request) {
   try {
@@ -43,25 +44,52 @@ export async function POST(request) {
       return new Response(JSON.stringify({ error: 'Token does not belong to this tenant', errorCode: 'TENANT_MISMATCH' }), { status: 401 });
     }
 
-    const db = await getMongoDb();
-    const users = db.collection('users');
-
     // Find the user
-    const userId = (() => { try { return new ObjectId(payload.userId); } catch { return null; } })();
-    if (!userId) {
+    const userId = parseInt(payload.userId, 10);
+    if (isNaN(userId)) {
       return new Response(JSON.stringify({ error: 'Invalid user id', errorCode: 'INVALID_USER_ID' }), { status: 401 });
     }
-    const user = await users.findOne({ _id: userId });
+    
+    const userResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    
+    const user = userResult[0];
     
     if (!user) {
       return new Response(JSON.stringify({ error: 'User not found' }), { status: 404 });
     }
 
-    // Return user data without password
-    const { password: _, ...userData } = user;
-    if (!userData.role) {
-      userData.role = 'sales';
+    // Get tenant subdomain if user has tenantId
+    let tenantSubdomain = null;
+    if (user.tenantId) {
+      const tenantResult = await db
+        .select({ subdomain: tenants.subdomain })
+        .from(tenants)
+        .where(eq(tenants.id, user.tenantId))
+        .limit(1);
+      if (tenantResult[0]) {
+        tenantSubdomain = tenantResult[0].subdomain;
+      }
     }
+
+    // Return user data without password
+    const userData = {
+      id: user.id,
+      email: user.email,
+      code: user.code,
+      name: user.name,
+      role: user.role || 'sales',
+      target: user.target,
+      tenantId: user.tenantId,
+      tenantSubdomain: tenantSubdomain,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      lastLogin: user.lastLogin,
+      lastLogout: user.lastLogout
+    };
 
     return new Response(JSON.stringify({ 
       ...userData, 
