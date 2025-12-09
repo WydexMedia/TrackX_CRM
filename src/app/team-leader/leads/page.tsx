@@ -269,6 +269,8 @@ export default function LeadsPage() {
 
   const phones = Object.keys(selected).filter((k) => selected[k]);
 
+  const { user: clerkUser } = useUser();
+  
   const getActorId = () => {
     if (typeof window === 'undefined') return undefined;
     try {

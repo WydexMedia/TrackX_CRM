@@ -24,9 +24,13 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const { organization, isLoaded: isOrgLoaded } = useOrganization();
-  const { organizationList, isLoaded: isOrgListLoaded } = useOrganizationList({
+  const orgListResult = useOrganizationList({
     userMemberships: true,
   });
+  
+  // Extract organization list data - useOrganizationList returns { userMemberships, isLoaded }
+  const orgList = orgListResult.userMemberships?.data || [];
+  const isOrgListLoaded = orgListResult.isLoaded;
   const [form, setForm] = useState<OnboardingForm>({
     companyName: "",
     subdomain: "",
@@ -60,7 +64,7 @@ export default function OnboardingPage() {
 
       try {
         // First, check if user has a Clerk organization
-        const activeOrg = organization || organizationList?.[0]?.organization;
+        const activeOrg = organization || orgList?.[0]?.organization;
         
         if (activeOrg?.slug) {
           // User has an organization - redirect to organization subdomain
@@ -114,7 +118,7 @@ export default function OnboardingPage() {
     };
 
     checkExistingTenant();
-  }, [user, isLoaded, organization, isOrgLoaded, organizationList, isOrgListLoaded, router]);
+  }, [user, isLoaded, organization, isOrgLoaded, orgList, isOrgListLoaded, router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -193,7 +197,7 @@ export default function OnboardingPage() {
 
       if (response.ok) {
         // Redirect to organization subdomain (if available) or tenant subdomain
-        const activeOrg = organization || organizationList?.[0]?.organization;
+        const activeOrg = organization || orgList?.[0]?.organization;
         const subdomain = activeOrg?.slug || data.subdomain || form.subdomain;
         const redirectUrl = getTenantUrl(subdomain, '/team-leader');
         

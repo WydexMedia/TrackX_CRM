@@ -1,17 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser, useOrganization } from "@clerk/nextjs";
 import { getTenantUrl } from "@/lib/tenantUrl";
 import { CLERK_TO_APP_ROLE } from "@/lib/clerkRoles";
 
 /**
- * Invitation acceptance page
- * This page handles organization invitations and ensures users can set password directly
- * Clerk invitation links should redirect here after processing the invitation
+ * Invitation acceptance page content
  */
-export default function AcceptInvitationPage() {
+function AcceptInvitationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoaded: isUserLoaded } = useUser();
@@ -98,6 +96,26 @@ export default function AcceptInvitationPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Invitation acceptance page
+ * This page handles organization invitations and ensures users can set password directly
+ * Clerk invitation links should redirect here after processing the invitation
+ */
+export default function AcceptInvitationPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AcceptInvitationContent />
+    </Suspense>
   );
 }
 

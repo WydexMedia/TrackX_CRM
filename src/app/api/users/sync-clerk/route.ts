@@ -10,7 +10,8 @@ import { eq } from "drizzle-orm";
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = auth();
+    const authResult = await auth();
+    const { userId } = authResult;
 
     if (!userId) {
       return NextResponse.json(

@@ -66,7 +66,7 @@ export default function TeamLeaderLayout({
     email: user.emailAddresses[0]?.emailAddress || "",
     role: "teamleader",
     organizationName: organization.name,
-    organizationSlug: organization.slug,
+    organizationSlug: organization.slug || undefined,
   };
 
   return (

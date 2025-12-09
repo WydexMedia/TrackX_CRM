@@ -50,7 +50,7 @@ export async function getServerClerkRole(): Promise<ServerRoleInfo> {
     }
 
     // Get user email
-    const clerk = clerkClient();
+    const clerk = await clerkClient();
     const user = await clerk.users.getUser(userId);
     const email = user.emailAddresses[0]?.emailAddress || null;
 
@@ -118,7 +118,7 @@ export async function verifyAdmin(): Promise<{
  */
 export async function getUserOrganizationMembership(userId: string, orgId: string) {
   try {
-    const clerk = clerkClient();
+    const clerk = await clerkClient();
     const memberships = await clerk.organizations.getOrganizationMembershipList({
       organizationId: orgId,
     });

@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
 
     // Get report IDs and fetch entries
     const reportIds = allDailyReports.map(r => r.id);
-    let allReportEntries = [];
+    let allReportEntries: typeof dailyReportEntries.$inferSelect[] = [];
     if (reportIds.length > 0) {
       allReportEntries = await db
         .select()

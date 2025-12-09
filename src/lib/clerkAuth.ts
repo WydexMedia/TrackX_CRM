@@ -128,7 +128,7 @@ export function createUnauthorizedResponse(error: string = 'Unauthorized', statu
  */
 export async function getOrganizationRole(userId: string, orgId: string): Promise<string | null> {
   try {
-    const clerk = clerkClient();
+    const clerk = await clerkClient();
     const memberships = await clerk.organizations.getOrganizationMembershipList({
       organizationId: orgId,
     });

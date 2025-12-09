@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       message: 'Sale created and lead updated successfully',
-      sale: { id: newSale.id, ...newSale }
+      sale: newSale
     });
 
   } catch (error) {
@@ -218,7 +218,7 @@ export async function PUT(request: NextRequest) {
   }
   
   // Prepare update payload
-  const updatePayload = {
+  const updatePayload: any = {
     updatedAt: new Date()
   };
   
@@ -308,3 +308,4 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Sale not found' }, { status: 404 });
   }
 }
+
