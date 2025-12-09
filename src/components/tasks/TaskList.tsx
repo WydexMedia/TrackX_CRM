@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 
 type TaskRow = { 
   id: number; 
@@ -180,7 +180,7 @@ export default function TaskList({ tasks, leads, onTaskUpdate, onLeadClick }: Ta
   // Memoized status change handler
   const handleStatusChange = useCallback(async (taskId: number, status: string) => {
     try {
-      const response = await authenticatedFetch(`/api/tasks/${taskId}`, {
+      const response = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })

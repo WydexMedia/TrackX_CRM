@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "react-hot-toast";
+import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 import { useTenant } from "@/hooks/useTenant";
 import { User, Mail, Phone, MapPin, FileText, Lock, Save, Edit2 } from "lucide-react";
 
@@ -25,7 +26,8 @@ interface TeamLeader {
 export default function ProfilePage() {
   const router = useRouter();
   const { subdomain } = useTenant();
-  const [teamLeader, setTeamLeader] = useState<TeamLeader | null>(null);
+  const { user: clerkUser, isLoaded } = useUser();
+  const [dbUser, setDbUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -44,47 +46,81 @@ export default function ProfilePage() {
   });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  // Load user data from database
   useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (!user) {
-      router.push("/login");
-      return;
-    }
+    if (!isLoaded || !clerkUser) return;
 
-    try {
-      const parsed = JSON.parse(user);
-      if (parsed?.role !== "teamleader") {
-        router.push("/login");
-        return;
+    const loadUserData = async () => {
+      try {
+        const email = clerkUser.emailAddresses[0]?.emailAddress;
+        if (!email) {
+          setLoading(false);
+          return;
+        }
+
+        // Fetch user from database
+        const response = await fetch(`/api/users/current?identifier=${encodeURIComponent(email)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            setDbUser(data.user);
+            setProfileData({
+              name: data.user.name || clerkUser.fullName || "",
+              email: data.user.email || email,
+              phone: data.user.phone || "",
+              address: data.user.address || "",
+              about: data.user.about || "",
+            });
+          } else {
+            // Fallback to Clerk data
+            setProfileData({
+              name: clerkUser.fullName || "",
+              email: email,
+              phone: "",
+              address: "",
+              about: "",
+            });
+          }
+        } else {
+          // Fallback to Clerk data
+          setProfileData({
+            name: clerkUser.fullName || "",
+            email: email,
+            phone: "",
+            address: "",
+            about: "",
+          });
+        }
+      } catch (error) {
+        console.error("Error loading user data:", error);
+        // Fallback to Clerk data
+        const email = clerkUser.emailAddresses[0]?.emailAddress || "";
+        setProfileData({
+          name: clerkUser.fullName || "",
+          email: email,
+          phone: "",
+          address: "",
+          about: "",
+        });
+      } finally {
+        setLoading(false);
       }
-      setTeamLeader(parsed);
-      setProfileData({
-        name: parsed.name || "",
-        email: parsed.email || "",
-        phone: parsed.phone || "",
-        address: parsed.address || "",
-        about: parsed.about || "",
-      });
-    } catch {
-      router.push("/login");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
+    };
+
+    loadUserData();
+  }, [isLoaded, clerkUser]);
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await authenticatedFetch("/api/users", {
+      const response = await fetch("/api/users", {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          _id: teamLeader?._id,
+          id: dbUser?.id,
           name: profileData.name,
           email: profileData.email,
           phone: profileData.phone,
@@ -97,17 +133,16 @@ export default function ProfilePage() {
         toast.success("Profile updated successfully");
         setIsEditing(false);
         
-        if (teamLeader) {
-          const updatedTeamLeader = {
-            ...teamLeader,
-            name: profileData.name,
-            email: profileData.email,
-            phone: profileData.phone,
-            address: profileData.address,
-            about: profileData.about
-          };
-          setTeamLeader(updatedTeamLeader);
-          localStorage.setItem("user", JSON.stringify(updatedTeamLeader));
+        // Reload user data
+        const email = clerkUser?.emailAddresses[0]?.emailAddress;
+        if (email) {
+          const userResponse = await fetch(`/api/users/current?identifier=${encodeURIComponent(email)}`);
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            if (userData.success && userData.user) {
+              setDbUser(userData.user);
+            }
+          }
         }
       } else {
         const error = await response.json();
@@ -135,15 +170,15 @@ export default function ProfilePage() {
     
     setIsChangingPassword(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await authenticatedFetch("/api/users/change-password", {
+      // Note: With Clerk, password changes should be handled through Clerk's UI
+      // This endpoint might need to be updated or removed
+      const response = await fetch("/api/users/change-password", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          _id: teamLeader?._id,
+          id: dbUser?.id,
           currentPassword: passwordData.currentPassword,
           newPassword: passwordData.newPassword
         }),
@@ -168,7 +203,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) {
+  if (loading || !isLoaded) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
         <Card className="w-80 border border-slate-200/60 shadow-sm">
@@ -181,7 +216,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!teamLeader) return null;
+  if (!clerkUser) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 p-6">
@@ -358,13 +393,13 @@ export default function ProfilePage() {
                       onClick={() => {
                         setIsEditing(false);
                         // Reset to original data
-                        if (teamLeader) {
+                        if (dbUser) {
                           setProfileData({
-                            name: teamLeader.name || "",
-                            email: teamLeader.email || "",
-                            phone: teamLeader.phone || "",
-                            address: teamLeader.address || "",
-                            about: teamLeader.about || "",
+                            name: dbUser.name || clerkUser?.fullName || "",
+                            email: dbUser.email || clerkUser?.emailAddresses[0]?.emailAddress || "",
+                            phone: dbUser.phone || "",
+                            address: dbUser.address || "",
+                            about: dbUser.about || "",
                           });
                         }
                       }}

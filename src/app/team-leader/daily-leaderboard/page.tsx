@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { Trophy, TrendingUp, DollarSign, Award } from "lucide-react";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 
 type Sale = {
   ogaName: string;

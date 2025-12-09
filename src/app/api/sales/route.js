@@ -1,17 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/client';
 import { leads, courses, sales, users, tenants } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
-import { authenticateToken, createUnauthorizedResponse } from '@/lib/authMiddleware';
+import { authenticateRequest, createUnauthorizedResponse } from '@/lib/clerkAuth';
 import { requireTenantIdFromRequest } from '@/lib/tenant';
 
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     // Authenticate the request - creating sales requires login
-    const authResult = await authenticateToken(request);
+    const authResult = await authenticateRequest(request);
     if (!authResult.success) {
-      return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+      return createUnauthorizedResponse(authResult.error, authResult.statusCode);
     }
 
     const body = await request.json();
@@ -70,15 +70,14 @@ export async function POST(request) {
       .where(and(eq(leads.phone, leadPhone), eq(leads.tenantId, tenantId)));
 
     // Get user name from the authenticated user
-    let userName = authResult.user.email; // Fallback to email
+    let userName = authResult.email || 'Unknown User'; // Fallback to email
     try {
-      // Get the user's actual name from PostgreSQL users table
-      const userId = parseInt(authResult.user.userId, 10);
-      if (!isNaN(userId)) {
+      // Get the user's actual name from PostgreSQL users table by email
+      if (authResult.email) {
         const userResult = await db
           .select({ name: users.name })
           .from(users)
-          .where(eq(users.id, userId))
+          .where(eq(users.email, authResult.email))
           .limit(1);
         if (userResult[0] && userResult[0].name) {
           userName = userResult[0].name;
@@ -122,11 +121,11 @@ export async function POST(request) {
   }
 }
 
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   // Authenticate the request to get user context
-  const authResult = await authenticateToken(request);
+  const authResult = await authenticateRequest(request);
   if (!authResult.success) {
-    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+    return createUnauthorizedResponse(authResult.error, authResult.statusCode);
   }
 
   const { tenantId } = await getTenantContextFromRequest(request);
@@ -144,14 +143,13 @@ export async function GET(request) {
   }
 
   // Get user's name from PostgreSQL
-  const userId = parseInt(authResult.user.userId, 10);
-  let userName = authResult.user.email;
+  let userName = authResult.email || 'Unknown User';
   
-  if (!isNaN(userId)) {
+  if (authResult.email) {
     const userResult = await db
       .select({ name: users.name })
       .from(users)
-      .where(eq(users.id, userId))
+      .where(eq(users.email, authResult.email))
       .limit(1);
     if (userResult[0] && userResult[0].name) {
       userName = userResult[0].name;
@@ -200,11 +198,11 @@ export async function GET(request) {
   });
 }
 
-export async function PUT(request) {
+export async function PUT(request: NextRequest) {
   // Authenticate the request - editing sales requires login
-  const authResult = await authenticateToken(request);
+  const authResult = await authenticateRequest(request);
   if (!authResult.success) {
-    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+    return createUnauthorizedResponse(authResult.error, authResult.statusCode);
   }
 
   const { id, ...updateData } = await request.json();
@@ -268,11 +266,11 @@ export async function PUT(request) {
   }
 }
 
-export async function DELETE(request) {
+export async function DELETE(request: NextRequest) {
   // Authenticate the request - deleting sales requires login
-  const authResult = await authenticateToken(request);
+  const authResult = await authenticateRequest(request);
   if (!authResult.success) {
-    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+    return createUnauthorizedResponse(authResult.error, authResult.statusCode);
   }
 
   const { tenantId } = await getTenantContextFromRequest(request);

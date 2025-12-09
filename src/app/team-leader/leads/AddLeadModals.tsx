@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 import { normalizeCsvToUtf8 } from "@/utils/normalizeCsvToUtf8";
 
 export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open: boolean; onClose: () => void; onCreated: () => void; onListCreated?: (list: { id: number; name: string }) => void }) {
@@ -22,7 +22,7 @@ export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open
   // Load lists when modal opens
   useEffect(() => {
     if (open) {
-      authenticatedFetch("/api/tl/lists")
+      fetch("/api/tl/lists")
         .then((r) => r.json())
         .then((d) => setLists(d?.rows || []))
         .catch(() => {});
@@ -33,7 +33,7 @@ export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open
     if (!newListName.trim()) return;
     try {
       setCreatingList(true);
-      const res = await authenticatedFetch("/api/tl/lists", { 
+      const res = await fetch("/api/tl/lists", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ name: newListName }) 
@@ -135,7 +135,7 @@ export function AddLeadModal({ open, onClose, onCreated, onListCreated }: { open
               if (selectedListId) {
                 payload.listId = Number(selectedListId);
               }
-              const res = await authenticatedFetch("/api/tl/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+              const res = await fetch("/api/tl/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
               if (res.ok) toast.success("Lead added"); else toast.error("Failed to add lead");
               setSubmitting(false);
               onCreated();
@@ -221,7 +221,7 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
   // Load lists when modal opens
   useEffect(() => {
     if (open) {
-      authenticatedFetch("/api/tl/lists")
+      fetch("/api/tl/lists")
         .then((r) => r.json())
         .then((d) => setLists(d?.rows || []))
         .catch(() => {});
@@ -232,7 +232,7 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
     if (!newListName.trim()) return;
     try {
       setCreatingList(true);
-      const res = await authenticatedFetch("/api/tl/lists", { 
+      const res = await fetch("/api/tl/lists", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ name: newListName }) 
@@ -523,7 +523,7 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
       if (selectedListId) {
         payload.listId = Number(selectedListId);
       }
-      const res = await authenticatedFetch("/api/tl/leads/import", {
+      const res = await fetch("/api/tl/leads/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -832,7 +832,7 @@ export function ImportLeadsModal({ open, onClose, onImported, onListCreated }: {
                 if (selectedListId) {
                   payload.listId = Number(selectedListId);
                 }
-                const res = await authenticatedFetch("/api/tl/leads/import", {
+                const res = await fetch("/api/tl/leads/import", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify(payload),

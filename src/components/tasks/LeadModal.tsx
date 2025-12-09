@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 
 type Lead = { 
   phone: string; 
@@ -79,7 +79,7 @@ export default function LeadModal({ lead, isOpen, onClose }: LeadModalProps) {
   // Memoized fetch functions
   const fetchUserNames = useCallback(async () => {
     try {
-      const response = await authenticatedFetch("/api/tl/users");
+      const response = await fetch("/api/tl/users");
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.users) {
@@ -100,7 +100,7 @@ export default function LeadModal({ lead, isOpen, onClose }: LeadModalProps) {
     
     setLoading(true);
     try {
-      const response = await authenticatedFetch(`/api/tl/leads?phone=${encodeURIComponent(lead.phone)}`);
+      const response = await fetch(`/api/tl/leads?phone=${encodeURIComponent(lead.phone)}`);
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.leads.length > 0) {
@@ -122,7 +122,7 @@ export default function LeadModal({ lead, isOpen, onClose }: LeadModalProps) {
     if (!lead?.phone) return;
     
     try {
-      const response = await authenticatedFetch(`/api/tl/leads/events?phone=${encodeURIComponent(lead.phone)}`);
+      const response = await fetch(`/api/tl/leads/events?phone=${encodeURIComponent(lead.phone)}`);
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -148,7 +148,7 @@ export default function LeadModal({ lead, isOpen, onClose }: LeadModalProps) {
     
     setSaving(true);
     try {
-      const response = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const response = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [field]: value })

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 
 export default function ReportsPage() {
   return (
@@ -69,7 +69,7 @@ function LeadsReports() {
 
   // Load stages
   React.useEffect(() => {
-    authenticatedFetch("/api/tl/stages")
+    fetch("/api/tl/stages")
       .then((r) => r.json())
       .then((d) => setStages(d?.stages || []))
       .catch(() => {});
@@ -176,9 +176,9 @@ function LeadsReports() {
     console.log('Debug - Calling API with URL:', `/api/tl/leads?${params.toString()}`);
 
     Promise.all([
-      authenticatedFetch(`/api/tl/leads?${params.toString()}`).then(r => r.json()),
-      authenticatedFetch(`/api/tl/users`).then(r => r.json()),
-      authenticatedFetch(`/api/tl/reports?dateRange=${encodeURIComponent(dateRange)}&sortByDuration=${sortByDuration}`).then(r => r.json())
+      fetch(`/api/tl/leads?${params.toString()}`).then(r => r.json()),
+      fetch(`/api/tl/users`).then(r => r.json()),
+      fetch(`/api/tl/reports?dateRange=${encodeURIComponent(dateRange)}&sortByDuration=${sortByDuration}`).then(r => r.json())
     ]).then(([leadsRes, usersRes, reportsRes]) => {
       console.log('Debug - API responses received:');
       console.log('  leadsRes:', leadsRes);

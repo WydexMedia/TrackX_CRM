@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for authenticatedFetch
 import { Users, Target, TrendingUp, Clock, DollarSign, Crown, Trophy, ArrowRight } from "lucide-react";
 
 type Sale = {
@@ -32,23 +33,22 @@ interface Analytics {
 }
 
 export default function LeadManagementOverviewPage() {
+  const { user, isLoaded } = useUser();
   const [widgets, setWidgets] = useState<{ slaAtRisk: number; leadsToday: number; qualifiedRate: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [activities, setActivities] = useState<Array<{ id: number; at: string; title: string; detail: string; color: string }>>([]);
   const [showAllActivities, setShowAllActivities] = useState(false);
-  const [teamLeader, setTeamLeader] = useState<{ name: string } | null>(null);
   const [analytics, setAnalytics] = useState<Analytics[]>([]);
   const [todayLeaderboard, setTodayLeaderboard] = useState<Array<{ name: string; total: number; count: number }>>([]);
 
+  // Get user name from Clerk
+  const teamLeaderName = user?.fullName || user?.firstName || "Team Leader";
+
   useEffect(() => {
-    // Get user info
-    const user = localStorage.getItem("user");
-    if (user) {
-      setTeamLeader(JSON.parse(user));
-    }
+    if (!isLoaded) return;
 
     // Fetch lead management overview
-    authenticatedFetch("/api/tl/overview")
+    fetch("/api/tl/overview")
       .then((r) => r.json())
       .then((d) => setWidgets(d.widgets || { slaAtRisk: 0, leadsToday: 0, qualifiedRate: 0 }))
       .catch((error) => {
@@ -57,7 +57,7 @@ export default function LeadManagementOverviewPage() {
       });
 
     // Fetch sales analytics
-    authenticatedFetch("/api/analytics")
+    fetch("/api/analytics")
       .then((r) => r.json())
       .then((data) => {
         // Ensure data is an array
@@ -112,7 +112,7 @@ export default function LeadManagementOverviewPage() {
   }, []);
 
   useEffect(() => {
-    authenticatedFetch("/api/tl/activity?limit=20")
+    fetch("/api/tl/activity?limit=20")
       .then((r) => r.json())
       .then((d) => {
         if (d?.success && Array.isArray(d.items)) {
@@ -130,7 +130,7 @@ export default function LeadManagementOverviewPage() {
         }
       })
       .catch(() => setActivities([]));
-  }, []);
+  }, [isLoaded]);
 
   // Calculate sales metrics (with safe fallbacks)
   const totalTarget = Array.isArray(analytics) ? analytics.reduce((sum, user) => sum + (user.target || 0), 0) : 0;
@@ -186,7 +186,7 @@ export default function LeadManagementOverviewPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">
-              {greeting}, {teamLeader?.name || "Team Leader"}! 👋
+              {greeting}, {teamLeaderName}! 👋
             </h1>
             <p className="text-sm text-slate-600 mt-1">
               Lead Management & Sales Revenue Dashboard

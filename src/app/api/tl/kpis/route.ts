@@ -2,19 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { users, sales, dailyReports, dailyReportEntries } from "@/db/schema";
 import { eq, and, gte, lte, ne, inArray, sql } from "drizzle-orm";
-import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
+import { authenticateRequest, createUnauthorizedResponse } from "@/lib/clerkAuth";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 
 export async function GET(req: NextRequest) {
   try {
     // Authenticate the request
-    const authResult = await authenticateToken(req as any);
+    const authResult = await authenticateRequest(req);
     
     if (!authResult.success) {
-      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode);
     }
-
-    const { user } = authResult;
     
     // Get tenant context
     const { tenantId } = await getTenantContextFromRequest(req as any);
@@ -23,10 +21,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
     }
 
-    // Verify user role from PostgreSQL database
-    const userId = parseInt(user?.userId, 10);
-    if (isNaN(userId)) {
-      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    // Get database user by email
+    if (!authResult.email) {
+      return NextResponse.json({ error: "User email not found" }, { status: 400 });
     }
 
     const dbUserResult = await db
@@ -37,19 +34,17 @@ export async function GET(req: NextRequest) {
       })
       .from(users)
       .where(and(
-        eq(users.id, userId),
+        eq(users.email, authResult.email),
         eq(users.tenantId, tenantId)
       ))
       .limit(1);
     
     const dbUser = dbUserResult[0];
     
-    // Check if user is a team leader (check both JWT and DB)
-    const effectiveRole = dbUser?.role || user?.role;
-    
-    if (effectiveRole !== "teamleader") {
+    // Check if user is a team leader
+    if (!dbUser || dbUser.role !== "teamleader") {
       return NextResponse.json({ 
-        error: `Forbidden - Access denied. Your role is '${effectiveRole}' but 'teamleader' is required.` 
+        error: `Forbidden - Access denied. Your role is '${dbUser?.role || 'unknown'}' but 'teamleader' is required.` 
       }, { status: 403 });
     }
 

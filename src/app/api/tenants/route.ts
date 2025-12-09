@@ -1,10 +1,75 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { tenants, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { authenticateRequest, createUnauthorizedResponse } from "@/lib/clerkAuth";
+import { currentUser } from "@clerk/nextjs/server";
+import { syncTenantToClerkOrganization } from "@/lib/clerkOrganization";
+
+/**
+ * Link Clerk user to tenant - updates existing user or creates new one
+ */
+async function linkClerkUserToTenant(clerkEmail: string, tenantId: number, contactName: string) {
+  try {
+    // Check if user already exists in database
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, clerkEmail))
+      .limit(1);
+
+    if (existingUser.length > 0) {
+      // User exists - update tenantId and role
+      const user = existingUser[0];
+      await db
+        .update(users)
+        .set({
+          tenantId: tenantId,
+          role: "teamleader",
+          name: contactName || user.name,
+          code: clerkEmail, // Ensure code matches email
+          updatedAt: new Date(),
+        })
+        .where(eq(users.email, clerkEmail));
+
+      console.log(`Linked existing Clerk user to tenant:`, {
+        email: clerkEmail,
+        tenantId: tenantId,
+        userId: user.id,
+      });
+    } else {
+      // User doesn't exist - create new user
+      const firstName = contactName.split(" ")[0] || "";
+      const lastName = contactName.split(" ").slice(1).join(" ") || "";
+      const name = contactName || clerkEmail.split("@")[0];
+
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          email: clerkEmail,
+          code: clerkEmail, // Use email as code
+          name: name,
+          role: "teamleader",
+          password: "", // No password needed for Clerk users
+          target: 0,
+          tenantId: tenantId,
+        })
+        .returning();
+
+      console.log(`Created and linked new Clerk user to tenant:`, {
+        email: clerkEmail,
+        tenantId: tenantId,
+        userId: newUser.id,
+      });
+    }
+  } catch (error: any) {
+    console.error("Error linking Clerk user to tenant:", error);
+    throw error;
+  }
+}
 
 export async function GET(req: Request) {
   try {
@@ -34,8 +99,31 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    // Authenticate the request - tenant creation requires Clerk authentication
+    const authResult = await authenticateRequest(req);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error, authResult.statusCode);
+    }
+
+    // Get Clerk user details
+    const clerkUser = await currentUser();
+    if (!clerkUser) {
+      return NextResponse.json(
+        { error: "Clerk user not found" },
+        { status: 404 }
+      );
+    }
+
+    const clerkEmail = clerkUser.emailAddresses[0]?.emailAddress;
+    if (!clerkEmail) {
+      return NextResponse.json(
+        { error: "Email not found in Clerk user" },
+        { status: 400 }
+      );
+    }
+
     // Check if the request is multipart/form-data (file upload)
     const contentType = req.headers.get("content-type");
     
@@ -44,7 +132,9 @@ export async function POST(req: Request) {
       const formData = await req.formData();
       const subdomain = String(formData.get("subdomain") || "").trim().toLowerCase();
       const name = String(formData.get("name") || subdomain);
-      const metadata = formData.get("metadata") ? JSON.parse(String(formData.get("metadata"))) : null;
+      const metadataRaw = formData.get("metadata");
+      const metadata = metadataRaw ? JSON.parse(String(metadataRaw)) : null;
+      const contactName = metadata?.contactName || clerkUser.firstName || "";
       const logoFile = formData.get("logo") as File | null;
 
       if (!subdomain || !/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(subdomain)) {
@@ -60,13 +150,81 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Subdomain already exists" }, { status: 409 });
       }
 
-      // Create tenant first
-      const inserted = await db
-        .insert(tenants)
-        .values({ subdomain, name, metadata })
-        .returning();
+      // First, create/update Clerk organization and get the org slug
+      // This ensures the tenant subdomain matches the Clerk org slug
+      const orgSyncResult = await syncTenantToClerkOrganization(
+        subdomain,
+        name,
+        clerkUser.id
+      );
 
-      const tenantId = inserted[0].id;
+      // Use the actual Clerk org slug (which may differ from requested subdomain)
+      // Get the org details to get the actual slug
+      let actualOrgSlug = subdomain;
+      if (orgSyncResult.success && orgSyncResult.organizationId) {
+        try {
+          const { clerkClient } = await import("@clerk/nextjs/server");
+          const clerk = await clerkClient();
+          const org = await clerk.organizations.getOrganization({
+            organizationId: orgSyncResult.organizationId,
+          });
+          actualOrgSlug = org.slug || subdomain;
+        } catch (error) {
+          console.warn("Could not fetch org details, using requested subdomain:", error);
+        }
+      }
+
+      // Check if tenant with actual org slug already exists
+      const existingBySlug = await db
+        .select({ id: tenants.id })
+        .from(tenants)
+        .where(eq(tenants.subdomain, actualOrgSlug))
+        .limit(1);
+
+      let tenantId: number;
+      let inserted: typeof tenants.$inferSelect[];
+      
+      if (existingBySlug[0]?.id) {
+        // Tenant exists, update it
+        tenantId = existingBySlug[0].id;
+        await db
+          .update(tenants)
+          .set({
+            name: name,
+            metadata: {
+              ...metadata,
+              clerkOrgId: orgSyncResult.organizationId,
+              clerkOrgSlug: actualOrgSlug,
+            },
+            updatedAt: new Date(),
+          })
+          .where(eq(tenants.id, tenantId));
+        
+        const [updated] = await db
+          .select()
+          .from(tenants)
+          .where(eq(tenants.id, tenantId))
+          .limit(1);
+        
+        inserted = [updated];
+      } else {
+        // Create tenant with the actual Clerk org slug as subdomain
+        const insertedTenants = await db
+          .insert(tenants)
+          .values({
+            subdomain: actualOrgSlug,
+            name: name,
+            metadata: {
+              ...metadata,
+              clerkOrgId: orgSyncResult.organizationId,
+              clerkOrgSlug: actualOrgSlug,
+            },
+          })
+          .returning();
+
+        tenantId = insertedTenants[0].id;
+        inserted = insertedTenants;
+      }
 
       // Handle logo upload if provided
       if (logoFile && logoFile instanceof File) {
@@ -107,93 +265,28 @@ export async function POST(req: Request) {
         }
       }
 
-      return NextResponse.json({ tenant: inserted[0] }, { status: 201 });
-    } else {
-      // Handle JSON request (signup form data)
-      const body = await req.json();
-      const subdomain = String(body.subdomain || "").trim().toLowerCase();
-      const companyName = String(body.companyName || "");
-      const contactName = String(body.contactName || "");
-      const email = String(body.email || "");
-      const phone = String(body.phone || "");
-      const website = String(body.website || "");
-      const password = String(body.password || "");
+      // Link Clerk user to tenant
+      const contactNameFromMetadata = metadata?.contactName || clerkUser.firstName || "";
+      await linkClerkUserToTenant(clerkEmail, tenantId, contactNameFromMetadata);
 
-      // Validate required fields
-      if (!subdomain || !companyName || !contactName || !email || !password) {
-        return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-      }
-
-      // Validate subdomain format (minimum 4 characters, alphanumeric and hyphens)
-      if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(subdomain) || subdomain.length < 4) {
-        return NextResponse.json({ error: "Invalid subdomain format" }, { status: 400 });
-      }
-
-      // Check if subdomain already exists
-      const existing = await db
-        .select({ id: tenants.id })
-        .from(tenants)
-        .where(eq(tenants.subdomain, subdomain))
-        .limit(1);
-      if (existing[0]?.id) {
-        return NextResponse.json({ error: "Subdomain already exists" }, { status: 409 });
-      }
-
-      // Create tenant with signup data
-      const metadata = {
-        companyName,
-        contactName,
-        email,
-        phone,
-        website,
-        password, // Note: In production, this should be hashed
-        createdAt: new Date().toISOString()
-      };
-
-      const inserted = await db
-        .insert(tenants)
-        .values({ 
-          subdomain, 
-          name: companyName, 
-          metadata 
-        })
-        .returning();
-
-      const tenantId = inserted[0].id;
-
-      // Create team leader user in PostgreSQL
-      try {
-        const [teamLeader] = await db
-          .insert(users)
-          .values({
-            name: contactName,
-            code: email, // Use email as the employee code
-            email: email,
-            password: password, // Note: In production, this should be hashed
-            role: "teamleader",
-            target: 0,
-            tenantId: tenantId,
-          })
-          .returning({ id: users.id, email: users.email, name: users.name, role: users.role });
-        
-        console.log(`Team leader created for tenant ${subdomain}:`, {
-          id: teamLeader.id,
-          name: teamLeader.name,
-          code: email, // This is now the email
-          email: teamLeader.email,
-          role: teamLeader.role
-        });
-        
-      } catch (userError) {
-        console.error("Failed to create team leader user:", userError);
-        // Don't fail the entire request if user creation fails
-        // The tenant was created successfully
+      if (!orgSyncResult.success) {
+        console.warn("Failed to sync tenant to Clerk organization:", orgSyncResult.error);
+        // Don't fail the tenant creation if org sync fails - tenant was created successfully
+        // We can sync later if needed
+      } else {
+        console.log(`Successfully synced tenant "${actualOrgSlug}" to Clerk organization:`, orgSyncResult.organizationId);
       }
 
       return NextResponse.json({ 
         tenant: inserted[0],
-        message: "Account created successfully"
+        subdomain: actualOrgSlug, // Return the actual org slug used
+        organizationId: orgSyncResult.organizationId,
+        organizationSynced: orgSyncResult.success
       }, { status: 201 });
+    } else {
+      // This branch is not used anymore - all tenant creation goes through multipart/form-data
+      // But keeping it for backward compatibility
+      return NextResponse.json({ error: "Please use the onboarding form" }, { status: 400 });
     }
   } catch (err: any) {
     console.error("Tenant creation error:", err);

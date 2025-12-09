@@ -1,5 +1,14 @@
-export async function GET() {
+import { NextRequest } from 'next/server';
+import { authenticateRequest, createUnauthorizedResponse } from '@/lib/clerkAuth';
+
+export async function GET(request: NextRequest) {
   try {
+    // Authenticate with Clerk
+    const authResult = await authenticateRequest(request);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode || 401);
+    }
+
     const response = await fetch('https://flowline.wydex.co/admin/api/daily-reports', {
       method: 'GET',
       headers: {

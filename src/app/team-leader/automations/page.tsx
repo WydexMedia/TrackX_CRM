@@ -12,7 +12,7 @@ import {
   TooltipProvider 
 } from "@/components/ui/tooltip";
 import { Info, CheckCircle2 } from "lucide-react";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 
 interface Rule { id: string; label: string; description: string; details: string[] }
 
@@ -116,7 +116,7 @@ export default function AutomationsPage() {
   });
 
   async function refresh() {
-    const d = await authenticatedFetch("/api/tl/automations", { cache: "no-store" }).then((r) => r.json());
+    const d = await fetch("/api/tl/automations", { cache: "no-store" }).then((r) => r.json());
     setRules(d.rules || []);
     setActive(d.active || "");
   }
@@ -255,7 +255,7 @@ export default function AutomationsPage() {
                           }
                           
                           setSaving(true);
-                          const res = await authenticatedFetch("/api/tl/automations", { 
+                          const res = await fetch("/api/tl/automations", { 
                             method: "POST", 
                             headers: { "Content-Type": "application/json" }, 
                             body: JSON.stringify({ id: rule.id }), 
@@ -407,7 +407,7 @@ export default function AutomationsPage() {
                   setSaving(true);
                   setShowConversionModal(false);
                   
-                  const res = await authenticatedFetch("/api/tl/automations", { 
+                  const res = await fetch("/api/tl/automations", { 
                     method: "POST", 
                     headers: { "Content-Type": "application/json" }, 
                     body: JSON.stringify({ 
@@ -596,7 +596,7 @@ export default function AutomationsPage() {
                   setSaving(true);
                   setShowCustomModal(false);
                   
-                  const res = await authenticatedFetch("/api/tl/automations", { 
+                  const res = await fetch("/api/tl/automations", { 
                     method: "POST", 
                     headers: { "Content-Type": "application/json" }, 
                     body: JSON.stringify({ 

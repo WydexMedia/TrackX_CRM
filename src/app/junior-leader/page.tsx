@@ -3,13 +3,15 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
-import { setupPeriodicTokenValidation, authenticatedFetch } from '@/lib/tokenValidation';
+import { useUser, useOrganization, useClerk } from "@clerk/nextjs";
+import { useClerkRole } from "@/lib/clerkRoles";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { LogOut } from "lucide-react";
 
 interface User {
   _id: string;
@@ -64,98 +66,54 @@ export default function JuniorLeaderPage() {
     endDate: ''
   });
   const router = useRouter();
+  
+  // Clerk hooks
+  const { user, isLoaded: isUserLoaded } = useUser();
+  const { organization, isLoaded: isOrgLoaded } = useOrganization();
+  const { signOut } = useClerk();
+  const { isAdmin, isLoading: isRoleLoading, appRole } = useClerkRole();
 
+  // Handle authentication and load data
   useEffect(() => {
-    const authenticateUser = async () => {
-      // First check if we have a token parameter (from redirect)
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      
-      if (token) {
-        try {
-          // Validate the token and get user data
-          const response = await fetch('/api/users/validate-session', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ token })
-          });
-          
-          if (response.ok) {
-            const userData = await response.json();
-            localStorage.setItem("user", JSON.stringify(userData));
-            localStorage.setItem("token", userData.token);
-            
-            // Clean up the URL by removing the token parameter
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.delete('token');
-            window.history.replaceState({}, '', newUrl.toString());
-            
-            if (userData.role === "jl") {
-              fetchTeamData(userData.email);
-              fetchAnalytics();
-              return;
-            } else {
-              router.push("/dashboard");
-              return;
-            }
-          } else if (response.status === 401) {
-            const errorData = await response.json();
-            if (errorData.code === 'TOKEN_REVOKED_NEW_LOGIN') {
-              // User logged in from another device
-              localStorage.removeItem("user");
-              localStorage.removeItem("token");
-              toast.error('You have been logged out because you logged in from another device.', {
-                duration: 5000,
-                style: {
-                  background: '#fee2e2',
-                  color: '#dc2626',
-                  border: '1px solid #fecaca'
-                }
-              });
-              router.push("/login");
-              return;
-            }
-          }
-        } catch (error) {
-          console.error('Session validation failed:', error);
-        }
-      }
-      
-      // Fallback to localStorage check
-      const user = localStorage.getItem("user");
-      if (!user) {
-        router.push("/login");
-        return;
-      }
+    if (!isUserLoaded || !isOrgLoaded || isRoleLoading) return;
 
-      const userData = JSON.parse(user);
-      if (userData.role !== "jl") {
-        router.push("/dashboard");
-        return;
-      }
+    // Not logged in - redirect to login
+    if (!user) {
+      router.push("/login");
+      return;
+    }
 
-      fetchTeamData(userData.email);
-      fetchAnalytics();
-    };
+    // No organization - redirect to onboarding
+    if (!organization) {
+      router.push("/onboarding");
+      return;
+    }
 
-    authenticateUser();
-    
-    // Set up periodic token validation
-    const redirectToLogin = () => router.push("/login");
-    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 60000); // Check every 60 seconds
-    
-    return () => {
-      clearInterval(validationInterval);
-    };
-  }, [router]);
+    // If user is admin (teamleader), redirect to team-leader dashboard
+    if (isAdmin) {
+      router.push("/team-leader");
+      return;
+    }
+
+    // Load data for salesperson/junior leader
+    const userEmail = user.emailAddresses[0]?.emailAddress || "";
+    fetchTeamData(userEmail);
+    fetchAnalytics();
+  }, [user, organization, isUserLoaded, isOrgLoaded, isRoleLoading, isAdmin, router]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut({ redirectUrl: "/login" });
+    } catch (error) {
+      console.error("Logout error:", error);
+      router.push("/login");
+    }
+  };
 
   const fetchTeamData = async (userEmail: string) => {
     try {
       setLoading(true);
-      const response = await authenticatedFetch(`/api/tl/team-management?userId=${encodeURIComponent(userEmail)}`);
+      const response = await fetch(`/api/tl/team-management?userId=${encodeURIComponent(userEmail)}`);
       if (response.ok) {
         const data = await response.json();
         setTeamData(data.teamData);
@@ -172,7 +130,7 @@ export default function JuniorLeaderPage() {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await authenticatedFetch("/api/analytics");
+      const response = await fetch("/api/analytics");
       if (response.ok) {
         const data = await response.json();
         setAnalytics(data);
@@ -240,7 +198,7 @@ export default function JuniorLeaderPage() {
         }
       });
       
-      // Create comprehensive daily data - EXACTLY like Team Leader
+      // Create comprehensive daily data
       const comprehensiveData = Array.from(allDates).map((dateStr) => {
         const date = new Date(dateStr as string);
         const dailyAmount = dailySalesMap.get(dateStr as string) || 0;
@@ -265,10 +223,9 @@ export default function JuniorLeaderPage() {
           salesCount: salesCount,
           leadsAssigned: salesPersonData?.prospects || 0,
           salesConverted: salesCount,
-          // Use sales data for more accurate conversion calculation
           conversionRate: salesPersonData?.prospects > 0 ? ((salesCount / salesPersonData.prospects) * 100).toFixed(1) : 0
         };
-      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by date descending
+      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       
       setKpiData(comprehensiveData);
     } catch (error) {
@@ -300,13 +257,26 @@ export default function JuniorLeaderPage() {
     if (filteredKpiData.length === 0) {
       return selectedSalesPerson?.todaySales || 0;
     }
-    
-    // Count days with actual sales activity (dailyAmount > 0)
     return filteredKpiData.filter(report => (report.dailyAmount || 0) > 0).length;
   };
 
   const filteredSales = calculateFilteredSales();
 
+  // Loading state - waiting for Clerk
+  if (!isUserLoaded || !isOrgLoaded || isRoleLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-64">
+          <CardContent className="p-6 text-center">
+            <div className="inline-block h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Authenticating...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Loading team data
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -332,7 +302,19 @@ export default function JuniorLeaderPage() {
     );
   }
 
-  const currentJL = teamData.juniorLeaders[0]; // JL should only see themselves
+  // Get current user info from Clerk
+  const currentUserName = user?.fullName || user?.firstName || "Sales Person";
+  const currentUserEmail = user?.emailAddresses[0]?.emailAddress || "";
+
+  const currentJL = teamData.juniorLeaders[0] || {
+    name: currentUserName,
+    email: currentUserEmail,
+    code: currentUserEmail,
+    role: appRole || "sales",
+    target: 0,
+    _id: "",
+    teamMembers: []
+  };
   const assignedSales = teamData.salesPersons;
   
   // Filter analytics to only show team members
@@ -340,7 +322,6 @@ export default function JuniorLeaderPage() {
     assignedSales.some(sales => sales.name.toLowerCase() === analyticsItem.name.toLowerCase())
   );
   
-
   // Calculate team totals
   const teamTotalTarget = teamAnalytics.reduce((sum, item) => sum + (item.target || 0), 0);
   const teamTotalAchieved = teamAnalytics.reduce((sum, item) => sum + (item.achievedTarget || 0), 0);
@@ -353,19 +334,37 @@ export default function JuniorLeaderPage() {
         {/* Header */}
         <Card className="mb-8">
           <CardContent className="p-6">
-            <h1 className="text-3xl font-bold text-gray-900">Junior Leader Dashboard</h1>
-            <p className="mt-2 text-gray-600">Manage your assigned team members and view performance</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {appRole === "jl" ? "Junior Leader" : "Sales"} Dashboard
+                </h1>
+                <p className="mt-2 text-gray-600">
+                  {organization?.name} • {currentUserEmail}
+                </p>
+              </div>
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                className="flex items-center gap-2 text-red-600 hover:bg-red-50"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        {/* JL Info Card */}
+        {/* User Info Card */}
         <Card className="mb-8">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">{currentJL.name}</h2>
-                <p className="text-gray-600">{currentJL.email}</p>
-                <Badge variant="secondary" className="mt-1">Junior Leader</Badge>
+                <h2 className="text-xl font-semibold text-gray-900">{currentUserName}</h2>
+                <p className="text-gray-600">{currentUserEmail}</p>
+                <Badge variant="secondary" className="mt-1 capitalize">
+                  {appRole === "jl" ? "Junior Leader" : "Sales Executive"}
+                </Badge>
               </div>
               <div className="text-right">
                 <div className="text-3xl font-bold text-blue-600">{assignedSales.length}</div>
@@ -427,7 +426,7 @@ export default function JuniorLeaderPage() {
                   </THead>
                   <TBody>
                     {assignedSales.map((salesperson) => {
-                      const analytics = teamAnalytics.find(a => 
+                      const analyticsItem = teamAnalytics.find(a => 
                         a.name.toLowerCase() === salesperson.name.toLowerCase()
                       );
                       
@@ -452,16 +451,16 @@ export default function JuniorLeaderPage() {
                             </div>
                           </TD>
                           <TD>
-                            <div className="text-sm text-gray-900">{analytics?.target || 0}</div>
+                            <div className="text-sm text-gray-900">{analyticsItem?.target || 0}</div>
                           </TD>
                           <TD>
-                            <div className="text-sm text-gray-900">{analytics?.achievedTarget || 0}</div>
+                            <div className="text-sm text-gray-900">{analyticsItem?.achievedTarget || 0}</div>
                           </TD>
                           <TD>
-                            <div className="text-sm text-gray-900">{analytics?.todayCollection || 0}</div>
+                            <div className="text-sm text-gray-900">{analyticsItem?.todayCollection || 0}</div>
                           </TD>
                           <TD>
-                            <div className="text-sm text-gray-900">{analytics?.totalSales || 0}</div>
+                            <div className="text-sm text-gray-900">{analyticsItem?.totalSales || 0}</div>
                           </TD>
                         </TR>
                       );
@@ -481,14 +480,14 @@ export default function JuniorLeaderPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Button
-                onClick={() => router.push("/team-leader")}
+                onClick={() => router.push("/team-leader/leads")}
                 variant="outline"
                 className="flex items-center justify-center h-auto py-3"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                Manage Leads
+                View Leads
               </Button>
               <Button
                 onClick={() => router.push("/team-leader/analytics")}
@@ -646,4 +645,4 @@ export default function JuniorLeaderPage() {
       </Dialog>
     </div>
   );
-} 
+}

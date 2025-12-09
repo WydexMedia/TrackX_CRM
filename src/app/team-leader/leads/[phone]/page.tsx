@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 import { 
   Target, 
   BarChart3, 
@@ -89,7 +89,7 @@ export default function LeadDetailPage() {
   // Function to fetch user names from API
   const fetchUserNames = async () => {
     try {
-      const response = await authenticatedFetch("/api/tl/users");
+      const response = await fetch("/api/tl/users");
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.users) {
@@ -138,7 +138,7 @@ export default function LeadDetailPage() {
       const currentUser = getCurrentUser();
       const actorId = currentUser?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead?.phone || '')}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead?.phone || '')}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -152,7 +152,7 @@ export default function LeadDetailPage() {
         if (lead) lead.ownerId = selectedOwner;
         
         // Refresh data
-        const d = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
+        const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
         setLead(d.lead || null);
         setEvents(d.events || []);
         setTasks(d.tasks || []);
@@ -172,7 +172,7 @@ export default function LeadDetailPage() {
 
   useEffect(() => {
     setLoading(true);
-    authenticatedFetch(`/api/tl/leads/${encodeURIComponent(phone)}`)
+    fetch(`/api/tl/leads/${encodeURIComponent(phone)}`)
       .then((r) => r.json())
       .then((d) => { 
         setLead(d.lead || null); 
@@ -187,7 +187,7 @@ export default function LeadDetailPage() {
     fetchUserNames();
 
     // Load stages
-    authenticatedFetch("/api/tl/stages")
+    fetch("/api/tl/stages")
       .then((r) => r.json())
       .then((d) => {
         const stages = d?.stages || [];
@@ -197,14 +197,14 @@ export default function LeadDetailPage() {
       .catch(() => {});
 
     // Load courses
-    authenticatedFetch("/api/tl/courses")
+    fetch("/api/tl/courses")
       .then((r) => r.json())
       .then((d) => setCourses(d?.courses || []))
       .catch(() => {});
   }, [phone]);
 
   useEffect(() => {
-    authenticatedFetch("/api/users")
+    fetch("/api/users")
       .then((r) => r.json())
       .then((all) => {
         const onlySales = (Array.isArray(all) ? all : []).filter((u: any) => (u.role ?? 'sales') === "sales");
@@ -233,7 +233,7 @@ export default function LeadDetailPage() {
       const currentUser = getCurrentUser();
       const actorId = currentUser?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -269,7 +269,7 @@ export default function LeadDetailPage() {
       const currentUser = getCurrentUser();
       const actorId = currentUser?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -304,7 +304,7 @@ export default function LeadDetailPage() {
       const currentUser = getCurrentUser();
       const actorId = currentUser?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -339,7 +339,7 @@ export default function LeadDetailPage() {
       const currentUser = getCurrentUser();
       const actorId = currentUser?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -367,7 +367,7 @@ export default function LeadDetailPage() {
   const performDeleteLead = async () => {
     if (!lead) return;
     try {
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, { method: "DELETE" });
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete lead");
       toast.success("Lead deleted");
       window.location.href = "/team-leader/leads";
@@ -1169,7 +1169,7 @@ export default function LeadDetailPage() {
                         
                         if (selectedStage && selectedStage.toLowerCase().includes("customer")) {
                           // Use sales API for customer stage
-                          res = await authenticatedFetch("/api/sales", {
+                          res = await fetch("/api/sales", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
@@ -1188,7 +1188,7 @@ export default function LeadDetailPage() {
                             actorId: actorId
                           };
 
-                          res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+                          res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
                             method: "PUT",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify(requestBody)
@@ -1203,7 +1203,7 @@ export default function LeadDetailPage() {
                           setStageNotesError("");
                           
                           // Refresh lead data
-                          const d = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
+                          const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
                           
                           setLead(d.lead || null);
                           setEvents(d.events || []);
@@ -1277,7 +1277,7 @@ export default function LeadDetailPage() {
                     try {
                       setAddingNote(true);
                       const toastId = toast.loading("Adding note...");
-                      const res = await authenticatedFetch("/api/tl/leads/notes", { 
+                      const res = await fetch("/api/tl/leads/notes", { 
                         method: "POST", 
                         headers: { "Content-Type": "application/json" }, 
                         body: JSON.stringify({ 
@@ -1289,7 +1289,7 @@ export default function LeadDetailPage() {
                         toast.success("Note added successfully", { id: toastId });
                         setNewNote("");
                         // Refresh events to show the new note
-                        const d = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
+                        const d = await fetch(`/api/tl/leads/${encodeURIComponent(phone)}`).then((r) => r.json());
                         setEvents(d.events || []);
                       } else {
                         toast.error("Failed to add note", { id: toastId });

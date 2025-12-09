@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from 'react-hot-toast';
-import { authenticatedFetch } from '@/lib/tokenValidation';
+// Clerk handles authentication automatically via cookies - no need for fetch
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -75,23 +75,13 @@ export default function KPIsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-    const parsedUser = JSON.parse(user);
-    if (parsedUser.role !== 'teamleader') {
-      router.push("/login");
-      return;
-    }
+    // Layout already handles authentication - just fetch data
     fetchKPIData();
-  }, [router]);
+  }, []);
 
   const fetchKPIData = async (startDate?: string, endDate?: string, salesPersonIds?: string[]) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       
       const params = new URLSearchParams();
       if (startDate) params.append('startDate', startDate);
@@ -100,13 +90,8 @@ export default function KPIsPage() {
         params.append('salesPersonIds', salesPersonIds.join(','));
       }
 
-      const response = await authenticatedFetch(
-        `/api/tl/kpis?${params.toString()}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
+      const response = await fetch(
+        `/api/tl/kpis?${params.toString()}`
       );
 
       if (response.ok) {

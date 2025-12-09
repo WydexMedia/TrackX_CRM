@@ -1,3 +1,4 @@
+import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 function extractSubdomain(host?: string | null): string | null {
@@ -21,7 +22,7 @@ function extractSubdomain(host?: string | null): string | null {
   return potentialSubdomain || null;
 }
 
-export function middleware(req: NextRequest) {
+export default clerkMiddleware((auth, req: NextRequest) => {
   const url = req.nextUrl.clone();
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
   const subdomain = extractSubdomain(host);
@@ -36,13 +37,13 @@ export function middleware(req: NextRequest) {
       headers: requestHeaders,
     },
   });
-}
+});
 
 export const config = {
   matcher: [
-    // Skip Next internals and static assets
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+    // Skip Next.js internals and all static files, unless found in search params
+    "/((?!_next|[^?]*\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // Always run for API routes
+    "/(api|trpc)(.*)",
   ],
 };
-
-

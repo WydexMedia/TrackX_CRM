@@ -3,14 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useClerk, useOrganization } from "@clerk/nextjs";
 import { Icons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Card, CardContent } from "@/components/ui/card";
-import { authenticatedFetch } from "@/lib/tokenValidation";
-import { useTenant } from "@/hooks/useTenant";
 import { ChevronDown, User, LogOut, Settings as SettingsIcon } from "lucide-react";
 
 const items = [
@@ -31,33 +29,38 @@ const settingsItems = [
   { href: "/team-leader/profile", label: "Profile", icon: User },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  user?: {
+    name: string;
+    email: string;
+    role: string;
+    organizationName?: string;
+    organizationSlug?: string;
+  };
+}
+
+export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { signOut } = useClerk();
+  const { organization } = useOrganization();
   const [activeRule, setActiveRule] = useState<string>("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [settingsExpanded, setSettingsExpanded] = useState(false);
-  const { subdomain } = useTenant();
+
+  // Get organization name from Clerk or props
+  const orgName = organization?.name || user?.organizationName || "Wydex";
+  const orgSlug = organization?.slug || user?.organizationSlug;
 
   const handleLogout = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        await fetch('/api/users/logout', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ token })
-        });
-      }
+      // Sign out from Clerk
+      await signOut({ redirectUrl: "/login" });
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
+      // Fallback: redirect to login
+      router.push("/login");
     }
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    router.push("/login");
   };
 
   // Auto-expand settings if on settings or profile page
@@ -70,7 +73,7 @@ export default function Sidebar() {
   useEffect(() => {
     const controller = new AbortController();
     const load = () => {
-      authenticatedFetch("/api/tl/automations", { cache: "no-store", signal: controller.signal })
+      fetch("/api/tl/automations", { cache: "no-store", signal: controller.signal })
         .then((r) => r.json())
         .then((d) => setActiveRule(d.active || ""))
         .catch(() => {});
@@ -119,7 +122,7 @@ export default function Sidebar() {
             </div>
             <div>
               <div className="text-sm font-semibold text-slate-900 capitalize">
-                {subdomain ? subdomain.split('.')[0] : 'Wydex'}
+                {orgSlug || orgName}
               </div>
               <div className="text-xs text-slate-500">CRM Dashboard</div>
             </div>
@@ -263,8 +266,14 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      {/* Footer Info */}
+      {/* User Info & Footer */}
       <div className="p-3 border-t border-slate-200/60">
+        {!isCollapsed && user && (
+          <div className="mb-2 p-2 bg-slate-50 rounded-lg">
+            <p className="text-xs font-medium text-slate-700 truncate">{user.name}</p>
+            <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
+          </div>
+        )}
         {!isCollapsed && (
           <div className="text-center">
             <p className="text-[10px] text-slate-500">TrackX CRM</p>

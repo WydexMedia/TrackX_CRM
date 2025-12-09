@@ -2,8 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { Toaster, toast } from "react-hot-toast";
-import { setupPeriodicTokenValidation, authenticatedFetch } from '@/lib/tokenValidation';
+// Clerk handles authentication automatically via cookies - no need for fetch
 import Link from "next/link";
 import TenantLogo from "@/components/TenantLogo";
 import { useTenant } from "@/hooks/useTenant";
@@ -32,15 +33,7 @@ interface User {
 }
 
 // ---------- utils ----------
-function getUserFromStorage() {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem("user");
-    return raw ? (JSON.parse(raw) as User) : null;
-  } catch {
-    return null;
-  }
-}
+// getUserFromStorage removed - using Clerk now
 
 function filterSalesByDate(sales: Sale[], date: Date) {
   const y = date.getFullYear();
@@ -122,7 +115,8 @@ function StatCard({
 export default function DashboardPage() {
   const router = useRouter();
   const { subdomain } = useTenant();
-  const [user, setUser] = useState<User | null>(null);
+  const { user: clerkUser, isLoaded } = useUser();
+  const [dbUser, setDbUser] = useState<User | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -132,207 +126,77 @@ export default function DashboardPage() {
     newAdmission: string;
   } | null>(null);
 
-  // ------------- bootstrap -------------
+  // Get user from database
   useEffect(() => {
-    const authenticateUser = async () => {
-      // First check if we have a token parameter (from redirect)
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      
-      if (token) {
-        try {
-          // Validate the token and get user data
-          const response = await fetch('/api/users/validate-session', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ token })
-          });
-          
-          if (response.ok) {
-            const userData = await response.json();
-            localStorage.setItem("user", JSON.stringify(userData));
-            localStorage.setItem("token", userData.token);
-            setUser(userData);
-            
-            // Clean up the URL by removing the token parameter
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.delete('token');
-            window.history.replaceState({}, '', newUrl.toString());
-            
-            return;
-          } else if (response.status === 401) {
-            const errorData = await response.json();
-            if (errorData.code === 'TOKEN_REVOKED_NEW_LOGIN') {
-              // User logged in from another device
-              localStorage.removeItem("user");
-              localStorage.removeItem("token");
-              toast.error('You have been logged out because you logged in from another device.', {
-                duration: 5000,
-                style: {
-                  background: '#fee2e2',
-                  color: '#dc2626',
-                  border: '1px solid #fecaca'
-                }
-              });
-              router.push("/login");
-              return;
-            }
-          }
-        } catch (error) {
-          console.error('Session validation failed:', error);
+    if (!isLoaded || !clerkUser) return;
+
+    const loadUser = async () => {
+      try {
+        const email = clerkUser.emailAddresses[0]?.emailAddress;
+        if (!email) {
+          setIsLoading(false);
+          return;
         }
-      }
-      
-      // Fallback to localStorage check
-      const u = getUserFromStorage();
-      console.log('User from storage:', u);
-      if (!u) {
-        console.log('No user found, redirecting to login');
-        router.push("/login");
-        return;
-      }
 
-      // Validate stored token
-      const storedToken = localStorage.getItem("token");
-      console.log('Stored token exists:', !!storedToken);
-      if (storedToken) {
-        try {
-          console.log('Validating token...');
-          const response = await fetch('/api/users/validate-session', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${storedToken}`
-            },
-            body: JSON.stringify({ token: storedToken })
-          });
-          
-          console.log('Token validation response status:', response.status);
-          if (response.ok) {
-            const userData = await response.json();
-            console.log('Token validation successful, user data:', userData);
-            localStorage.setItem("user", JSON.stringify(userData));
-            localStorage.setItem("token", userData.token);
-            setUser(userData);
-            
-            // Continue with loading sales data instead of returning early
-            console.log('Continuing with sales data loading after token validation...');
-            // Don't return here, let it continue to the sales loading logic
-          } else if (response.status === 401) {
-            const errorData = await response.json();
-            console.log('Token validation failed:', errorData);
-            if (errorData.code === 'TOKEN_REVOKED_NEW_LOGIN') {
-              // User logged in from another device
-              localStorage.removeItem("user");
-              localStorage.removeItem("token");
-              toast.error('You have been logged out because you logged in from another device.', {
-                duration: 5000,
-                style: {
-                  background: '#fee2e2',
-                  color: '#dc2626',
-                  border: '1px solid #fecaca'
-                }
-              });
-              router.push("/login");
-              return;
-            } else {
-              // Token is invalid/expired, but don't clear localStorage yet
-              // Let the user continue with the stored user data
-              console.log('Token validation failed, but continuing with stored user data');
-            }
+        const response = await fetch(`/api/users/current?identifier=${encodeURIComponent(email)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            setDbUser({
+              name: data.user.name || clerkUser.fullName || "",
+              code: data.user.code || email,
+              email: data.user.email || email,
+              role: data.user.role,
+              target: data.user.target,
+            });
           }
-        } catch (error) {
-          console.error('Token validation failed:', error);
-          // Don't redirect to login on network errors, continue with stored data
         }
-      }
-
-      // Load current user from API (fresh target, etc.)
-      const identifier = encodeURIComponent(u.email || u.code);
-      const loadUser = authenticatedFetch(`/api/users/current?identifier=${identifier}`)
-        .then((res) => res.json())
-        .then((userData) => {
-          const updated = userData?.success ? { ...u, ...userData.user } : u;
-          localStorage.setItem("user", JSON.stringify(updated));
-          setUser(updated);
-          
-          // Check for team leader redirect after user data is loaded
-          if (updated.role === "teamleader") {
-            router.push("/team-leader");
-            return;
-          }
-          
-          // Return the updated user for the sales API call
-          return updated;
-        })
-        .catch(() => {
-          setUser(u);
-          // Check for team leader redirect even if API fails
-          if (u.role === "teamleader") {
-            router.push("/team-leader");
-            return;
-          }
-          // Return the original user for the sales API call
-          return u;
-        });
-
-      const loadSales = loadUser.then((currentUser) => {
-        if (!currentUser) return Promise.resolve([]);
-        
-        console.log('Loading sales for user:', currentUser);
-        return authenticatedFetch("/api/sales", {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        })
-          .then((res) => {
-            console.log('Sales API response status:', res.status);
-            if (!res.ok) {
-              throw new Error(`HTTP error! status: ${res.status}`);
-            }
-            return res.json();
-          })
-          .then((data) => {
-            console.log('Sales API response data:', data);
-            // Handle the new API response format: {sales: [], pagination: {}}
-            const salesData = data.sales || data; // Fallback to direct array for backward compatibility
-            if (Array.isArray(salesData)) {
-              console.log('Setting sales data:', salesData);
-              setSales(salesData);
-              return salesData;
-            } else {
-              console.error('Unexpected sales data format:', data);
-              setSales([]);
-              return [];
-            }
-          })
-          .catch((error) => {
-            console.error('Failed to load sales:', error);
-            toast.error("Failed to load sales");
-            return [];
-          });
-      });
-
-      Promise.all([loadUser, loadSales]).finally(() => {
-        console.log('All API calls completed, setting loading to false');
+      } catch (error) {
+        console.error("Error loading user:", error);
+      } finally {
         setIsLoading(false);
-      });
+      }
     };
 
-    authenticateUser();
-    
-    // Set up periodic token validation
-    const redirectToLogin = () => router.push("/login");
-    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 60000); // Check every 60 seconds
-    
-    // Cleanup interval on unmount
-    return () => {
-      clearInterval(validationInterval);
+    loadUser();
+  }, [isLoaded, clerkUser]);
+
+  // Load sales data
+  useEffect(() => {
+    if (!isLoaded || !clerkUser) return;
+
+    const loadSales = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch('/api/sales');
+        if (response.ok) {
+          const data = await response.json();
+          // Handle the new API response format: {sales: [], pagination: {}}
+          const salesData = data.sales || data;
+          setSales(Array.isArray(salesData) ? salesData : []);
+        } else {
+          toast.error("Failed to load sales data");
+        }
+      } catch (error) {
+        console.error("Error loading sales:", error);
+        toast.error("Failed to load sales data");
+      } finally {
+        setIsLoading(false);
+      }
     };
-  }, [router]);
+
+    loadSales();
+  }, [isLoaded, clerkUser]);
+
+  // Check if user should be redirected (teamleader goes to team-leader dashboard)
+  useEffect(() => {
+    if (!isLoaded || !dbUser) return;
+    
+    if (dbUser.role === "teamleader") {
+      router.push("/team-leader");
+      return;
+    }
+  }, [isLoaded, dbUser, router]);
 
   const today = new Date();
 
@@ -340,7 +204,7 @@ export default function DashboardPage() {
   const weekly = useMemo(() => filterSalesByWeek(sales, today), [sales, today]);
   const monthly = useMemo(() => filterSalesByMonth(sales, today), [sales, today]);
 
-  const target = user?.target ?? 300000;
+  const target = dbUser?.target ?? 300000;
 
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -367,12 +231,8 @@ export default function DashboardPage() {
 
   // ------------- handlers -------------
   const refreshSales = () => {
-    if (!user) return;
-    authenticatedFetch("/api/sales", {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
+    if (!clerkUser) return;
+    fetch("/api/sales")
       .then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
@@ -398,7 +258,7 @@ export default function DashboardPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this sale?")) return;
     await toast.promise(
-      authenticatedFetch(`/api/sales?id=${id}`, { method: "DELETE" })
+      fetch(`/api/sales?id=${id}`, { method: "DELETE" })
         .then(() => refreshSales()),
       {
         loading: "Deleting...",
@@ -421,7 +281,7 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!editingId || !editData) return;
     await toast.promise(
-      authenticatedFetch(`/api/sales`, {
+      fetch(`/api/sales`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ _id: editingId, ...editData }),
@@ -475,7 +335,7 @@ export default function DashboardPage() {
     router.push("/login");
   };
 
-  if (!user) {
+  if (!isLoaded || !clerkUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
         <Toaster position="top-center" />
@@ -513,7 +373,7 @@ export default function DashboardPage() {
               
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                  Welcome back, {user.name}
+                  Welcome back, {dbUser?.name || clerkUser?.fullName || "User"}
                 </h1>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-slate-700">
                   <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs sm:text-sm">
@@ -522,14 +382,14 @@ export default function DashboardPage() {
                       <path d="M10 6H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-5" />
                       <path d="M10 6V5a2 2 0 1 1 4 0v1" />
                     </svg>
-                    {user.email || user.code}
+                    {dbUser?.email || dbUser?.code || clerkUser?.emailAddresses[0]?.emailAddress || ""}
                   </span>
                   <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs sm:text-sm">
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M3 8l7.89 4.26a2 2 0 0 0 2.22 0L21 8" />
                       <path d="M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
                     </svg>
-                    {user.email}
+                    {dbUser?.email || clerkUser?.emailAddresses[0]?.emailAddress || ""}
                   </span>
                 </div>
               </div>

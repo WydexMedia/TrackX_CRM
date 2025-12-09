@@ -4,9 +4,16 @@ import { db } from "@/db/client";
 import { leads, tasks, settings, leadEvents, users, sales } from "@/db/schema";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
 import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
+import { authenticateRequest, createUnauthorizedResponse } from "@/lib/clerkAuth";
 
 export async function GET(req: NextRequest) {
   try {
+    // Authenticate the request
+    const authResult = await authenticateRequest(req);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode);
+    }
+
     const { searchParams } = new URL(req.url);
     const tab = searchParams.get("tab") || "unassigned"; // unassigned|aging|hot
     const limit = Number(searchParams.get("limit") || 25);
@@ -42,6 +49,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // Authenticate the request
+    const authResult = await authenticateRequest(req);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode);
+    }
+
     const body = await req.json();
     const { action } = body || {};
     const { tenantId, tenantSubdomain } = await getTenantContextFromRequest(req as any);

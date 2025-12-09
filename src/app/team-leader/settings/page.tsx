@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -84,7 +84,7 @@ export default function SettingsPage() {
   const loadStages = async () => {
     try {
       setLoading(true);
-      const res = await authenticatedFetch("/api/tl/stages");
+      const res = await fetch("/api/tl/stages");
       if (res.ok) {
         const data = await res.json();
         setStages(data.stages || []);
@@ -106,7 +106,7 @@ export default function SettingsPage() {
 
     try {
       setSaving(true);
-      const res = await authenticatedFetch("/api/tl/stages", {
+      const res = await fetch("/api/tl/stages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -140,7 +140,7 @@ export default function SettingsPage() {
 
     try {
       setSaving(true);
-      const res = await authenticatedFetch("/api/tl/stages", {
+      const res = await fetch("/api/tl/stages", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -168,7 +168,7 @@ export default function SettingsPage() {
 
   const handleDeleteStage = async (id: number) => {
     try {
-      const res = await authenticatedFetch("/api/tl/stages", {
+      const res = await fetch("/api/tl/stages", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id })
@@ -202,12 +202,12 @@ export default function SettingsPage() {
 
     try {
       await Promise.all([
-        authenticatedFetch("/api/tl/stages", {
+        fetch("/api/tl/stages", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: reordered[index].id, order: index + 1 })
         }),
-        authenticatedFetch("/api/tl/stages", {
+        fetch("/api/tl/stages", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: reordered[newIndex].id, order: newIndex + 1 })
@@ -227,7 +227,7 @@ export default function SettingsPage() {
   // Course management functions
   const loadCourses = async () => {
     try {
-      const res = await authenticatedFetch("/api/tl/courses");
+      const res = await fetch("/api/tl/courses");
       if (res.ok) {
         const data = await res.json();
         setCourses(data.courses || []);
@@ -252,7 +252,7 @@ export default function SettingsPage() {
 
     try {
       setSavingCourse(true);
-      const res = await authenticatedFetch("/api/tl/courses", {
+      const res = await fetch("/api/tl/courses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -291,7 +291,7 @@ export default function SettingsPage() {
 
     try {
       setSavingCourse(true);
-      const res = await authenticatedFetch("/api/tl/courses", {
+      const res = await fetch("/api/tl/courses", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -320,7 +320,7 @@ export default function SettingsPage() {
 
   const handleDeleteCourse = async (id: number) => {
     try {
-      const res = await authenticatedFetch("/api/tl/courses", {
+      const res = await fetch("/api/tl/courses", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id })

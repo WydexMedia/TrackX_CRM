@@ -45,3 +45,6 @@ next-env.d.ts
 *.backup
 *.bak
 *~
+
+# clerk configuration (can include secrets)
+/.clerk/

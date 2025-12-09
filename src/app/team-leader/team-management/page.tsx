@@ -1,17 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 import { Eye, EyeOff, Settings, Users, Plus, Edit, Trash2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 interface User {
+  id?: number; // Database ID
   code: string;
   _id?: string;
   name: string;
@@ -37,6 +39,7 @@ interface TeamData {
 }
 
 export default function TeamManagementPage() {
+  const { user: clerkUser, isLoaded } = useUser();
   const [teamData, setTeamData] = useState<TeamData | null>(null);
   const [loading, setLoading] = useState(true);
   const [promotingUser, setPromotingUser] = useState<string | null>(null);
@@ -55,7 +58,6 @@ export default function TeamManagementPage() {
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
-    password: "",
     target: 0
   });
   const [isAddingUser, setIsAddingUser] = useState(false);
@@ -64,27 +66,42 @@ export default function TeamManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
+    if (!isLoaded) return;
     fetchTeamData();
     fetchCredentials();
-  }, []);
+  }, [isLoaded]);
 
   const fetchTeamData = async () => {
     try {
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      if (!user.email) {
-        toast.error("User not found");
-        return;
-      }
-
-      const response = await authenticatedFetch(`/api/tl/team-management?userId=${encodeURIComponent(user.email)}`);
+      // API gets user from Clerk authentication - no need for userId parameter
+      const response = await fetch(`/api/tl/team-management`);
       if (response.ok) {
         const data = await response.json();
-        setTeamData(data.teamData);
+        // Ensure teamData is always an object with arrays, never null
+        setTeamData(data.teamData || {
+          allUsers: [],
+          juniorLeaders: [],
+          salesPersons: []
+        });
       } else {
-        toast.error("Failed to fetch team data");
+        const errorData = await response.json();
+        console.error("Team data fetch error:", errorData);
+        // Set empty team data on error so UI can still render
+        setTeamData({
+          allUsers: [],
+          juniorLeaders: [],
+          salesPersons: []
+        });
+        toast.error(errorData.error || "Failed to fetch team data");
       }
     } catch (error) {
       console.error("Error fetching team data:", error);
+      // Set empty team data on error so UI can still render
+      setTeamData({
+        allUsers: [],
+        juniorLeaders: [],
+        salesPersons: []
+      });
       toast.error("Failed to fetch team data");
     } finally {
       setLoading(false);
@@ -93,10 +110,8 @@ export default function TeamManagementPage() {
 
   const fetchCredentials = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await authenticatedFetch("/api/users/credentials", {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      // Clerk handles authentication via cookies automatically
+      const response = await fetch("/api/users/credentials");
       if (response.ok) {
         const data = await response.json();
         setCredentials(data);
@@ -127,15 +142,13 @@ export default function TeamManagementPage() {
   const promoteToJL = async (salespersonCode: string) => {
     try {
       setPromotingUser(salespersonCode);
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
       
-      const response = await authenticatedFetch("/api/tl/team-management", {
+      const response = await fetch("/api/tl/team-management", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "promote_to_jl",
-          targetUserId: salespersonCode,
-          userId: user.email
+          targetUserId: salespersonCode
         })
       });
 
@@ -157,16 +170,14 @@ export default function TeamManagementPage() {
   const assignToJL = async (salespersonCode: string, jlCode: string) => {
     try {
       setAssigningUser(salespersonCode);
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
       
-      const response = await authenticatedFetch("/api/tl/team-management", {
+      const response = await fetch("/api/tl/team-management", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "assign_to_jl",
           targetUserId: salespersonCode,
-          jlId: jlCode,
-          userId: user.email
+          jlId: jlCode
         })
       });
 
@@ -190,15 +201,13 @@ export default function TeamManagementPage() {
   const unassignFromJL = async (salespersonCode: string) => {
     try {
       setUnassigningUser(salespersonCode);
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
       
-      const response = await authenticatedFetch("/api/tl/team-management", {
+      const response = await fetch("/api/tl/team-management", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "unassign_from_jl",
-          targetUserId: salespersonCode,
-          userId: user.email
+          targetUserId: salespersonCode
         })
       });
 
@@ -222,15 +231,13 @@ export default function TeamManagementPage() {
   const demoteToSales = async (jlCode: string) => {
     try {
       setDemotingUser(jlCode);
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
       
-      const response = await authenticatedFetch("/api/tl/team-management", {
+      const response = await fetch("/api/tl/team-management", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "demote_to_sales",
-          targetUserId: jlCode,
-          userId: user.email
+          targetUserId: jlCode
         })
       });
 
@@ -262,20 +269,29 @@ export default function TeamManagementPage() {
     e.preventDefault();
     setIsAddingUser(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await authenticatedFetch("/api/users", {
+      // Clerk handles authentication via cookies automatically
+      const res = await fetch("/api/users", {
         method: "POST",
         headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(newUser),
       });
 
       if (res.ok) {
-        toast.success("User created successfully");
+        const result = await res.json();
+        toast.success(result.message || "Team member invited successfully!", {
+          duration: 6000, // Show for 6 seconds to read the message
+        });
+        
+        // Show additional info if invitation was sent
+        if (result.invitationId) {
+          console.log('Invitation details:', result.invitationDetails);
+          console.log('Troubleshooting steps:', result.troubleshooting);
+        }
+        
         setShowAddUser(false);
-        setNewUser({ name: "", email: "", password: "", target: 0 });
+        setNewUser({ name: "", email: "", target: 0 });
         fetchTeamData();
         fetchCredentials();
       } else {
@@ -295,12 +311,11 @@ export default function TeamManagementPage() {
 
     setIsUpdatingUser(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await authenticatedFetch("/api/users", {
+      // Clerk handles authentication via cookies automatically
+      const res = await fetch("/api/users", {
         method: "PUT",
         headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(editingUser),
       });
@@ -327,12 +342,9 @@ export default function TeamManagementPage() {
 
     setIsDeletingUser(userId);
     try {
-      const token = localStorage.getItem('token');
-      const res = await authenticatedFetch(`/api/users?id=${userId}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+      // Clerk handles authentication via cookies automatically
+      const res = await fetch(`/api/users?id=${userId}`, {
+        method: "DELETE"
       });
 
       if (res.ok) {
@@ -350,7 +362,7 @@ export default function TeamManagementPage() {
     }
   };
 
-  if (loading) {
+  if (!isLoaded || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
         <Card className="w-80 border border-slate-200/60 shadow-sm">
@@ -364,18 +376,12 @@ export default function TeamManagementPage() {
     );
   }
 
-  if (!teamData) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
-        <Card className="w-80 border border-slate-200/60 shadow-sm">
-          <CardContent className="p-8 text-center">
-            <p className="text-slate-700 font-medium">No team data available</p>
-            <p className="text-xs text-slate-500 mt-2">Please contact support</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Initialize empty team data if null to allow UI to render
+  const displayTeamData = teamData || {
+    allUsers: [],
+    juniorLeaders: [],
+    salesPersons: []
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 py-6">
@@ -418,21 +424,21 @@ export default function TeamManagementPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
                 <div className="bg-blue-100 rounded-xl w-16 h-16 flex items-center justify-center mx-auto mb-3 shadow-sm">
-                  <span className="text-2xl font-bold text-blue-600">{teamData.juniorLeaders.length}</span>
+                  <span className="text-2xl font-bold text-blue-600">{displayTeamData.juniorLeaders.length}</span>
                 </div>
                 <p className="text-sm font-semibold text-slate-900">Junior Leaders</p>
                 <p className="text-xs text-slate-500 mt-1">Team supervisors</p>
               </div>
               <div className="text-center">
                 <div className="bg-green-100 rounded-xl w-16 h-16 flex items-center justify-center mx-auto mb-3 shadow-sm">
-                  <span className="text-2xl font-bold text-green-600">{teamData.salesPersons.length}</span>
+                  <span className="text-2xl font-bold text-green-600">{displayTeamData.salesPersons.length}</span>
                 </div>
                 <p className="text-sm font-semibold text-slate-900">Sales Persons</p>
                 <p className="text-xs text-slate-500 mt-1">Active agents</p>
               </div>
               <div className="text-center">
                 <div className="bg-purple-100 rounded-xl w-16 h-16 flex items-center justify-center mx-auto mb-3 shadow-sm">
-                  <span className="text-2xl font-bold text-purple-600">{teamData.allUsers.length}</span>
+                  <span className="text-2xl font-bold text-purple-600">{displayTeamData.allUsers.length}</span>
                 </div>
                 <p className="text-sm font-semibold text-slate-900">Total Team Members</p>
                 <p className="text-xs text-slate-500 mt-1">Entire team</p>
@@ -447,11 +453,11 @@ export default function TeamManagementPage() {
             <CardTitle className="text-lg text-slate-900">Junior Leaders</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            {teamData.juniorLeaders.length === 0 ? (
+            {displayTeamData.juniorLeaders.length === 0 ? (
               <p className="text-slate-500 text-center py-4">No Junior Leaders yet</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {teamData.juniorLeaders.map((jl) => (
+                {displayTeamData.juniorLeaders.map((jl) => (
                   <Card key={jl.code} className="border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
@@ -529,18 +535,28 @@ export default function TeamManagementPage() {
                   />
                 </div>
                 <div className="text-sm text-slate-600 font-medium">
-                  {teamData.salesPersons.filter(sp => 
+                  {displayTeamData.salesPersons.filter(sp => 
                     sp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     sp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     sp.code.toLowerCase().includes(searchTerm.toLowerCase())
-                  ).length} of {teamData.salesPersons.length} members
+                  ).length} of {displayTeamData.salesPersons.length} members
                 </div>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            {teamData.salesPersons.length === 0 ? (
-              <p className="text-slate-500 text-center py-8">No Sales Persons yet</p>
+            {displayTeamData.salesPersons.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-slate-500 mb-4">No Sales Persons yet</p>
+                <Button
+                  onClick={() => setShowAddUser(true)}
+                  size="sm"
+                  className="gap-2 bg-primary hover:bg-primary/90"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Your First Team Member
+                </Button>
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -555,7 +571,7 @@ export default function TeamManagementPage() {
                     </TR>
                   </THead>
                   <TBody>
-                    {teamData.salesPersons
+                    {displayTeamData.salesPersons
                       .filter(sp => 
                         sp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         sp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -577,7 +593,7 @@ export default function TeamManagementPage() {
                         <TD>
                           {salesperson.assignedTo ? (
                             <Badge variant="secondary">
-                              {teamData.juniorLeaders.find(jl => jl.code === salesperson.assignedTo)?.name || salesperson.assignedTo}
+                              {displayTeamData.juniorLeaders.find(jl => jl.code === salesperson.assignedTo)?.name || salesperson.assignedTo}
                             </Badge>
                           ) : (
                             <Badge variant="outline">Unassigned</Badge>
@@ -606,7 +622,7 @@ export default function TeamManagementPage() {
                                   className="w-32 h-8 text-xs px-2 py-1 border border-gray-300 rounded-md"
                                 >
                                   <option value="">Select new JL</option>
-                                  {teamData.juniorLeaders
+                                  {displayTeamData.juniorLeaders
                                     ?.filter(jl => jl.code !== salesperson.assignedTo)
                                     .map((jl) => (
                                       <option key={jl.code} value={jl.code}>
@@ -640,7 +656,7 @@ export default function TeamManagementPage() {
                                   className="w-32 h-8 text-xs px-2 py-1 border border-gray-300 rounded-md"
                                 >
                                   <option value="">Select JL</option>
-                                  {teamData.juniorLeaders
+                                  {displayTeamData.juniorLeaders
                                     ?.filter(jl => jl.code !== salesperson.code)
                                     .map((jl) => (
                                       <option key={jl.code} value={jl.code}>
@@ -666,7 +682,7 @@ export default function TeamManagementPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                const userToEdit = teamData.allUsers.find(u => u.code === salesperson.code);
+                                const userToEdit = displayTeamData.allUsers.find(u => u.code === salesperson.code);
                                 if (userToEdit) {
                                   setEditingUser(userToEdit);
                                   setShowEditUser(true);
@@ -680,14 +696,14 @@ export default function TeamManagementPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDeleteUser(salesperson._id || salesperson.code)}
-                              disabled={isDeletingUser === (salesperson._id || salesperson.code)}
-                              className={`${isDeletingUser === (salesperson._id || salesperson.code)
+                              onClick={() => handleDeleteUser(salesperson.id ? String(salesperson.id) : (salesperson.code || ''))}
+                              disabled={isDeletingUser === (salesperson.id ? String(salesperson.id) : salesperson.code)}
+                              className={`${isDeletingUser === (salesperson.id ? String(salesperson.id) : salesperson.code)
                                   ? 'text-slate-400 cursor-not-allowed'
                                   : 'text-red-600 hover:text-red-900 hover:bg-red-50'
                                 }`}
                             >
-                              {isDeletingUser === (salesperson._id || salesperson.code) ? (
+                              {isDeletingUser === (salesperson.id ? String(salesperson.id) : salesperson.code) ? (
                                 <div className="flex items-center space-x-1">
                                   <div className="animate-spin h-3 w-3 border-2 border-slate-400 border-t-transparent rounded-full"></div>
                                   <span>Deleting...</span>
@@ -740,17 +756,10 @@ export default function TeamManagementPage() {
                   autoComplete="email"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                <Input
-                  type="password"
-                  required
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  placeholder="Enter password"
-                  autoComplete="new-password"
-                  className="border-slate-200"
-                />
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> An invitation email will be sent to the team member. They will set their password when they accept the invitation.
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Target (₹)</label>
@@ -915,12 +924,15 @@ export default function TeamManagementPage() {
             
             <div className="flex-1 overflow-y-auto">
               <Card className="mb-4 border border-slate-200/60">
-                <CardContent className="p-4">
-                  <p className="text-sm text-slate-600">
-                    <strong>Note:</strong> These are the login credentials for all team members. 
-                    Passwords are hidden by default for security. Click the eye icon to reveal passwords.
-                  </p>
-                </CardContent>
+                  <CardContent className="p-4">
+                    <p className="text-sm text-slate-600 mb-2">
+                      <strong>Note:</strong> These are the login credentials for all team members. 
+                      Passwords are hidden by default for security. Click the eye icon to reveal passwords.
+                    </p>
+                    <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                      <strong>💡 Clerk Invitations:</strong> Team members who were added via invitation will set their own password when accepting the invitation. Their password field may be empty until they accept.
+                    </p>
+                  </CardContent>
               </Card>
               
               <div className="grid gap-4">
@@ -957,7 +969,13 @@ export default function TeamManagementPage() {
                             <div className="text-sm font-medium text-slate-900">Password</div>
                             <div className="flex items-center space-x-2">
                               <div className="text-sm text-slate-600 font-mono bg-slate-100 px-2 py-1 rounded min-w-[120px]">
-                                {visiblePasswords.has(user._id || user.code) ? (user.password || 'No password set') : '••••••'}
+                                {visiblePasswords.has(user._id || user.code) ? (
+                                  user.password ? (
+                                    user.password
+                                  ) : (
+                                    <span className="text-blue-600 italic">Set via invitation</span>
+                                  )
+                                ) : '••••••'}
                               </div>
                               <Button
                                 variant="ghost"

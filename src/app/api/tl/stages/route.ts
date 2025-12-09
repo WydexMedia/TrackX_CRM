@@ -3,16 +3,16 @@ import { and, eq, asc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { leadStages, leads } from "@/db/schema";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
-import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
+import { authenticateRequest, createUnauthorizedResponse } from "@/lib/clerkAuth";
 import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
 // GET - Fetch all stages for tenant
 export async function GET(req: NextRequest) {
   try {
     // Authenticate the request
-    const authResult = await authenticateToken(req as any);
+    const authResult = await authenticateRequest(req);
     if (!authResult.success) {
-      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode);
     }
 
     let tenantId: number;
@@ -39,9 +39,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     // Authenticate the request
-    const authResult = await authenticateToken(req as any);
+    const authResult = await authenticateRequest(req);
     if (!authResult.success) {
-      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode);
     }
 
     const body = await req.json();
@@ -82,9 +82,9 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     // Authenticate the request
-    const authResult = await authenticateToken(req as any);
+    const authResult = await authenticateRequest(req);
     if (!authResult.success) {
-      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode);
     }
 
     const body = await req.json();
@@ -162,9 +162,9 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     // Authenticate the request
-    const authResult = await authenticateToken(req as any);
+    const authResult = await authenticateRequest(req);
     if (!authResult.success) {
-      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode);
     }
 
     const body = await req.json();

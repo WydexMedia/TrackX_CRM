@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -26,17 +27,14 @@ type FormData = {
 };
 
 export default function FormPage() {
-  const [user, setUser] = React.useState<any>(null);
   const router = useRouter();
+  const { user: clerkUser, isLoaded } = useUser();
 
   React.useEffect(() => {
-    const u = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-    if (u) {
-      setUser(JSON.parse(u));
-    } else {
+    if (isLoaded && !clerkUser) {
       router.replace('/login');
     }
-  }, [router]);
+  }, [isLoaded, clerkUser, router]);
 
   const {
     register,
@@ -46,16 +44,26 @@ export default function FormPage() {
   } = useForm<FormData>({ resolver: yupResolver(schema) });
 
   const onSubmit = async (data: FormData) => {
-    if (!user) {
+    if (!clerkUser) {
       toast.error('You must be logged in!');
       return;
     }
     
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast.error('Authentication token not found. Please log in again.');
-      router.push('/login');
-      return;
+    // Get user name from Clerk or database
+    let userName = clerkUser.fullName || clerkUser.firstName || "User";
+    try {
+      const email = clerkUser.emailAddresses[0]?.emailAddress;
+      if (email) {
+        const userResponse = await fetch(`/api/users/current?identifier=${encodeURIComponent(email)}`);
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          if (userData.success && userData.user?.name) {
+            userName = userData.user.name;
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching user name:", error);
     }
     
     // Normalize newAdmission values to match dashboard expectations (Yes/No)
@@ -69,9 +77,8 @@ export default function FormPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ ...normalized, ogaName: user.name }),
+        body: JSON.stringify({ ...normalized, ogaName: userName }),
       });
       
       if (!response.ok) {
@@ -88,7 +95,20 @@ export default function FormPage() {
     }
   };
 
-  if (!user) return null;
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!clerkUser) return null;
+
+  const userName = clerkUser.fullName || clerkUser.firstName || "User";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
@@ -106,7 +126,7 @@ export default function FormPage() {
           <CardTitle className="text-center">Sales Entry Form</CardTitle>
           <div className="flex items-center justify-center gap-2 mt-2">
             <span className="text-sm text-gray-600">Logged in as:</span>
-            <Badge variant="secondary">{user.name}</Badge>
+            <Badge variant="secondary">{userName}</Badge>
           </div>
         </CardHeader>
         <CardContent>

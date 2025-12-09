@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 
 interface IntegrationRow {
   id: number;
@@ -355,7 +355,7 @@ export default function IntegrationsPage() {
     
     try {
       setError(null);
-      const response = await authenticatedFetch("/api/tl/integrations");
+      const response = await fetch("/api/tl/integrations");
       if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
       
       const data = await response.json();
@@ -373,7 +373,7 @@ export default function IntegrationsPage() {
   }, []);
 
   async function handleAddIntegration(provider: string, name: string) {
-    const response = await authenticatedFetch("/api/tl/integrations", {
+    const response = await fetch("/api/tl/integrations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ provider, name }),
@@ -392,7 +392,7 @@ export default function IntegrationsPage() {
 
     setDeleting(true);
     try {
-      const response = await authenticatedFetch("/api/tl/integrations", {
+      const response = await fetch("/api/tl/integrations", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: deleteTarget.id }),

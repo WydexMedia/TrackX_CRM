@@ -3,6 +3,8 @@ import { db } from "@/db/client";
 import { users, teamAssignments } from "@/db/schema";
 import { eq, and, inArray, or } from "drizzle-orm";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
+import { authenticateRequest, createUnauthorizedResponse } from "@/lib/clerkAuth";
+import { getTenantIdFromOrgSlug } from "@/lib/clerkOrganization";
 
 interface TeamAssignment {
   salespersonId: string;
@@ -23,132 +25,192 @@ interface User {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-    
-    if (!userId) {
-      return new Response(JSON.stringify({ error: "User ID is required" }), { status: 400 });
+    // Authenticate with Clerk
+    const authResult = await authenticateRequest(request);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode || 401);
     }
 
+    if (!authResult.email) {
+      return new Response(JSON.stringify({ error: "User email not found" }), { status: 400 });
+    }
+
+    // Use authenticated user's email instead of userId parameter
+    const userId = authResult.email;
+    
     if (process.env.NODE_ENV !== "production") {
       console.log("Team management request for userId:", userId);
+      console.log("Clerk org context:", { orgId: authResult.orgId, orgSlug: authResult.orgSlug });
     }
     
-    // Get tenant context
-    const { tenantSubdomain, tenantId } = await getTenantContextFromRequest(request);
-    if (process.env.NODE_ENV !== "production") {
-      console.log("Tenant context:", { tenantSubdomain, tenantId });
+    // Get tenantId from Clerk organization (primary method)
+    let tenantId: number | null = null;
+    
+    if (authResult.orgSlug && authResult.orgId) {
+      // Use Clerk organization slug to find or create tenant
+      tenantId = await getTenantIdFromOrgSlug(
+        authResult.orgSlug,
+        authResult.orgId,
+        undefined // orgName not available here
+      );
+      console.log("Got tenantId from Clerk organization:", { orgSlug: authResult.orgSlug, orgId: authResult.orgId, tenantId });
     }
     
-    // Find current user by email (userId is email in this context)
-    let currentUser;
-    if (tenantId) {
-      const userResult = await db
-        .select({
-          id: users.id,
-          code: users.code,
-          name: users.name,
-          email: users.email,
-          role: users.role,
-          target: users.target,
-          tenantId: users.tenantId,
-        })
-        .from(users)
-        .where(and(
-          eq(users.email, userId),
-          eq(users.tenantId, tenantId)
-        ))
-        .limit(1);
-      currentUser = userResult[0];
-    } else {
-      const userResult = await db
-        .select({
-          id: users.id,
-          code: users.code,
-          name: users.name,
-          email: users.email,
-          role: users.role,
-          target: users.target,
-          tenantId: users.tenantId,
-        })
-        .from(users)
-        .where(eq(users.email, userId))
-        .limit(1);
-      currentUser = userResult[0];
+    // Find current user by email to get their tenantId and role
+    let userResult = await db
+      .select({
+        id: users.id,
+        code: users.code,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        target: users.target,
+        tenantId: users.tenantId,
+      })
+      .from(users)
+      .where(eq(users.email, userId))
+      .limit(1);
+    
+    let currentUser = userResult[0];
+
+    // Fallback: If tenantId not found from org, use from user record
+    if (!tenantId && currentUser?.tenantId) {
+      tenantId = currentUser.tenantId;
+      console.log("Got tenantId from user record:", tenantId);
+    }
+
+    // Final fallback: Try subdomain header
+    if (!tenantId) {
+      const { tenantId: subdomainTenantId } = await getTenantContextFromRequest(request);
+      if (subdomainTenantId) {
+        tenantId = subdomainTenantId;
+        console.log("Got tenantId from subdomain header:", tenantId);
+      }
+    }
+
+    // If user doesn't exist in database but we have tenantId, create them
+    if (!currentUser && tenantId) {
+      console.log("User not found in database, creating user record...");
+      try {
+        // Get Clerk user details
+        const { currentUser: clerkUser } = await import("@clerk/nextjs/server");
+        const clerkUserData = await clerkUser();
+        
+        if (clerkUserData) {
+          const newUserResult = await db
+            .insert(users)
+            .values({
+              email: userId,
+              code: userId, // Use email as code
+              name: clerkUserData.firstName && clerkUserData.lastName 
+                ? `${clerkUserData.firstName} ${clerkUserData.lastName}`.trim()
+                : clerkUserData.firstName || clerkUserData.lastName || userId.split('@')[0],
+              role: authResult.appRole === 'teamleader' ? 'teamleader' : 'sales',
+              password: '', // No password needed for Clerk users
+              target: 0,
+              tenantId: tenantId,
+            })
+            .returning({
+              id: users.id,
+              code: users.code,
+              name: users.name,
+              email: users.email,
+              role: users.role,
+              target: users.target,
+              tenantId: users.tenantId,
+            });
+          
+          if (newUserResult.length > 0) {
+            currentUser = newUserResult[0];
+            console.log("✅ Created user in database:", {
+              id: currentUser.id,
+              email: currentUser.email,
+              role: currentUser.role,
+              tenantId: currentUser.tenantId,
+            });
+          }
+        }
+      } catch (createError: any) {
+        console.error("Error creating user in database:", createError);
+        // Continue with empty user - will return empty team data
+      }
     }
 
     if (!currentUser) {
+      // User doesn't exist in database yet and couldn't be created - return empty team data
+      console.warn("User not found in database and couldn't be created. Returning empty team data.");
       return new Response(JSON.stringify({ 
-        error: "User not found",
-      }), { status: 404 });
+        teamData: {
+          allUsers: [],
+          juniorLeaders: [],
+          salesPersons: []
+        }
+      }), { status: 200 });
+    }
+
+    if (!tenantId) {
+      // Return empty team data instead of error - user can still add members
+      console.warn("Tenant not found for user. Returning empty team data.");
+      return new Response(JSON.stringify({ 
+        teamData: {
+          allUsers: [],
+          juniorLeaders: [],
+          salesPersons: []
+        }
+      }), { status: 200 });
     }
 
     if (process.env.NODE_ENV !== "production") {
-      console.log("Found user:", currentUser.name, "Role:", currentUser.role);
+      console.log("Tenant context:", { tenantId, userTenantId: currentUser.tenantId });
+      console.log("Found user:", currentUser.name, "Role:", currentUser.role, "TenantId:", currentUser.tenantId);
     }
 
-    // Get all users for this tenant
-    let allUsers;
-    if (tenantId) {
-      allUsers = await db
-        .select({
-          id: users.id,
-          code: users.code,
-          name: users.name,
-          email: users.email,
-          role: users.role,
-          target: users.target,
-        })
-        .from(users)
-        .where(and(
-          eq(users.tenantId, tenantId),
-          inArray(users.role, ["teamleader", "jl", "sales"])
-        ));
-    } else {
-      allUsers = await db
-        .select({
-          id: users.id,
-          code: users.code,
-          name: users.name,
-          email: users.email,
-          role: users.role,
-          target: users.target,
-        })
-        .from(users)
-        .where(inArray(users.role, ["teamleader", "jl", "sales"]));
-    }
+    // Get all users for this tenant ONLY - always filter by tenantId
+    // Include all roles except exclude the current user from sales/junior leaders lists
+    const allUsers = await db
+      .select({
+        id: users.id,
+        code: users.code,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        target: users.target,
+      })
+      .from(users)
+      .where(and(
+        eq(users.tenantId, tenantId),
+        inArray(users.role, ["teamleader", "jl", "sales"])
+      ));
 
     if (process.env.NODE_ENV !== "production") {
       console.log("Found users with filtered roles:", allUsers.length);
+      console.log("Users:", allUsers.map(u => ({ name: u.name, email: u.email, role: u.role })));
     }
 
-    // Get team assignments for this tenant
-    let teamAssignmentsList: TeamAssignment[] = [];
-    if (tenantId) {
-      const assignments = await db
-        .select({
-          salespersonId: teamAssignments.salespersonId,
-          jlId: teamAssignments.jlId,
-          status: teamAssignments.status,
-        })
-        .from(teamAssignments)
-        .where(and(
-          eq(teamAssignments.tenantId, tenantId),
-          eq(teamAssignments.status, "active")
-        ));
-      
-      // Convert to format expected by client (using user IDs/codes)
-      // We need to map user IDs to codes for the mapping
-      const userCodeMap = new Map<number, string>();
-      allUsers.forEach(u => userCodeMap.set(u.id, u.code || u.email));
+    // Get team assignments for this tenant - always filter by tenantId
+    const assignments = await db
+      .select({
+        salespersonId: teamAssignments.salespersonId,
+        jlId: teamAssignments.jlId,
+        status: teamAssignments.status,
+      })
+      .from(teamAssignments)
+      .where(and(
+        eq(teamAssignments.tenantId, tenantId),
+        eq(teamAssignments.status, "active")
+      ));
+    
+    // Convert to format expected by client (using user IDs/codes)
+    // We need to map user IDs to codes for the mapping
+    const userCodeMap = new Map<number, string>();
+    allUsers.forEach(u => userCodeMap.set(u.id, u.code || u.email));
 
-      teamAssignmentsList = assignments.map(a => ({
-        salespersonId: userCodeMap.get(a.salespersonId) || String(a.salespersonId),
-        jlId: userCodeMap.get(a.jlId) || String(a.jlId),
-        status: a.status,
-        tenantId: tenantId,
-      }));
-    }
+    const teamAssignmentsList: TeamAssignment[] = assignments.map(a => ({
+      salespersonId: userCodeMap.get(a.salespersonId) || String(a.salespersonId),
+      jlId: userCodeMap.get(a.jlId) || String(a.jlId),
+      status: a.status,
+      tenantId: tenantId,
+    }));
 
     // Create a map of salesperson code to JL code
     const salesToJlMap = new Map<string, string>();
@@ -265,23 +327,32 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { action, targetUserId, jlId, userId } = body;
+    // Authenticate with Clerk
+    const authResult = await authenticateRequest(request);
+    if (!authResult.success) {
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode || 401);
+    }
 
-    if (!action || !targetUserId || !userId) {
+    if (!authResult.email) {
+      return new Response(JSON.stringify({ error: "User email not found" }), { status: 400 });
+    }
+
+    const body = await request.json();
+    const { action, targetUserId, jlId } = body;
+
+    if (!action || !targetUserId) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
     }
 
-    // Get tenant context
-    const { tenantId } = await getTenantContextFromRequest(request);
+    // Use authenticated user's email
+    const userId = authResult.email;
 
-    if (!tenantId) {
-      return new Response(JSON.stringify({ error: "Tenant context required" }), { status: 400 });
-    }
+    // Get tenant context from subdomain
+    const { tenantId: subdomainTenantId } = await getTenantContextFromRequest(request);
 
-    // Get current user by email
+    // Get current user by email to get their tenantId
     const currentUserResult = await db
       .select({
         id: users.id,
@@ -289,17 +360,27 @@ export async function POST(request: Request) {
         name: users.name,
         email: users.email,
         role: users.role,
+        tenantId: users.tenantId,
       })
       .from(users)
-      .where(and(
-        eq(users.email, userId),
-        eq(users.tenantId, tenantId)
-      ))
+      .where(eq(users.email, userId))
       .limit(1);
 
     const currentUser = currentUserResult[0];
     if (!currentUser) {
-      return new Response(JSON.stringify({ error: "User not found" }), { status: 404 });
+      return new Response(JSON.stringify({ error: "User not found in database" }), { status: 404 });
+    }
+
+    // Use tenantId from user record (most reliable) or from subdomain
+    const tenantId = currentUser.tenantId || subdomainTenantId;
+
+    if (!tenantId) {
+      return new Response(JSON.stringify({ error: "Tenant context required. User must be associated with a tenant." }), { status: 400 });
+    }
+
+    // Verify user belongs to the tenant from subdomain (if subdomain was provided)
+    if (subdomainTenantId && currentUser.tenantId !== subdomainTenantId) {
+      return new Response(JSON.stringify({ error: "User does not belong to this tenant" }), { status: 403 });
     }
 
     // Get target user by code

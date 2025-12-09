@@ -2,14 +2,14 @@ import { NextRequest } from "next/server";
 import { db } from "@/db/client";
 import { leadEvents } from "@/db/schema";
 import { requireTenantIdFromRequest } from "@/lib/tenant";
-import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
+import { authenticateRequest, createUnauthorizedResponse } from "@/lib/clerkAuth";
 
 export async function POST(req: NextRequest) {
   try {
     // Authenticate the request
-    const authResult = await authenticateToken(req as any);
+    const authResult = await authenticateRequest(req);
     if (!authResult.success) {
-      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode);
     }
 
     const { phone, note } = await req.json();
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       leadPhone: phone,
       type: "NOTE_ADDED",
       data: { note: note.trim() },
-      actorId: authResult.user?.email || null,
+      actorId: authResult.email || null,
       at: new Date(),
       tenantId: tenantId
     } as any);

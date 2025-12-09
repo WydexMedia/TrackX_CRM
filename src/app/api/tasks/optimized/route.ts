@@ -3,7 +3,7 @@ import { db } from "@/db/client";
 import { tasks, leads } from "@/db/schema";
 import { eq, and, sql, desc, asc } from "drizzle-orm";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
-import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
+import { authenticateRequest, createUnauthorizedResponse } from "@/lib/clerkAuth";
 import { getCachedResponse, addPerformanceHeaders, withPerformanceMonitoring, CACHE_DURATION } from "@/lib/performance";
 
 // Optimized task fetcher with joins
@@ -73,9 +73,9 @@ const fetchTaskStats = withPerformanceMonitoring(async (tenantId: number) => {
 export async function GET(req: NextRequest) {
   try {
     // Authenticate the request
-    const authResult = await authenticateToken(req as any);
+    const authResult = await authenticateRequest(req);
     if (!authResult.success) {
-      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode);
     }
 
     const { tenantId } = await getTenantContextFromRequest(req as any);
@@ -135,9 +135,9 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     // Authenticate the request
-    const authResult = await authenticateToken(req as any);
+    const authResult = await authenticateRequest(req);
     if (!authResult.success) {
-      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode);
     }
 
     const { tenantId } = await getTenantContextFromRequest(req as any);

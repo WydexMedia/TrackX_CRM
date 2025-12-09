@@ -3,15 +3,15 @@ import { db } from "@/db/client";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
-import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
+import { authenticateRequest, createUnauthorizedResponse } from "@/lib/clerkAuth";
 import { addPerformanceHeaders, CACHE_DURATION } from "@/lib/performance";
 
 export async function GET(req: NextRequest) {
   try {
     // Authenticate the request
-    const authResult = await authenticateToken(req as any);
+    const authResult = await authenticateRequest(req);
     if (!authResult.success) {
-      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode);
     }
 
     const { tenantId } = await getTenantContextFromRequest(req as any);

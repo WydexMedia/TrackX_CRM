@@ -3,7 +3,7 @@ import { db } from "@/db/client";
 import { leads, leadEvents, callLogs } from "@/db/schema";
 import { eq, and, gte, lte, sql, desc, asc } from "drizzle-orm";
 import { getTenantContextFromRequest } from "@/lib/mongoTenant";
-import { authenticateToken, createUnauthorizedResponse } from "@/lib/authMiddleware";
+import { authenticateRequest, createUnauthorizedResponse } from "@/lib/clerkAuth";
 import { getCachedResponse, addPerformanceHeaders, withPerformanceMonitoring, CACHE_DURATION } from "@/lib/performance";
 
 // Optimized analytics data fetcher
@@ -47,9 +47,9 @@ const fetchAnalyticsData = withPerformanceMonitoring(async (tenantId: number, st
 export async function GET(req: NextRequest) {
   try {
     // Authenticate the request
-    const authResult = await authenticateToken(req as any);
+    const authResult = await authenticateRequest(req);
     if (!authResult.success) {
-      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.errorCode, authResult.statusCode);
+      return createUnauthorizedResponse(authResult.error || 'Authentication failed', authResult.statusCode);
     }
 
     const { tenantId } = await getTenantContextFromRequest(req as any);

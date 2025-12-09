@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import { AddLeadModal, ImportLeadsModal } from "./AddLeadModals";
 import { ListCreateModal } from "./ListCreateModal";
 import toast from "react-hot-toast";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 import {
   Tooltip,
   TooltipContent,
@@ -217,7 +218,7 @@ export default function LeadsPage() {
 
   useEffect(() => {
     setLoading(true);
-    authenticatedFetch(`/api/tl/leads?${params}`)
+    fetch(`/api/tl/leads?${params}`)
       .then((r) => r.json())
       .then((d) => { 
         setRows(d.rows || []); 
@@ -245,7 +246,7 @@ export default function LeadsPage() {
       }
     }
     
-    authenticatedFetch("/api/users")
+    fetch("/api/users")
       .then((r) => r.json())
       .then((all) => {
         const onlySales = (Array.isArray(all) ? all : []).filter((u: any) => (u.role ?? 'sales') === "sales");
@@ -254,13 +255,13 @@ export default function LeadsPage() {
       .catch(() => {});
 
     // Load saved lists
-    authenticatedFetch("/api/tl/lists")
+    fetch("/api/tl/lists")
       .then((r) => r.json())
       .then((d) => setLists(d?.rows || []))
       .catch(() => {});
 
     // Load stages
-    authenticatedFetch("/api/tl/stages")
+    fetch("/api/tl/stages")
       .then((r) => r.json())
       .then((d) => setStages(d?.stages || []))
       .catch(() => {});
@@ -271,10 +272,15 @@ export default function LeadsPage() {
   const getActorId = () => {
     if (typeof window === 'undefined') return undefined;
     try {
-      const raw = localStorage.getItem("user");
-      if (!raw) return undefined;
-      const parsed = JSON.parse(raw);
-      return parsed?.code as string | undefined;
+      // Get user code from Clerk user email or database
+      if (clerkUser) {
+        const email = clerkUser.emailAddresses[0]?.emailAddress;
+        if (email) {
+          // Try to get code from database, fallback to email
+          return email; // API will resolve this to user code
+        }
+      }
+      return undefined;
     } catch {
       return undefined;
     }
@@ -283,7 +289,7 @@ export default function LeadsPage() {
   const performBulkDelete = async () => {
     if (phones.length === 0) return;
     try {
-      const res = await authenticatedFetch("/api/tl/leads", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phones }) });
+      const res = await fetch("/api/tl/leads", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phones }) });
       if (!res.ok) throw new Error("Failed to delete leads");
       toast.success("Deleted selected leads");
       setSelected({});
@@ -300,7 +306,7 @@ export default function LeadsPage() {
     try {
       setUpdatingStage(true);
       const actorId = getActorId();
-      const res = await authenticatedFetch("/api/tl/leads", { 
+      const res = await fetch("/api/tl/leads", { 
         method: "PATCH", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ 
@@ -326,7 +332,7 @@ export default function LeadsPage() {
 
 
   const refreshData = () => {
-    authenticatedFetch(`/api/tl/leads?${params}`).then((r) => r.json()).then((d) => {
+    fetch(`/api/tl/leads?${params}`).then((r) => r.json()).then((d) => {
       setRows(d.rows || []);
       setTotal(d.total || 0);
     });
@@ -912,7 +918,7 @@ export default function LeadsPage() {
                         disabled={!addToListId}
                         onClick={async () => {
                           try {
-                            const res = await authenticatedFetch("/api/tl/lists", {
+                            const res = await fetch("/api/tl/lists", {
                               method: "PUT",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({ listId: Number(addToListId), phones }),
@@ -972,7 +978,7 @@ export default function LeadsPage() {
                     onClick={async () => {
                       // Load available sales persons and open modal
                       try {
-                        const res = await authenticatedFetch("/api/tl/users");
+                        const res = await fetch("/api/tl/users");
                         if (res.ok) {
                           const data = await res.json();
                           if (data.success && data.users) {
@@ -1484,7 +1490,7 @@ export default function LeadsPage() {
                 try {
                   setAutoAssigning(true);
                   const actorId = getActorId();
-                  const res = await authenticatedFetch("/api/tl/queue", { 
+                  const res = await fetch("/api/tl/queue", { 
                     method: "POST", 
                     headers: { "Content-Type": "application/json" }, 
                     body: JSON.stringify({ 

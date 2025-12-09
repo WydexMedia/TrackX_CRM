@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 
 interface AgentKPI {
   user: { id: string; name: string };
@@ -85,11 +85,11 @@ export default function AgentsPage() {
 
   useEffect(() => {
     setLoading(true);
-    authenticatedFetch("/api/tl/agents/kpis").then((r) => r.json()).then((d) => setRows(d.rows || [])).finally(() => setLoading(false));
+    fetch("/api/tl/agents/kpis").then((r) => r.json()).then((d) => setRows(d.rows || [])).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    authenticatedFetch("/api/users")
+    fetch("/api/users")
       .then((r) => r.json())
       .then((all) => {
         const onlySales = (Array.isArray(all) ? all : []).filter((u: any) => (u.role ?? 'sales') === "sales");

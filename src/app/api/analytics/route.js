@@ -3,7 +3,7 @@ import { db } from '@/db/client';
 import { users, sales, dailyReports, dailyReportEntries } from '@/db/schema';
 import { eq, and, ne, gte, lte, sql } from 'drizzle-orm';
 import { getTenantContextFromRequest } from '@/lib/mongoTenant';
-import { authenticateToken, createUnauthorizedResponse } from '@/lib/authMiddleware';
+import { authenticateRequest, createUnauthorizedResponse } from '@/lib/clerkAuth';
 
 // Helper functions for date filtering
 function filterSalesByDate(sales, date) {
@@ -36,9 +36,9 @@ function getLastMonthDate() {
 // Get analytics for team leader
 export async function GET(request) {
   // Authenticate the request
-  const authResult = await authenticateToken(request);
+  const authResult = await authenticateRequest(request);
   if (!authResult.success) {
-    return createUnauthorizedResponse(authResult.error, authResult.errorCode, authResult.statusCode);
+    return createUnauthorizedResponse(authResult.error, authResult.statusCode);
   }
 
   const { tenantId } = await getTenantContextFromRequest(request);

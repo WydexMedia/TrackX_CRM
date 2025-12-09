@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useUser, useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { getTenantUrl } from "@/lib/tenantUrl";
 
 interface OnboardingForm {
   companyName: string;
@@ -18,6 +21,12 @@ interface OnboardingForm {
 }
 
 export default function OnboardingPage() {
+  const router = useRouter();
+  const { user, isLoaded } = useUser();
+  const { organization, isLoaded: isOrgLoaded } = useOrganization();
+  const { organizationList, isLoaded: isOrgListLoaded } = useOrganizationList({
+    userMemberships: true,
+  });
   const [form, setForm] = useState<OnboardingForm>({
     companyName: "",
     subdomain: "",
@@ -31,6 +40,81 @@ export default function OnboardingPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isCheckingExistingTenant, setIsCheckingExistingTenant] = useState(true);
+  const hasCheckedTenant = useRef(false);
+
+  // Check if user already has an organization and redirect them
+  useEffect(() => {
+    if (!isLoaded || hasCheckedTenant.current) return;
+
+    const checkExistingTenant = async () => {
+      if (!user) {
+        // Not logged in, redirect to login
+        hasCheckedTenant.current = true;
+        router.push("/login");
+        return;
+      }
+
+      // Wait for organization data to load
+      if (!isOrgListLoaded) return;
+
+      try {
+        // First, check if user has a Clerk organization
+        const activeOrg = organization || organizationList?.[0]?.organization;
+        
+        if (activeOrg?.slug) {
+          // User has an organization - redirect to organization subdomain
+          const subdomain = activeOrg.slug;
+          const redirectUrl = getTenantUrl(subdomain, '/team-leader');
+
+          hasCheckedTenant.current = true;
+          window.location.href = redirectUrl;
+          return;
+        }
+
+        // Fallback: Check if user already has a tenant in database
+        try {
+          const response = await fetch("/api/users/current");
+          const data = await response.json();
+
+          if (data.success && data.user?.tenantId) {
+            const tenantResponse = await fetch(`/api/tenants/by-id?tenantId=${data.user.tenantId}`);
+            const tenantData = await tenantResponse.json();
+
+            if (tenantData.success && tenantData.tenant?.subdomain) {
+              const subdomain = tenantData.tenant.subdomain;
+              const redirectUrl = getTenantUrl(subdomain, '/team-leader');
+
+              hasCheckedTenant.current = true;
+              window.location.href = redirectUrl;
+              return;
+            }
+          }
+        } catch (tenantError) {
+          console.error("Error fetching tenant from database:", tenantError);
+          // Continue to show onboarding form if tenant fetch fails
+        }
+
+        // Pre-fill form with Clerk user data
+        const email = user.emailAddresses[0]?.emailAddress || "";
+        const firstName = user.firstName || "";
+        const lastName = user.lastName || "";
+        const fullName = `${firstName} ${lastName}`.trim() || email?.split("@")[0] || "";
+
+        setForm(prev => ({
+          ...prev,
+          email: email,
+          contactName: fullName,
+        }));
+      } catch (error) {
+        console.error("Error checking existing tenant:", error);
+      } finally {
+        setIsCheckingExistingTenant(false);
+      }
+    };
+
+    checkExistingTenant();
+  }, [user, isLoaded, organization, isOrgLoaded, organizationList, isOrgListLoaded, router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -108,23 +192,24 @@ export default function OnboardingPage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Redirect to organization subdomain (if available) or tenant subdomain
+        const activeOrg = organization || organizationList?.[0]?.organization;
+        const subdomain = activeOrg?.slug || data.subdomain || form.subdomain;
+        const redirectUrl = getTenantUrl(subdomain, '/team-leader');
+        
+        // Show success message briefly, then redirect
         setMessage({
           type: "success",
-          text: `🎉 Welcome ${form.companyName}! Your account has been created successfully. You can now access your dashboard at ${form.subdomain}.wydex.co`,
+          text: `🎉 Welcome ${form.companyName}! Redirecting to your dashboard...`,
         });
-        setForm({
-          companyName: "",
-          subdomain: "",
-          contactName: "",
-          email: "",
-          phone: "",
-          expectedUsers: "1-10",
-          industry: "",
-        });
-        setLogoFile(null);
-        setLogoPreview(null);
+        
+        // Redirect after a short delay
+        setTimeout(() => {
+          window.location.href = redirectUrl;
+        }, 1500);
       } else {
         setMessage({ type: "error", text: data.error || "Failed to create tenant" });
+        setIsSubmitting(false);
       }
     } catch (error) {
       setMessage({ type: "error", text: "Network error. Please try again." });
@@ -132,6 +217,23 @@ export default function OnboardingPage() {
       setIsSubmitting(false);
     }
   };
+
+  // Show loading state while checking existing tenant
+  if (isCheckingExistingTenant || !isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is not authenticated, redirect (handled in useEffect)
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -328,7 +430,12 @@ export default function OnboardingPage() {
                     onChange={handleInputChange}
                     required
                     placeholder="your@email.com"
+                    readOnly
+                    className="bg-gray-50 cursor-not-allowed"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Email is set from your Clerk account and cannot be changed
+                  </p>
                 </div>
               </div>
 

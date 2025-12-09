@@ -38,7 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 
 function getUser() {
   if (typeof window === "undefined") return null;
@@ -90,7 +90,7 @@ function ComprehensiveLeadModal({
 
   const fetchUserNames = async () => {
     try {
-      const response = await authenticatedFetch("/api/tl/users");
+      const response = await fetch("/api/tl/users");
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.users) {
@@ -111,7 +111,7 @@ function ComprehensiveLeadModal({
     
     setLoading(true);
     try {
-      const response = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`);
+      const response = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`);
       if (response.ok) {
         const data = await response.json();
         setLeadDetails(data.lead);
@@ -135,7 +135,7 @@ function ComprehensiveLeadModal({
       const user = getUser();
       const actorId = user?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -171,7 +171,7 @@ function ComprehensiveLeadModal({
       const user = getUser();
       const actorId = user?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -206,7 +206,7 @@ function ComprehensiveLeadModal({
       const user = getUser();
       const actorId = user?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -241,7 +241,7 @@ function ComprehensiveLeadModal({
       const user = getUser();
       const actorId = user?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -655,7 +655,7 @@ function ActivityLogModal({
       const user = getUser();
       const actorId = user?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -691,7 +691,7 @@ function ActivityLogModal({
       const user = getUser();
       const actorId = user?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -726,7 +726,7 @@ function ActivityLogModal({
       const user = getUser();
       const actorId = user?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -761,7 +761,7 @@ function ActivityLogModal({
       const user = getUser();
       const actorId = user?.code || "system";
       
-      const res = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+      const res = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -814,7 +814,7 @@ function ActivityLogModal({
 
   // Load courses
   useEffect(() => {
-    authenticatedFetch("/api/tl/courses")
+    fetch("/api/tl/courses")
       .then((r) => r.json())
       .then((d) => setCourses(d?.courses || []))
       .catch(() => {});
@@ -824,7 +824,7 @@ function ActivityLogModal({
     if (!lead?.phone) return;
     
     try {
-      const response = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`);
+      const response = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`);
       if (response.ok) {
         const data = await response.json();
         setLeadDetails(data.lead);
@@ -855,7 +855,7 @@ function ActivityLogModal({
       
       if (stage && stage.toLowerCase().includes("customer")) {
         // Use sales API for customer stage
-        response = await authenticatedFetch("/api/sales", {
+        response = await fetch("/api/sales", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -885,7 +885,7 @@ function ActivityLogModal({
           updateData.followupNotes = null;
         }
 
-        response = await authenticatedFetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
+        response = await fetch(`/api/tl/leads/${encodeURIComponent(lead.phone)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updateData)
@@ -1520,12 +1520,12 @@ export default function TasksPage() {
     const todayFetches: Promise<any>[] = [];
 
     if (qsEmail) {
-      dueCallsFetches.push(authenticatedFetch(`/api/tasks/due-calls?${qsEmail}`).then((r) => r.json()));
-      todayFetches.push(authenticatedFetch(`/api/tasks/today?${qsEmail}`).then((r) => r.json()));
+      dueCallsFetches.push(fetch(`/api/tasks/due-calls?${qsEmail}`).then((r) => r.json()));
+      todayFetches.push(fetch(`/api/tasks/today?${qsEmail}`).then((r) => r.json()));
     }
     if (qsCode) {
-      dueCallsFetches.push(authenticatedFetch(`/api/tasks/due-calls?${qsCode}`).then((r) => r.json()));
-      todayFetches.push(authenticatedFetch(`/api/tasks/today?${qsCode}`).then((r) => r.json()));
+      dueCallsFetches.push(fetch(`/api/tasks/due-calls?${qsCode}`).then((r) => r.json()));
+      todayFetches.push(fetch(`/api/tasks/today?${qsCode}`).then((r) => r.json()));
     }
 
     // Execute in parallel
@@ -1577,8 +1577,8 @@ export default function TasksPage() {
     if ((!Array.isArray(mergedNewLeads) || mergedNewLeads.length === 0) && (ownerIdEmail || ownerIdCode)) {
       try {
         const leadFetches: Promise<any>[] = [];
-        if (ownerIdEmail) leadFetches.push(authenticatedFetch(`/api/tl/leads?owner=${encodeURIComponent(ownerIdEmail)}&limit=200`).then((r) => r.json()));
-        if (ownerIdCode && ownerIdCode !== ownerIdEmail) leadFetches.push(authenticatedFetch(`/api/tl/leads?owner=${encodeURIComponent(ownerIdCode)}&limit=200`).then((r) => r.json()));
+        if (ownerIdEmail) leadFetches.push(fetch(`/api/tl/leads?owner=${encodeURIComponent(ownerIdEmail)}&limit=200`).then((r) => r.json()));
+        if (ownerIdCode && ownerIdCode !== ownerIdEmail) leadFetches.push(fetch(`/api/tl/leads?owner=${encodeURIComponent(ownerIdCode)}&limit=200`).then((r) => r.json()));
         const leadResults = await Promise.all(leadFetches);
         let combined: Lead[] = [];
         for (const r of leadResults) {
@@ -1602,7 +1602,7 @@ export default function TasksPage() {
 
   useEffect(() => {
     // Load stages
-    authenticatedFetch("/api/tl/stages")
+    fetch("/api/tl/stages")
       .then((r) => r.json())
       .then((d) => setStages(d?.stages || []))
       .catch(() => {});

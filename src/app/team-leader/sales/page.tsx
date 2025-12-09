@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from 'react-hot-toast';
+import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
-import { setupPeriodicTokenValidation, authenticatedFetch } from '@/lib/tokenValidation';
+// Clerk handles authentication automatically via cookies - no need for fetch
 import TenantLogo from "@/components/TenantLogo";
 import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
@@ -62,28 +63,11 @@ interface Analytics {
 }
 
 
-interface TeamLeader {
-  _id?: string;
-  name: string;
-  code: string;
-  email: string;
-  role: string;
-  phone?: string;
-  address?: string;
-  about?: string;
-}
-
-function getTeamLeader() {
-  if (typeof window === "undefined") return null;
-  const user = localStorage.getItem("user");
-  return user ? JSON.parse(user) : null;
-}
-
 export default function TeamLeaderPage() {
+  const { user: clerkUser, isLoaded } = useUser();
   const [analytics, setAnalytics] = useState<Analytics[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [credentials, setCredentials] = useState<User[]>([]);
-  const [teamLeader, setTeamLeader] = useState<TeamLeader | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddUser, setShowAddUser] = useState(false);
   const [showCredentials, setShowCredentials] = useState(false);
@@ -131,95 +115,26 @@ export default function TeamLeaderPage() {
   const { subdomain } = useTenant();
 
   useEffect(() => {
-    const authenticateUser = async () => {
-      // First check if we have a token parameter (from redirect)
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
+    if (!isLoaded) return;
+    
+    // Layout already handles authentication - just fetch data
+    fetchData();
+  }, [isLoaded]);
 
-      if (token) {
-        try {
-          // Validate the token and get user data
-          const response = await fetch('/api/users/validate-session', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ token })
-          });
-
-          if (response.ok) {
-            const userData = await response.json();
-            localStorage.setItem("user", JSON.stringify(userData));
-            localStorage.setItem("token", userData.token);
-
-            // Clean up the URL by removing the token parameter
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.delete('token');
-            window.history.replaceState({}, '', newUrl.toString());
-
-            if (userData.role === 'teamleader') {
-              setTeamLeader(userData);
-              fetchData();
-              return;
-            }
-          } else if (response.status === 401) {
-            const errorData = await response.json();
-            if (errorData.code === 'TOKEN_REVOKED_NEW_LOGIN') {
-              // User logged in from another device
-              localStorage.removeItem("user");
-              localStorage.removeItem("token");
-              toast.error('You have been logged out because you logged in from another device.', {
-                duration: 5000,
-                style: {
-                  background: '#fee2e2',
-                  color: '#dc2626',
-                  border: '1px solid #fecaca'
-                }
-              });
-              router.push("/login");
-              return;
-            }
-          }
-        } catch (error) {
-          console.error('Session validation failed:', error);
-        }
-      }
-
-      // Fallback to localStorage check
-      const user = getTeamLeader();
-      if (!user || user.role !== 'teamleader') {
-        router.push("/login");
-        return;
-      }
-      setTeamLeader(user);
-      fetchData();
-    };
-
-    authenticateUser();
-
-    // Set up periodic token validation
-    const redirectToLogin = () => router.push("/login");
-    const validationInterval = setupPeriodicTokenValidation(redirectToLogin, 60000); // Check every 60 seconds
-
-    return () => {
-      clearInterval(validationInterval);
-    };
-  }, [router]);
-
-  // Initialize profile data when teamLeader changes
+  // Initialize profile data from Clerk user
   useEffect(() => {
-    if (teamLeader) {
+    if (clerkUser) {
+      const email = clerkUser.emailAddresses[0]?.emailAddress || "";
       setProfileData({
-        name: teamLeader.name || "",
-        email: teamLeader.email || "",
-        phone: teamLeader.phone || "",
-        address: teamLeader.address || "",
-        about: teamLeader.about || "",
+        name: clerkUser.fullName || "",
+        email: email,
+        phone: "",
+        address: "",
+        about: "",
         subdomain: subdomain ? `https://${subdomain}.wydex.co` : ""
       });
     }
-  }, [teamLeader, subdomain]);
+  }, [clerkUser, subdomain]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -240,15 +155,11 @@ export default function TeamLeaderPage() {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Authorization': `Bearer ${token}`
-      };
-
+      // Clerk handles authentication via cookies automatically
       const [analyticsRes, usersRes, credentialsRes] = await Promise.all([
-        authenticatedFetch("/api/analytics", { headers }),
-        authenticatedFetch("/api/users", { headers }),
-        authenticatedFetch("/api/users/credentials", { headers })
+        fetch("/api/analytics"),
+        fetch("/api/users"),
+        fetch("/api/users/credentials")
       ]);
 
       if (analyticsRes.ok && usersRes.ok && credentialsRes.ok) {
@@ -267,58 +178,29 @@ export default function TeamLeaderPage() {
       setLoading(false);
     }
   };
-  const handleLogout = async () => {
-    try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
-      if (token) {
-        console.log('🔐 Logging out with token');
-        try {
-          // Wait for the logout API to complete
-          const response = await fetch('/api/users/logout', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ token })
-          });
-
-          const result = await response.json();
-          if (response.ok && result.success) {
-            console.log('✅ Token successfully blacklisted');
-          } else {
-            console.warn('⚠️ Logout API warning:', result.error || 'Unknown error');
-          }
-        } catch (error) {
-          console.error('❌ Error calling logout API:', error);
-        }
-      } else {
-        console.log('ℹ️ No token found, skipping API call');
-      }
-    } catch (error) {
-      console.error('❌ Error in logout handler:', error);
-    }
-
-    // Clean up local storage and navigate after API call
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    router.push("/login");
-  };
+  // Logout is handled by Sidebar component using Clerk
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Make API call to save profile data
-      const token = localStorage.getItem('token');
-      const response = await authenticatedFetch("/api/users", {
+      // Get user ID from database
+      const email = clerkUser?.emailAddresses[0]?.emailAddress;
+      if (!email) {
+        toast.error("Email not found");
+        return;
+      }
+
+      const userResponse = await fetch(`/api/users/current?identifier=${encodeURIComponent(email)}`);
+      const userData = await userResponse.json();
+      const userId = userData.success ? userData.user?.id : null;
+
+      const response = await fetch("/api/users", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          _id: teamLeader?._id,
+          id: userId,
           name: profileData.name,
           email: profileData.email,
           phone: profileData.phone,
@@ -330,22 +212,6 @@ export default function TeamLeaderPage() {
       if (response.ok) {
         toast.success("Profile updated successfully");
         setIsEditingProfile(false);
-
-        // Update teamLeader state with new data
-        if (teamLeader) {
-          const updatedTeamLeader = {
-            ...teamLeader,
-            name: profileData.name,
-            email: profileData.email,
-            phone: profileData.phone,
-            address: profileData.address,
-            about: profileData.about
-          };
-          setTeamLeader(updatedTeamLeader);
-
-          // Update localStorage as well
-          localStorage.setItem("user", JSON.stringify(updatedTeamLeader));
-        }
       } else {
         const error = await response.json();
         toast.error(error.error || "Failed to update profile");
@@ -370,16 +236,24 @@ export default function TeamLeaderPage() {
     }
 
     try {
-      // Make API call to change password
-      const token = localStorage.getItem('token');
-      const response = await authenticatedFetch("/api/users/change-password", {
+      // Get user ID from database
+      const email = clerkUser?.emailAddresses[0]?.emailAddress;
+      if (!email) {
+        toast.error("Email not found");
+        return;
+      }
+
+      const userResponse = await fetch(`/api/users/current?identifier=${encodeURIComponent(email)}`);
+      const userData = await userResponse.json();
+      const userId = userData.success ? userData.user?.id : null;
+
+      const response = await fetch("/api/users/change-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          _id: teamLeader?._id,
+          id: userId,
           currentPassword: passwordData.currentPassword,
           newPassword: passwordData.newPassword
         }),
@@ -406,12 +280,10 @@ export default function TeamLeaderPage() {
     e.preventDefault();
     setIsAddingUser(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await authenticatedFetch("/api/users", {
+      const res = await fetch("/api/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(newUser),
       });
@@ -438,12 +310,10 @@ export default function TeamLeaderPage() {
 
     setIsUpdatingUser(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch("/api/users", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(editingUser),
       });
@@ -468,12 +338,8 @@ export default function TeamLeaderPage() {
 
     setIsDeletingUser(userId);
     try {
-      const token = localStorage.getItem('token');
-      const res = await authenticatedFetch(`/api/users?id=${userId}`, {
+      const res = await fetch(`/api/users?id=${userId}`, {
         method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
       });
 
       if (res.ok) {
@@ -505,8 +371,6 @@ export default function TeamLeaderPage() {
     setLoadingKPI(true);
 
     try {
-      const token = localStorage.getItem('token');
-
       // Find the user ID from the users list
       const userMatch = users.find(u => u.name.toLowerCase() === salesPerson.name.toLowerCase());
       const userId = userMatch?._id || '';
@@ -517,13 +381,8 @@ export default function TeamLeaderPage() {
         params.append('salesPersonIds', userId);
       }
 
-      const response = await authenticatedFetch(
-        `/api/tl/kpis?${params.toString()}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
+      const response = await fetch(
+        `/api/tl/kpis?${params.toString()}`
       );
 
       if (response.ok) {
@@ -735,7 +594,18 @@ export default function TeamLeaderPage() {
     );
   }
 
-  if (!teamLeader) return null;
+  if (!isLoaded || !clerkUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
+        <Card className="w-80 border border-slate-200/60 shadow-sm">
+          <CardContent className="p-8 text-center">
+            <div className="inline-block h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-700 font-medium">Loading...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
@@ -1808,14 +1678,15 @@ export default function TeamLeaderPage() {
                             variant="outline"
                             onClick={() => {
                               setIsEditingProfile(false);
-                              // Reset form data to original values
-                              if (teamLeader) {
+                              // Reset form data to original values from Clerk
+                              if (clerkUser) {
+                                const email = clerkUser.emailAddresses[0]?.emailAddress || "";
                                 setProfileData({
-                                  name: teamLeader.name || "",
-                                  email: teamLeader.email || "",
-                                  phone: teamLeader.phone || "",
-                                  address: teamLeader.address || "",
-                                  about: teamLeader.about || "",
+                                  name: clerkUser.fullName || "",
+                                  email: email,
+                                  phone: profileData.phone || "",
+                                  address: profileData.address || "",
+                                  about: profileData.about || "",
                                   subdomain: subdomain ? `https://${subdomain}.wydex.co` : ""
                                 });
                               }

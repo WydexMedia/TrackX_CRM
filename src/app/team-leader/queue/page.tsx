@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { authenticatedFetch } from "@/lib/tokenValidation";
+// Clerk handles authentication automatically via cookies - no need for fetch
 
 interface LeadRow {
   phone: string;
@@ -40,12 +40,12 @@ export default function QueuePage() {
 
   useEffect(() => {
     setLoading(true);
-    authenticatedFetch(`/api/tl/queue?${params}`).then((r) => r.json()).then((d) => { setRows(d.rows || []); setTotal(d.total || 0); }).finally(() => setLoading(false));
+    fetch(`/api/tl/queue?${params}`).then((r) => r.json()).then((d) => { setRows(d.rows || []); setTotal(d.total || 0); }).finally(() => setLoading(false));
   }, [params]);
 
   // Load salespersons from Mongo-backed API
   useEffect(() => {
-    authenticatedFetch("/api/users")
+    fetch("/api/users")
       .then((r) => r.json())
       .then((all) => {
         const onlySales = (Array.isArray(all) ? all : []).filter((u: any) => u.role === "sales");
@@ -97,10 +97,10 @@ export default function QueuePage() {
         <Button
           disabled={phones.length === 0 || !assignee}
           onClick={async () => {
-            const res = await authenticatedFetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "assign", phones, ownerId: assignee }) });
+            const res = await fetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "assign", phones, ownerId: assignee }) });
             if (res.ok) toast.success(`Assigned ${phones.length} lead(s)`); else toast.error("Assignment failed");
             setSelected({});
-            const d = await authenticatedFetch(`/api/tl/queue?${params}`).then((r) => r.json());
+            const d = await fetch(`/api/tl/queue?${params}`).then((r) => r.json());
             setRows(d.rows || []);
           }}
         >
@@ -112,7 +112,7 @@ export default function QueuePage() {
           onClick={async () => {
             try {
               setAutoAssigning(true);
-              const res = await authenticatedFetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "autoAssign", phones }) });
+              const res = await fetch("/api/tl/queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "autoAssign", phones }) });
               if (res.ok) {
                 const data = await res.json();
                 toast.success(`Auto-assigned ${phones.length} lead(s) via ${data.rule}`);
@@ -120,7 +120,7 @@ export default function QueuePage() {
                 toast.error("Auto-assign failed");
               }
               setSelected({});
-              const d = await authenticatedFetch(`/api/tl/queue?${params}`).then((r) => r.json());
+              const d = await fetch(`/api/tl/queue?${params}`).then((r) => r.json());
               setRows(d.rows || []);
             } finally {
               setAutoAssigning(false);
@@ -157,7 +157,7 @@ export default function QueuePage() {
             
             const selectedAssignee = sales[selectedIndex];
             
-            const res = await authenticatedFetch("/api/tl/queue", { 
+            const res = await fetch("/api/tl/queue", { 
               method: "POST", 
               headers: { "Content-Type": "application/json" }, 
               body: JSON.stringify({ 
