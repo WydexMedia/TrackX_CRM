@@ -48,6 +48,7 @@ export default function LoginPage() {
             signUpUrl="/signup"
             afterSignInUrl="/login/redirect"
             redirectUrl="/login/redirect"
+            forceRedirectUrl="/login/redirect"
           />
         </div>
       </div>

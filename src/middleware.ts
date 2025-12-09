@@ -27,6 +27,24 @@ export default clerkMiddleware((auth, req: NextRequest) => {
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
   const subdomain = extractSubdomain(host);
 
+  // Public routes that should not require authentication
+  const publicRoutes = ['/login', '/signup', '/onboarding', '/accept-invitation'];
+  const isPublicRoute = publicRoutes.some(route => url.pathname.startsWith(route));
+
+  // Allow public routes to pass through without authentication checks
+  if (isPublicRoute) {
+    const requestHeaders = new Headers(req.headers);
+    if (subdomain) requestHeaders.set("x-tenant-subdomain", subdomain);
+    requestHeaders.set("x-resolved-host", host || "");
+    requestHeaders.set("x-resolved-path", url.pathname);
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  }
+
   const requestHeaders = new Headers(req.headers);
   if (subdomain) requestHeaders.set("x-tenant-subdomain", subdomain);
   requestHeaders.set("x-resolved-host", host || "");
